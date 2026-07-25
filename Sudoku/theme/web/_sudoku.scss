@@ -568,3 +568,199 @@
   font-size: 12px;
   color: var(--sd-bad);
 }
+
+// =========================================================== pencil marks
+// A blank square shows a 3x3 candidate grid instead of an answer.
+.sd-notes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.sd-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sd-mono);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--sd-muted-2);
+}
+
+// ------------------------------------------------------- tool states
+.sd-tool-on {
+  border-color: var(--sd-accent) !important;
+  background: rgba(95, 211, 196, 0.12) !important;
+}
+
+.sd-tool-on .sd-tool-text { color: var(--sd-accent); }
+
+.sd-tool-off {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.sd-notes-note {
+  padding: 11px 14px;
+  background: rgba(95, 211, 196, 0.07);
+  border: 1px solid rgba(95, 211, 196, 0.3);
+  border-radius: 10px;
+}
+
+.sd-notes-text {
+  display: block;
+  font-size: 12px;
+  color: var(--sd-accent);
+}
+
+// ======================================================= completion page
+.sd-done { padding-top: 44px; }
+
+.sd-done-head { margin-bottom: 30px; }
+
+.sd-done-kicker {
+  display: block;
+  font-family: var(--sd-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--sd-accent);
+  margin-bottom: 14px;
+}
+
+.sd-done-title,
+.sd-done-time {
+  display: block;
+  margin: 0;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--sd-ink);
+}
+
+.sd-done-time { color: var(--sd-ink); }
+
+.sd-done-sub {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--sd-muted-2);
+}
+
+.sd-done-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 34px;
+}
+
+.sd-done-stat {
+  padding: 18px 20px;
+  background: var(--sd-panel);
+  border: 1px solid var(--sd-line);
+  border-radius: 12px;
+}
+
+.sd-done-stat-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--sd-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-done-stat-label {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--sd-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--sd-muted);
+}
+
+// ------------------------------------------------- recent-solves strip
+.sd-done-chart-wrap { margin-bottom: 30px; }
+
+.sd-done-chart-label {
+  display: block;
+  font-family: var(--sd-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--sd-muted);
+  margin-bottom: 12px;
+}
+
+.sd-bars [class*="gallery-items"] {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 10px !important;
+  align-items: end;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.sd-bars .widget-gallery-top-bar,
+.sd-bars .widget-gallery-footer { display: none !important; }
+
+.sd-bar-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 7px;
+  height: 118px;
+}
+
+// Same trick as the progress bar: no dynamic inline height, so one class
+// per 5% of the 0..20 BarBucket sets it.
+.sd-bar {
+  flex: none;              // a flex item would otherwise shrink the % height away
+  width: 100%;
+  background: linear-gradient(180deg, var(--sd-accent-deep), var(--sd-surface-2));
+  border-radius: 5px;
+  font-size: 0;
+  min-height: 8px;
+}
+
+// The most recent solve is the one just finished — highlight it
+.sd-bars [class*="gallery-items"] > *:last-child .sd-bar {
+  background: linear-gradient(180deg, var(--sd-accent), var(--sd-accent-deep));
+}
+
+@for $i from 0 through 20 {
+  .sd-bh-#{$i} { height: $i * 5%; }
+}
+
+.sd-bar-label {
+  display: block;
+  text-align: center;
+  font-family: var(--sd-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--sd-muted);
+}
+
+.sd-done-actions { display: flex; gap: 10px; }
+
+.sd-cta-wide { max-width: 320px; }
+
+@media (max-width: 640px) {
+  .sd-done-title, .sd-done-time { font-size: 30px; }
+  .sd-done-stats { grid-template-columns: 1fr; }
+}
+
+// Each pencil mark keeps its own slot in the 3x3 grid. Without an explicit
+// grid-area the hidden marks collapse and the visible ones pack from the
+// top-left, so a lone "7" would sit where the "1" belongs.
+.sd-n1 { grid-area: 1 / 1; }
+.sd-n2 { grid-area: 1 / 2; }
+.sd-n3 { grid-area: 1 / 3; }
+.sd-n4 { grid-area: 2 / 1; }
+.sd-n5 { grid-area: 2 / 2; }
+.sd-n6 { grid-area: 2 / 3; }
+.sd-n7 { grid-area: 3 / 1; }
+.sd-n8 { grid-area: 3 / 2; }
+.sd-n9 { grid-area: 3 / 3; }

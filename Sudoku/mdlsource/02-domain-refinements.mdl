@@ -110,3 +110,120 @@ create association Sudoku."Game_SelectedCell"
 from Sudoku."Game" to Sudoku."Cell"
 type reference;
 /
+
+-- =====================================================================
+-- Notes (pencil marks), undo/redo, and completion stats
+-- =====================================================================
+
+-- Nine candidate flags per square. Nine booleans rather than one packed
+-- string because each pencil mark is its own widget with its own
+-- visibility expression, and a widget cannot index into a string.
+alter entity Sudoku."Cell"
+  add attribute "N1": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N2": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N3": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N4": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N5": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N6": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N7": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N8": boolean default false;
+/
+
+alter entity Sudoku."Cell"
+  add attribute "N9": boolean default false;
+/
+
+-- Notes mode: digits write pencil marks instead of an answer
+alter entity Sudoku."Game"
+  add attribute "NotesMode": boolean default false;
+/
+
+-- Undo/redo cursor over the Move log. MoveSeq is where we are, MaxSeq is
+-- how far the log goes; redo is possible while MoveSeq < MaxSeq.
+alter entity Sudoku."Game"
+  add attribute "MoveSeq": integer default 0;
+/
+
+alter entity Sudoku."Game"
+  add attribute "MaxSeq": integer default 0;
+/
+
+alter entity Sudoku."Game"
+  add attribute "CanUndo": boolean default false;
+/
+
+alter entity Sudoku."Game"
+  add attribute "CanRedo": boolean default false;
+/
+
+-- Completion stats
+alter entity Sudoku."Game"
+  add attribute "SolvedAt": datetime;
+/
+
+alter entity Sudoku."Game"
+  add attribute "ElapsedSeconds": integer default 0;
+/
+
+alter entity Sudoku."Game"
+  add attribute "ElapsedLabel": string(60);
+/
+
+alter entity Sudoku."Game"
+  add attribute "BarBucket": integer default 0;
+/
+
+/**
+ * One reversible change to a square, forming the undo/redo log.
+ *
+ * Only answer changes are logged; pencil marks are not reversible.
+ */
+@position(700, 100)
+create persistent entity Sudoku."Move" (
+  /** Position in this game's log, 1-based */
+  "Seq": integer default 0,
+  /** Value before the change, empty when the square was blank */
+  "OldValue": integer,
+  /** Value after the change, empty when the square was cleared */
+  "NewValue": integer
+);
+/
+
+/**
+ * The game a logged move belongs to; clearing the game clears its log.
+ */
+create association Sudoku."Move_Game"
+from Sudoku."Move" to Sudoku."Game"
+type reference
+delete_behavior DELETE_AND_REFERENCES;
+/
+
+/**
+ * The square a logged move changed.
+ */
+create association Sudoku."Move_Cell"
+from Sudoku."Move" to Sudoku."Cell"
+type reference
+delete_behavior DELETE_AND_REFERENCES;
+/

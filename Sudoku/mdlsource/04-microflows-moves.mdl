@@ -13,6 +13,140 @@
 -- =====================================================================
 
 /**
+ * Toggles one pencil mark on a square.
+ *
+ * Nine booleans means nine branches — a widget cannot index into a string,
+ * so the notes have to be discrete attributes, and this is the cost.
+ *
+ * @param $Cell The square to mark
+ * @param $Digit The candidate 1..9 to toggle
+ * @returns True when a mark was toggled
+ */
+create or replace microflow Sudoku.ACT_ToggleNote (
+  $Cell: Sudoku."Cell",
+  $Digit: integer
+)
+returns boolean as $Toggled
+folder 'Moves'
+begin
+  declare $Toggled boolean = false;
+
+  if $Cell = empty then
+    return false;
+  end if;
+
+  if $Digit = 1 then
+    change $Cell ("N1" = $Cell/"N1" = false);
+  end if;
+  if $Digit = 2 then
+    change $Cell ("N2" = $Cell/"N2" = false);
+  end if;
+  if $Digit = 3 then
+    change $Cell ("N3" = $Cell/"N3" = false);
+  end if;
+  if $Digit = 4 then
+    change $Cell ("N4" = $Cell/"N4" = false);
+  end if;
+  if $Digit = 5 then
+    change $Cell ("N5" = $Cell/"N5" = false);
+  end if;
+  if $Digit = 6 then
+    change $Cell ("N6" = $Cell/"N6" = false);
+  end if;
+  if $Digit = 7 then
+    change $Cell ("N7" = $Cell/"N7" = false);
+  end if;
+  if $Digit = 8 then
+    change $Cell ("N8" = $Cell/"N8" = false);
+  end if;
+  if $Digit = 9 then
+    change $Cell ("N9" = $Cell/"N9" = false);
+  end if;
+
+  commit $Cell refresh;
+  set $Toggled = true;
+  return $Toggled;
+end;
+/
+
+/**
+ * Appends an answer change to the undo log.
+ *
+ * Anything ahead of the cursor is dropped first, so making a move after an
+ * undo discards the redo tail — the usual editor behaviour.
+ *
+ * @param $Game The game being played
+ * @param $Cell The square about to change
+ * @param $NewValue The value it changes to, empty when cleared
+ * @returns True when the move was logged
+ */
+create or replace microflow Sudoku.ACT_LogMove (
+  $Game: Sudoku."Game",
+  $Cell: Sudoku."Cell",
+  $NewValue: integer
+)
+returns boolean as $Logged
+folder 'History'
+begin
+  declare $Logged boolean = false;
+  declare $next integer = 0;
+
+  if $Game = empty or $Cell = empty then
+    return false;
+  end if;
+
+  retrieve $Tail from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game and "Seq" > $Game/"MoveSeq"];
+  delete $Tail;
+
+  set $next = $Game/"MoveSeq" + 1;
+
+  $Move = create Sudoku."Move" (
+    "Seq" = $next,
+    "OldValue" = $Cell/"Value",
+    "NewValue" = $NewValue,
+    Sudoku."Move_Game" = $Game,
+    Sudoku."Move_Cell" = $Cell);
+  commit $Move;
+
+  change $Game (
+    "MoveSeq" = $next,
+    "MaxSeq" = $next,
+    "CanUndo" = true,
+    "CanRedo" = false) refresh;
+  commit $Game refresh;
+
+  set $Logged = true;
+  return $Logged;
+end;
+/
+
+/**
+ * Switches pencil-mark mode on or off.
+ *
+ * @param $Game The game being played
+ * @returns The new mode
+ */
+create or replace microflow Sudoku.ACT_ToggleNotes (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Mode
+folder 'Moves'
+begin
+  declare $Mode boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  set $Mode = $Game/"NotesMode" = false;
+  change $Game ("NotesMode" = $Mode) refresh;
+  commit $Game refresh;
+  return $Mode;
+end;
+/
+
+/**
  * Selects a square, moving the Game's selection to it.
  *
  * Clears the highlight on the previously selected square, points
@@ -115,7 +249,23 @@ begin
     return false;
   end if;
 
-  change $Cell ("Value" = $Digit) refresh;
+  -- Notes mode writes a pencil mark instead of an answer. Only on a blank
+  -- square: a filled square has nothing to pencil.
+  if $Game/"NotesMode" and $Cell/"Value" = empty then
+    call microflow Sudoku.ACT_ToggleNote(Cell = $Cell, Digit = $Digit);
+    set $Applied = true;
+    return $Applied;
+  end if;
+
+  -- Log the change so it can be undone, dropping any redo tail first
+  call microflow Sudoku.ACT_LogMove(Game = $Game, Cell = $Cell, NewValue = $Digit);
+
+  -- An answer supersedes the square's pencil marks
+  change $Cell (
+    "Value" = $Digit,
+    "N1" = false, "N2" = false, "N3" = false,
+    "N4" = false, "N5" = false, "N6" = false,
+    "N7" = false, "N8" = false, "N9" = false) refresh;
   commit $Cell refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
@@ -151,7 +301,14 @@ begin
     return false;
   end if;
 
-  change $Cell ("Value" = empty, "IsInvalid" = false) refresh;
+  call microflow Sudoku.ACT_LogMove(Game = $Game, Cell = $Cell, NewValue = empty);
+
+  change $Cell (
+    "Value" = empty,
+    "IsInvalid" = false,
+    "N1" = false, "N2" = false, "N3" = false,
+    "N4" = false, "N5" = false, "N6" = false,
+    "N7" = false, "N8" = false, "N9" = false) refresh;
   commit $Cell refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
@@ -311,5 +468,97 @@ folder 'Moves'
 begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 9);
   return $Applied;
+end;
+/
+
+/**
+ * Steps one answer change backwards.
+ *
+ * @param $Game The game being played
+ * @returns True when a move was undone
+ */
+create or replace microflow Sudoku.ACT_Undo (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Undone
+folder 'History'
+begin
+  declare $Undone boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+  if $Game/"MoveSeq" <= 0 then
+    return false;
+  end if;
+
+  retrieve $Move from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game and "Seq" = $Game/"MoveSeq"]
+    limit 1;
+  if $Move = empty then
+    return false;
+  end if;
+
+  retrieve $Cell from $Move/Sudoku."Move_Cell";
+  if $Cell != empty then
+    change $Cell ("Value" = $Move/"OldValue", "IsInvalid" = false) refresh;
+    commit $Cell refresh;
+  end if;
+
+  change $Game ("MoveSeq" = $Game/"MoveSeq" - 1, "CanRedo" = true) refresh;
+  change $Game ("CanUndo" = $Game/"MoveSeq" > 0) refresh;
+  commit $Game refresh;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Undone = true;
+  return $Undone;
+end;
+/
+
+/**
+ * Steps one answer change forwards again.
+ *
+ * @param $Game The game being played
+ * @returns True when a move was redone
+ */
+create or replace microflow Sudoku.ACT_Redo (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Redone
+folder 'History'
+begin
+  declare $Redone boolean = false;
+  declare $target integer = 0;
+
+  if $Game = empty then
+    return false;
+  end if;
+  if $Game/"MoveSeq" >= $Game/"MaxSeq" then
+    return false;
+  end if;
+
+  set $target = $Game/"MoveSeq" + 1;
+  retrieve $Move from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game and "Seq" = $target]
+    limit 1;
+  if $Move = empty then
+    return false;
+  end if;
+
+  retrieve $Cell from $Move/Sudoku."Move_Cell";
+  if $Cell != empty then
+    change $Cell ("Value" = $Move/"NewValue", "IsInvalid" = false) refresh;
+    commit $Cell refresh;
+  end if;
+
+  change $Game ("MoveSeq" = $Game/"MoveSeq" + 1, "CanUndo" = true) refresh;
+  change $Game ("CanRedo" = $Game/"MoveSeq" < $Game/"MaxSeq") refresh;
+  commit $Game refresh;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Redone = true;
+  return $Redone;
 end;
 /

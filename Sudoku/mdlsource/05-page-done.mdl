@@ -1,0 +1,101 @@
+-- =====================================================================
+-- Sudoku — completion page
+-- =====================================================================
+-- Mirrors frame 2b of the design handoff: a kicker, the headline with the
+-- elapsed time, three stat tiles, and a bar strip of recent solves.
+--
+-- Deliberately has NO outgoing references. It is created before the board
+-- page (which links to it) and before the landing page, so the pipeline
+-- stays free of forward references; the "New game" link is appended by
+-- 07-home.mdl once Sudoku.Home exists.
+--
+-- The bar strip reuses the progress-bar trick: a widget cannot take a
+-- dynamic inline height, so each game carries a 0..20 BarBucket and one
+-- CSS class per 5% sets the height.
+--
+-- The action buttons are appended by 07-home.mdl for the same reason:
+-- replaying a level needs ACT_New*, which do not exist yet at this point.
+-- =====================================================================
+
+create or replace page Sudoku.Game_Done
+(
+  params: { $Game: Sudoku."Game" },
+  title: 'Solved',
+  layout: Atlas_Core.Atlas_Default,
+  class: 'sd-page sd-dark'
+)
+{
+  container sdDoneApp (class: 'sd-app sd-done') {
+    dataview dvDone (datasource: $Game, class: 'sd-game', FormOrientation: Vertical) {
+
+      container sdDoneHead (class: 'sd-done-head') {
+        dynamictext sdDoneKicker (
+          content: 'SOLVED · {1} CONFLICTS LEFT',
+          contentparams: [{1} = "ErrorCount"],
+          class: 'sd-done-kicker'
+        )
+        dynamictext sdDoneTitle (
+          content: '{1} No. {2}',
+          contentparams: [{1} = "Level", {2} = "PuzzleNo"],
+          rendermode: H1,
+          class: 'sd-done-title'
+        )
+        dynamictext sdDoneTime (
+          content: 'in {1}',
+          contentparams: [{1} = "ElapsedLabel"],
+          rendermode: H1,
+          class: 'sd-done-time'
+        )
+        dynamictext sdDoneSub (
+          content: 'Dealt {1} with {2} squares revealed.',
+          contentparams: [{1} = "DateLabel", {2} = "GivenCount"],
+          rendermode: Paragraph,
+          class: 'sd-done-sub'
+        )
+      }
+
+      container sdDoneStats (class: 'sd-done-stats') {
+        container sdDoneStat1 (class: 'sd-done-stat') {
+          dynamictext sdDoneStat1v (content: '{1}', contentparams: [{1} = "HintCount"], class: 'sd-done-stat-value')
+          dynamictext sdDoneStat1l (content: 'HINTS USED', class: 'sd-done-stat-label')
+        }
+        container sdDoneStat2 (class: 'sd-done-stat') {
+          dynamictext sdDoneStat2v (content: '{1}', contentparams: [{1} = "MaxSeq"], class: 'sd-done-stat-value')
+          dynamictext sdDoneStat2l (content: 'MOVES MADE', class: 'sd-done-stat-label')
+        }
+        container sdDoneStat3 (class: 'sd-done-stat') {
+          dynamictext sdDoneStat3v (content: '{1}', contentparams: [{1} = "GivenCount"], class: 'sd-done-stat-value')
+          dynamictext sdDoneStat3l (content: 'SQUARES GIVEN', class: 'sd-done-stat-label')
+        }
+      }
+
+      container sdDoneChartWrap (class: 'sd-done-chart-wrap') {
+        dynamictext sdDoneChartLabel (content: 'RECENT SOLVES', class: 'sd-done-chart-label')
+        gallery galRecent (
+          datasource: database from Sudoku."Game"
+            where [Status = 'Solved']
+            sort by "PuzzleNo" desc,
+          DesktopColumns: 7,
+          TabletColumns: 7,
+          PhoneColumns: 7,
+          PageSize: 7,
+          class: 'sd-bars'
+        ) {
+          template tplBar {
+            container sdBarCol (class: 'sd-bar-col') {
+              container sdBar (
+                class: 'sd-bar',
+                dynamicclasses: '''sd-bh-'' + toString($currentObject/BarBucket)'
+              ) {
+                dynamictext sdBarSpacer (content: ' ')
+              }
+              dynamictext sdBarLabel (content: '{1}', contentparams: [{1} = "PuzzleNo"], class: 'sd-bar-label')
+            }
+          }
+        }
+      }
+
+    }
+  }
+}
+/

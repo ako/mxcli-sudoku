@@ -52,6 +52,10 @@ begin
   declare $r8 integer = 0;
   declare $r9 integer = 0;
   declare $bucket integer = 0;
+  declare $secs integer = 0;
+  declare $bar integer = 0;
+  declare $t integer = 0;
+  declare $mins integer = 0;
 
   if $Game = empty then
     return false;
@@ -142,6 +146,32 @@ begin
 
   if $correct = 81 then
     set $IsSolved = true;
+    -- Stamp the finish once, so re-running Refresh on a solved board does
+    -- not keep resetting the clock.
+    if $Game/"SolvedAt" = empty then
+      -- secondsBetween() yields a Decimal; an integer target needs rounding (CE0117)
+      set $secs = round(secondsBetween($Game/"DealtAt", [%CurrentDateTime%]));
+      set $mins = 0;
+      while $secs >= 60
+      begin
+        set $secs = $secs - 60;
+        set $mins = $mins + 1;
+      end while;
+      change $Game (
+        "SolvedAt" = [%CurrentDateTime%],
+        "ElapsedSeconds" = $mins * 60 + $secs,
+        "ElapsedLabel" = toString($mins) + ' minutes ' + toString($secs) + ' seconds');
+      -- Height bucket for the recent-solves strip: one step per 15s, so a
+      -- five-minute solve fills the strip and a ten-minute one caps it.
+      set $bar = 1;
+      set $t = $mins * 60 + $secs;
+      while $bar < 20 and $t >= 15
+      begin
+        set $t = $t - 15;
+        set $bar = $bar + 1;
+      end while;
+      change $Game ("BarBucket" = $bar);
+    end if;
     change $Game (
       "Status" = Sudoku."GameStatus".Solved,
       "Message" = 'Solved — every square checks out.');

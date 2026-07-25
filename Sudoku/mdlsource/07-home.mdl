@@ -135,17 +135,15 @@ create or replace page Sudoku.Home
 }
 /
 
--- =====================================================================
--- Add the way back to the landing page from a board
--- =====================================================================
-
-alter page Sudoku.Game_Play {
-  insert after btnReset {
-    actionbutton btnNew (
-      caption: 'New game',
-      action: show_page Sudoku.Home,
-      class: 'sd-btn sd-btn-ghost'
-    )
+-- The completion page cannot reference Sudoku.Home at creation time (it is
+-- built before the landing page), so its actions are appended here.
+alter page Sudoku.Game_Done {
+  insert after sdDoneChartWrap {
+    container sdDoneActions (class: 'sd-done-actions') {
+      container doneNew (class: 'sd-tool sd-tool-on', OnClick: show_page Sudoku.Home) {
+        dynamictext doneNewT (content: 'NEW PUZZLE', class: 'sd-tool-text')
+      }
+    }
   }
 };
 /

@@ -104,7 +104,23 @@ create or replace page Sudoku.Game_Play
                   dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
                   OnClick: microflow Sudoku.ACT_SelectCell(Cell: $currentObject)
                 ) {
-                  dynamictext sdCellNum (content: '{1}', contentparams: [{1} = "Value"], class: 'sd-num')
+                  dynamictext sdCellNum (
+                    content: '{1}',
+                    contentparams: [{1} = "Value"],
+                    class: 'sd-num',
+                    visible: ["Value" != empty]
+                  )
+                  container sdNotes (class: 'sd-notes', visible: ["Value" = empty]) {
+                    dynamictext sdN1 (content: '1', class: 'sd-note sd-n1', visible: ["N1"])
+                    dynamictext sdN2 (content: '2', class: 'sd-note sd-n2', visible: ["N2"])
+                    dynamictext sdN3 (content: '3', class: 'sd-note sd-n3', visible: ["N3"])
+                    dynamictext sdN4 (content: '4', class: 'sd-note sd-n4', visible: ["N4"])
+                    dynamictext sdN5 (content: '5', class: 'sd-note sd-n5', visible: ["N5"])
+                    dynamictext sdN6 (content: '6', class: 'sd-note sd-n6', visible: ["N6"])
+                    dynamictext sdN7 (content: '7', class: 'sd-note sd-n7', visible: ["N7"])
+                    dynamictext sdN8 (content: '8', class: 'sd-note sd-n8', visible: ["N8"])
+                    dynamictext sdN9 (content: '9', class: 'sd-note sd-n9', visible: ["N9"])
+                  }
                 }
               }
             }
@@ -264,6 +280,16 @@ create or replace page Sudoku.Game_Play
             }
           }
 
+          container sdNotesNote (
+            class: 'sd-notes-note',
+            visible: ["NotesMode"]
+          ) {
+            dynamictext sdNotesText (
+              content: 'Notes mode — digits leave pencil marks instead of answers.',
+              class: 'sd-notes-text'
+            )
+          }
+
           container sdLockNote (
             class: 'sd-lock-note',
             visible: ["HasSelection" and "SelEditable" = false]
@@ -289,6 +315,37 @@ create or replace page Sudoku.Game_Play
             }
           }
 
+          container sdTools2 (class: 'sd-tools') {
+            container toolNotes (
+              class: 'sd-tool',
+              dynamicclasses: 'if $currentObject/NotesMode then ''sd-tool-on'' else ''''',
+              OnClick: microflow Sudoku.ACT_ToggleNotes(Game: $Game)
+            ) {
+              dynamictext toolNotesT (content: 'NOTES', class: 'sd-tool-text')
+            }
+            container toolUndo (
+              class: 'sd-tool',
+              dynamicclasses: 'if $currentObject/CanUndo then '''' else ''sd-tool-off''',
+              OnClick: microflow Sudoku.ACT_Undo(Game: $Game)
+            ) {
+              dynamictext toolUndoT (content: 'UNDO', class: 'sd-tool-text')
+            }
+            container toolRedo (
+              class: 'sd-tool',
+              dynamicclasses: 'if $currentObject/CanRedo then '''' else ''sd-tool-off''',
+              OnClick: microflow Sudoku.ACT_Redo(Game: $Game)
+            ) {
+              dynamictext toolRedoT (content: 'REDO', class: 'sd-tool-text')
+            }
+            container toolResult (
+              class: 'sd-tool',
+              dynamicclasses: 'if $currentObject/Status = Sudoku.GameStatus.Solved then ''sd-tool-on'' else ''sd-tool-off''',
+              OnClick: show_page Sudoku.Game_Done(Game: $Game)
+            ) {
+              dynamictext toolResultT (content: 'RESULT', class: 'sd-tool-text')
+            }
+          }
+
           container sdPanel (class: 'sd-panel') {
             dynamictext sdPanelKicker (content: 'BOARD', class: 'sd-panel-kicker')
             dynamictext sdMsg (content: '{1}', contentparams: [{1} = "Message"], class: 'sd-panel-body')
@@ -297,8 +354,8 @@ create or replace page Sudoku.Game_Play
           container sdWin (class: 'sd-win', visible: ["Status" = Sudoku."GameStatus".Solved]) {
             dynamictext sdWinKicker (content: 'SOLVED · NO CONFLICTS', class: 'sd-win-kicker')
             dynamictext sdWinText (
-              content: 'Puzzle No. {1} complete.',
-              contentparams: [{1} = "PuzzleNo"],
+              content: 'Puzzle No. {1} complete in {2}.',
+              contentparams: [{1} = "PuzzleNo", {2} = "ElapsedLabel"],
               class: 'sd-win-text'
             )
           }

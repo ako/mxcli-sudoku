@@ -11,15 +11,21 @@ The toolchain that builds and runs it is set up by committed automation; see
 | | |
 |---|---|
 | **Landing page** | `Sudoku.Home` — pick Easy / Medium / Hard |
-| **Board** | `Sudoku.Game_Play` — 9x9 grid, number pad, live validation |
+| **Board** | `Sudoku.Game_Play` — 9x9 grid, number pad, notes, undo/redo |
+| **Completion** | `Sudoku.Game_Done` — elapsed time, stats, recent solves |
 | **Theme** | "Nocturne" — dark, mint accent, from a Claude design prototype |
 | **Module** | `Sudoku` (the scaffolded `MyFirstModule` is left untouched) |
 
 **Playing.** Choose a difficulty and a fresh board is dealt. Select a square,
 then tap a digit on the number pad. Entries that disagree with the solution turn
 red immediately and the conflict counter updates; dealt squares are read-only.
-`Hint` reveals one square, `Reset board` clears everything you filled in, and the
-board flips to a solved banner once all 81 squares are correct.
+`Hint` reveals one square, `Reset` clears everything you filled in, and the board
+flips to a solved banner once all 81 squares are correct.
+
+`Notes` switches the pad to pencil marks: digits then leave candidates in a 3x3
+grid inside the square instead of an answer, and writing an answer clears that
+square's marks. `Undo` / `Redo` step through answer changes — pencil marks are
+deliberately not reversible. `Result` opens the completion page.
 
 ### How boards are generated
 
@@ -102,6 +108,16 @@ The board page follows the developed "Nocturne" frames of the design handoff:
   conflicts and empty counts.
 - **Locked pad** — selecting a dealt square dims the pad and says so, rather
   than letting `ACT_ApplyValue` discard the digit silently.
+- **Notes** — nine `N1`..`N9` booleans per cell, not one packed string: a widget
+  cannot index into a string, and each mark needs its own visibility expression.
+  Each mark is pinned to its slot with `grid-area`, or hidden marks would
+  collapse the grid and pack the visible ones top-left.
+- **Undo / redo** — a `Move` log with a cursor (`MoveSeq` / `MaxSeq`). Making a
+  move after undoing drops the redo tail, as in any editor. Only answers are
+  logged; the tools disable themselves via `CanUndo` / `CanRedo`.
+- **Completion page** — kicker, headline with elapsed time, three stat tiles and
+  a recent-solves strip. The strip reuses the progress-bar trick: a 0..20
+  `BarBucket` (one step per 15s) plus one CSS class per 5% of height.
 
 The **Game owns the selection** through `Game_SelectedCell`. That is what lets
 the pad live in the Game's data context (so it can show per-digit remainders)
@@ -136,25 +152,32 @@ MDL source lives in `Sudoku/mdlsource/` and is applied in order:
 | `02-domain-refinements.mdl` | Selection, per-digit remainders, progress, date label |
 | `03-microflows-engine.mdl` | `ACT_Refresh`, logic solver, generator, hint, reset |
 | `04-microflows-moves.mdl` | Select, apply, clear, nine pad wrappers |
-| `05-page-play.mdl` | The board page (Nocturne) |
-| `06-home.mdl` | New-game actions, landing page, back-link |
-| `07-navigation.mdl` | Responsive profile → `Sudoku.Home` |
+| `05-page-done.mdl` | The completion page (no outgoing references) |
+| `06-page-play.mdl` | The board page (Nocturne) |
+| `07-home.mdl` | New-game actions, landing page, back-links |
+| `08-navigation.mdl` | Responsive profile → `Sudoku.Home` |
 
 The numbering **is** the dependency order — each script only references what
-earlier ones created, so a fresh project applies them 01→07 with no forward
-references. The one cycle in the model (`Home` → `ACT_New*` → `Game_Play` →
-`Home`) is broken by the ALTER at the end of `06`, which is why the board page
-must not reference `Sudoku.Home` itself. `01` is create-only and will report
-"already exists" when re-run against a built project; `02`-`07` are
-`create or replace` / additive.
+earlier ones created, so a fresh project applies them 01→08 with no forward
+references. Both reference cycles (`Home` → `ACT_New*` → `Game_Play` → `Home`,
+and `Game_Done` → `Home`) are broken by ALTERs at the end of `07`, which is why
+neither page may reference `Sudoku.Home` at creation time, and why the completion
+page is built *before* the board page that links to it.
+
+`01` and `02` are create/add-only: re-running them against a built project stops
+at the first "already exists", so apply deltas separately. `03`-`08` are
+`create or replace` and safely repeatable.
 
 Re-apply any of them (each is `create or replace`):
 
 ```bash
 cd Sudoku
-./mxcli check mdlsource/02-microflows-core.mdl -p Sudoku.mpr --references
-./mxcli exec  mdlsource/02-microflows-core.mdl -p Sudoku.mpr
+./mxcli check mdlsource/03-microflows-engine.mdl -p Sudoku.mpr --references
+./mxcli exec  mdlsource/03-microflows-engine.mdl -p Sudoku.mpr
 ```
+
+After a page-structure change, restart `mxcli run` rather than trusting the
+incremental reload — see [FINDINGS.md](FINDINGS.md) #14.
 
 ## Running it
 
@@ -189,7 +212,13 @@ overlap on the Studio Pro canvas inside `ACT_DealGame`'s nested loops) and
 `SEC001` (no entity access rules — project security level is `Off`, the Mendix
 default for a prototype).
 
-Two build notes worth knowing, both hit during this work: a **page-structure
+The notes/undo/completion pass was verified the same way: pencil marks land in
+the selected square without touching answers, writing an answer clears them,
+undo/redo step a move back and forward, and a solve reaches the completion page
+with the elapsed time and the recent-solves strip — no JS errors.
+
+Every mxcli bug, gap and limitation hit while building this is written up in
+[FINDINGS.md](FINDINGS.md), including the two build notes below: a **page-structure
 change can leave the client bundle unbuilt**, which shows up as a 404 on
 `/dist/pages/<Page>.js` and a board that never renders — restart
 `mxcli run` to force a full re-bundle. And running `mxbuild` by hand while
