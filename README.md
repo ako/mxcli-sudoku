@@ -218,7 +218,10 @@ undo/redo step a move back and forward, and a solve reaches the completion page
 with the elapsed time and the recent-solves strip — no JS errors.
 
 Every mxcli bug, gap and limitation hit while building this is written up in
-[FINDINGS.md](FINDINGS.md), including the two build notes below: a **page-structure
+[FINDINGS.md](FINDINGS.md), which also records a verification pass against
+`main` + open PRs #26-#29: seven findings fixed, one partially, two withdrawn as
+my own misdiagnosis, and one new data-loss hazard found (#24). Including the two
+build notes below: a **page-structure
 change can leave the client bundle unbuilt**, which shows up as a 404 on
 `/dist/pages/<Page>.js` and a board that never renders — restart
 `mxcli run` to force a full re-bundle. And running `mxbuild` by hand while

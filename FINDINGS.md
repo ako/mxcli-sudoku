@@ -4,6 +4,12 @@ Issues and limitations hit while building this Sudoku app end to end in MDL —
 domain model, a logic solver, a number pad, a dark theme, notes, undo/redo and a
 completion page — against **mxcli `2a4494a`** (branch `main`) and **Mendix 11.12.1**.
 
+**Verification pass (2026-07-25).** Every repro below was re-run against a build
+of `main` + open PRs **#26, #27, #28, #29** (merge head `6f976d95`), side by side
+with the pinned build, on a scratch copy of the project. Results are recorded per
+entry; the summary table is at the end. Two of my original entries turned out to
+be **my own misdiagnosis** and are corrected in place — #9 and, partly, #3.
+
 Each entry has the symptom, a minimal repro, and the workaround actually used.
 Severity is from the point of view of someone authoring an app with mxcli:
 
@@ -17,6 +23,8 @@ Severity is from the point of view of someone authoring an app with mxcli:
 ---
 
 ## 1. `randomInt()` is documented but does not exist
+
+> **FIXED (docs), PR #28.** `write-microflows.md` now states "No `randomInt`. Mendix has no `randomInt` function. Use `random()`". The expression itself is still accepted by `mxcli check` and still fails at build — validating expression function names remains open.
 
 **Bug / Docs / Gap.** `.ai-context/skills/write-microflows.md` lists
 `randomInt($max)` under "Special Values". It parses, passes
@@ -43,6 +51,8 @@ expression grammar, which would catch this class of error before a build.
 
 ## 2. Decimal-returning functions assigned to integers (CE0117)
 
+> **Open.** Not claimed by these PRs; `mxcli check` still passes `declare $n integer = secondsBetween(...)`.
+
 **Gap.** Mendix `div`, `random()` and `secondsBetween()` all return Decimal.
 Assigning to an `integer` variable is a build error, not a check error:
 
@@ -57,6 +67,8 @@ declare $n integer = round(secondsBetween($a, $b));   -- fine
 ---
 
 ## 3. `not` before an attribute path does not parse
+
+> **FIXED (diagnostics), PR #29 — and my original entry was partly wrong.** `not($Cell/"IsInvalid")` **parses on both builds**: the operator works, it just needs parentheses, which I never tried. The PR turns the old 3-screen token dump into: "Mendix requires parentheses around a negated expression … `if not($Cell/IsInvalid) then …` (correct)". So the real defect was the error message, and it is fixed.
 
 **Bug.** Boolean negation of an entity path fails in the MDL grammar:
 
@@ -74,6 +86,8 @@ this slow to diagnose.
 
 ## 4. `index ... on (...)` inside `create entity` does not parse
 
+> **Open.** Still `extraneous input 'on' expecting '('`, still followed by the unrelated "unescaped apostrophe" hint.
+
 **Bug / Docs.** `mdl-entities.md` documents entity indexes:
 
 ```mdl
@@ -88,6 +102,8 @@ from the model.
 ---
 
 ## 5. One `alter entity` accepts `default` only on its first `add`
+
+> **FIXED, PR #28.** The multi-`add` repro now returns `✓ Syntax OK (2 statements) / Check passed!` where the pinned build reported `no viable alternative at input '9'`.
 
 **Bug.** Multiple `add attribute` clauses in a single `alter entity` parse, but
 only the first may carry a `default`:
@@ -105,6 +121,8 @@ of them where 3 would have done.
 
 ## 6. `autonumber` without a default fails the build
 
+> **PARTIALLY FIXED, PR #28.** `create entity` with a seedless autonumber is now caught at check time: `✗ autonumber attribute 'Code' has no seed — the build fails CE7247 [MDL023]`. But the `alter entity … add attribute "X": autonumber` path — the one this app actually used — still passes check, writes a seedless attribute, and fails `mx check` with CE7247.
+
 **Gap / Docs.** Adding an autonumber and nothing else:
 
 ```mdl
@@ -119,6 +137,8 @@ autonumber needs a seed: `autonumber default 2831`. Not mentioned in
 ---
 
 ## 7. `autocreateddate` silently renames the attribute, and is unbindable
+
+> **FIXED, PR #28.** Now warns at check time with **MDL022**: "attribute 'StartedAt: AutoCreatedDate' is renamed to the fixed system member 'CreatedDate' on write — the declared name is discarded", plus the fix ("this is a Mendix system member and cannot be bound in a widget; use a plain attribute … and set it yourself"). Both halves of the trap are covered.
 
 **Bug / Docs.** Two surprises in one attribute type. Declaring:
 
@@ -147,6 +167,8 @@ exists") is actively misleading — the attribute does exist and `describe` show
 
 ## 8. XPath constraints reject arithmetic
 
+> **Open (message improved).** Still a parse error; the new build appends `[see: mxcli syntax <topic>]`.
+
 **Limitation.** A `where [...]` constraint cannot compute:
 
 ```mdl
@@ -160,6 +182,8 @@ known, but the failure is a parse error rather than a message about XPath.
 ---
 
 ## 9. `mxcli check --references` rejects same-file forward references
+
+> **WITHDRAWN — my misdiagnosis.** A synthetic repro (caller in statement 1, callee in statement 2 of the same file) **passes on both builds**. Re-reading my session: the definitions had never been appended to the file — a guard in my own generator script misfired — so the microflows genuinely did not exist and the checker was right. The checker behaves as documented. Ordering files by dependency is still good practice, but it was not required here.
 
 **Bug.** The docs state the reference checker "automatically skips references to
 objects that are created within the same script". It does not — it appears to
@@ -178,6 +202,8 @@ practice anyway, but it is not what the documentation promises.
 ---
 
 ## 10. Scripts are not re-runnable, and exec stops at the first error
+
+> **Open — and the suggested remedy is dangerous, see #24.** `alter entity … add attribute` is still non-idempotent and `exec` still halts at the first error.
 
 **Limitation.** `alter entity ... add attribute` fails if the attribute exists,
 and there is no `add attribute if not exists` (nor `create or replace` for
@@ -258,6 +284,8 @@ on the page's chunk:
 
 ## 15. Running `mxbuild` by hand wedges a live `mxcli run --watch`
 
+> **IMPROVED, PR #28.** The warm loop now prints the serve response verbatim instead of only the generic message, so the real cause is visible. The underlying clash (two writers on `deployment/`) is unchanged.
+
 **Limitation.** Both processes write `deployment/`. Running `mxbuild` manually to
 read a SCSS compile error left the watch loop failing every subsequent build with:
 
@@ -276,6 +304,8 @@ mxbuild error rather than the generic "contains errors".
 
 ## 16. `mxcli run --hub` registers once and never re-registers
 
+> **FIXED, PR #27.** `runlocal.go` now runs a heartbeat that re-registers on a hub restart and restarts the tunnel if the reverse port moved, printing "Re-registered with hub after restart; preview available at …". Covered by a new unit test (`hubclient_reregister_test.go`), which passes. Not re-tested end to end, since that needs the hub restarted.
+
 **Bug.** The chisel transport reconnects on its own — the log shows 26 failed
 attempts then `Connected` — but the hub **registration** is sent only at startup
 (`grep -c "Registering with hub"` → 1 for a whole session). So after the hub
@@ -291,6 +321,8 @@ unreachable).
 ---
 
 ## 17. `mxcli run` requires an absolute `-p` path
+
+> **FIXED, PR #28.** Verified end to end: `mxcli run --local -p Sudoku/Sudoku.mpr` from the parent directory boots the app on the new build; the pinned build fails with "the project file path should be an absolute path".
 
 **Limitation / message quality.** A relative path fails with MxBuild's raw error
 plus a Windows-flavoured JSON sample:
@@ -374,6 +406,8 @@ fine and keeps the theme far more readable. The guidance appears stale.
 
 ## 23. Theme compile errors surface late and generically
 
+> **FIXED, PR #28.** Verified end to end on a scratch copy: injecting a bad SCSS rule now yields the compiler's own message in the watch loop — `Error: Expected expression.`, the offending source line with a caret, and `_sudoku.scss 768:34`. The pinned build printed only `build failed: An error occurred while compiling Theme files`.
+
 **Limitation.** A SCSS error is reported by the watch loop only as:
 
 ```
@@ -383,6 +417,71 @@ build failed: An error occurred while compiling Theme files
 with no file or line. Getting the real message (`Expected expression.
 _sudoku.scss 180:35`) required running `mxbuild` by hand — which then caused #15.
 Surfacing the compiler's own message in the watch output would remove that trap.
+
+---
+
+---
+
+## 24. `CREATE OR MODIFY` is suggested for "already exists" — and silently deletes attributes
+
+**Bug (data loss).** Re-running a create-only script produces:
+
+```
+statement 4: entity already exists in project: Sudoku.Game
+             — use CREATE OR MODIFY to update it
+```
+
+Following that advice with anything less than the entity's **complete** attribute
+list replaces the attribute set rather than merging it. On a partial definition:
+
+```mdl
+create or modify persistent entity Sudoku."Game" (
+  "Level": Sudoku."Difficulty" default Easy,
+  "ProbeReRun": integer default 7
+);
+```
+
+`Sudoku.Game` went from **36 attributes to 2**, and `mx check` went from 0 errors
+to **55**, all `CE1613 "... no longer exists"` across every microflow and page that
+referenced a dropped attribute. On a project with data, those are dropped columns.
+
+Present in both the pinned and the PR build. The hazard is the pairing: the error
+text recommends the command, and the command is destructive unless the script
+happens to be the entity's full definition. Either the message should say
+"redefines the entity — list every attribute", or the command should merge.
+
+**Workaround used in this project:** never re-run `01`/`02`; extract the delta into
+a scratch file and apply that.
+
+---
+
+## Verification summary
+
+Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
+`go test ./mdl/visitor/... ./mdl/executor/... ./cmd/mxcli/docker/...` passes.
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | `randomInt()` documented but absent | Docs fixed; check still accepts it |
+| 3 | `not` before a path | Fixed (message) — original entry partly wrong |
+| 5 | multi-`add` with defaults | **Fixed** |
+| 6 | autonumber seed | Partial — `create` caught, `alter … add` not |
+| 7 | `autocreateddate` rename / unbindable | **Fixed** (MDL022) |
+| 9 | same-file forward references | **Withdrawn — my misdiagnosis** |
+| 15 | mxbuild clash reported generically | Improved (raw output surfaced) |
+| 16 | hub registered once only | **Fixed** (heartbeat re-register) |
+| 17 | relative `-p` on `run` | **Fixed** |
+| 23 | theme errors generic | **Fixed** |
+| 2, 4, 8, 10–14, 18–22 | — | Open / not claimed |
+| 24 | `CREATE OR MODIFY` deletes attributes | **New** |
+
+The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
+regressed for real-world scripts; `01`/`02` still report "already exists", which is
+finding #10 rather than a regression.
+
+**Not adopted as the pinned toolchain.** `scripts/setup-tools.sh` still builds from
+`main`, because these PRs are unmerged — pinning to a local merge commit would not be
+reproducible for anyone else. Worth re-pinning once they land.
 
 ---
 
