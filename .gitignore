@@ -1,0 +1,41 @@
+# --- Build artifacts & binaries (never committed — rebuilt by setup-tools.sh) ---
+bin/
+*.exe
+mxcli
+source_tree
+
+# --- Toolchain caches / installed-in-place assets ---
+# These live outside the repo (/opt, ~/.mxcli) but ignore any local copies too.
+/opt/mxcli-src/
+antlr-*-complete.jar
+.mxcli/
+
+# --- Go ---
+*.test
+*.out
+go.work
+go.work.sum
+
+# --- Node / Playwright ---
+node_modules/
+npm-debug.log*
+playwright-report/
+test-results/
+.playwright/
+
+# --- Mendix scratch (no project scaffolded yet; ignore future scratch .mpr) ---
+*.mpr
+*.mpr.bak
+*.mpr.lock
+deployment/
+.mendix-cache/
+mxbuild.log
+
+# --- Local / editor / OS ---
+.env
+.env.local
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
