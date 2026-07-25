@@ -7,7 +7,7 @@
 -- =====================================================================
 
 /**
- * Deals an easy board (~50 squares revealed) and opens it.
+ * Deals an easy board and opens it.
  *
  * @returns The dealt game
  */
@@ -15,14 +15,14 @@ create or replace microflow Sudoku.ACT_NewEasy ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, GivenPct = 62);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
 /
 
 /**
- * Deals a medium board (~38 squares revealed) and opens it.
+ * Deals a medium board and opens it.
  *
  * @returns The dealt game
  */
@@ -30,14 +30,14 @@ create or replace microflow Sudoku.ACT_NewMedium ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, GivenPct = 47);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
 /
 
 /**
- * Deals a hard board (~29 squares revealed) and opens it.
+ * Deals a hard board and opens it.
  *
  * @returns The dealt game
  */
@@ -45,7 +45,7 @@ create or replace microflow Sudoku.ACT_NewHard ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, GivenPct = 36);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -79,7 +79,7 @@ create or replace page Sudoku.Home
         dynamictext sdEasyDot (content: 'Relaxed', class: 'sd-card-kicker')
         dynamictext sdEasyName (content: 'Easy', rendermode: H2, class: 'sd-card-name')
         dynamictext sdEasyDesc (
-          content: 'Around 50 of the 81 squares are revealed.',
+          content: 'Around 45 of the 81 squares revealed.',
           rendermode: Paragraph,
           class: 'sd-card-desc'
         )
@@ -95,7 +95,7 @@ create or replace page Sudoku.Home
         dynamictext sdMedDot (content: 'Balanced', class: 'sd-card-kicker')
         dynamictext sdMedName (content: 'Medium', rendermode: H2, class: 'sd-card-name')
         dynamictext sdMedDesc (
-          content: 'Around 38 squares to start you off.',
+          content: 'Around 35 squares to start you off.',
           rendermode: Paragraph,
           class: 'sd-card-desc'
         )
@@ -111,7 +111,7 @@ create or replace page Sudoku.Home
         dynamictext sdHardDot (content: 'Demanding', class: 'sd-card-kicker')
         dynamictext sdHardName (content: 'Hard', rendermode: H2, class: 'sd-card-name')
         dynamictext sdHardDesc (
-          content: 'Around 29 squares. Bring patience.',
+          content: 'Around 28 squares. Bring patience.',
           rendermode: Paragraph,
           class: 'sd-card-desc'
         )

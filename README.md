@@ -22,19 +22,48 @@ board flips to a solved banner once all 81 squares are correct.
 
 ### How boards are generated
 
-`Sudoku.ACT_DealGame` builds a valid grid from the classic seed pattern
+`Sudoku.ACT_DealGame` produces boards that are valid, solvable, **and fully
+determined** — exactly one solution.
 
-```
-base(r,c) = ((3*(r mod 3) + (r div 3) + c) mod 9) + 1
-```
+1. **Build a complete grid** from the classic seed pattern
 
-then applies three validity-preserving random transforms — rotate the rows inside
-each band, rotate the columns inside each stack, and rotate the digit alphabet —
-for **6,561** distinct boards. Iterating band/row-in-band and stack/col-in-stack
-reads `r mod 3` and `r div 3` straight off the loop counters, so the microflow
-needs no integer division (Mendix `div` returns a Decimal, which trips CE0117).
+   ```
+   base(r,c) = ((3*(r mod 3) + (r div 3) + c) mod 9) + 1
+   ```
 
-Squares are then revealed at a difficulty-dependent rate (~62 / 47 / 36 %).
+   then shuffle it with three transforms that preserve validity: rotate the rows
+   inside each band, the columns inside each stack, and the digit alphabet —
+   9 x 3^3 x 3^3 = 6,561 grids. Iterating band/row-in-band and stack/col-in-stack
+   reads `r mod 3` and `r div 3` straight off the loop counters, so no integer
+   division is needed (Mendix `div` returns a Decimal, tripping CE0117).
+
+2. **Blank squares** in a strided pseudo-random order down to the difficulty's
+   target. Any stride coprime with 81 walks every square exactly once.
+
+3. **Repair until fully determined.** `Sudoku.ACT_SolveGrid` solves as far as
+   logic allows using naked singles (one candidate left in a square) and hidden
+   singles (a digit that fits only one square in a unit). Any square it cannot
+   deduce is handed back as a given. Restoring every undetermined square at once
+   massively over-restores, so the repair runs in four passes — returning a
+   quarter, a third, a half, then the remainder — letting deductions cascade
+   between passes. Because every blank that survives is recoverable by forced
+   steps alone, the puzzle has **exactly one solution** by construction.
+
+4. **Top up** if logic forced a sparser board than the tier wants. Revealing a
+   square only adds information, so it never costs uniqueness.
+
+The grid travels as an **81-character string** (`'0'` = empty), not as objects:
+Mendix microflows have no arrays, and running the solver over 81 `Cell` rows
+would put thousands of database operations in the middle of every deal. `Cell`
+objects are created once, at the end, from the finished puzzle and solution.
+
+Measured: a deal takes ~2-3s, and the ten most recent boards were each verified
+straight out of PostgreSQL as a valid grid with exactly one solution.
+
+**Difficulty ceiling.** The generator only emits puzzles solvable by singles, so
+in Sudoku terms every board is gentle; Hard lands around 38-44 givens rather than
+the mid-20s. Going lower needs a backtracking uniqueness checker, which is
+impractical inside a microflow — that would be the job of a Java action.
 
 ### Domain model
 
@@ -70,7 +99,7 @@ MDL source lives in `Sudoku/mdlsource/` and is applied in order:
 | Script | Contents |
 |---|---|
 | `01-domain-model.mdl` | Module, enumerations, `Game` + `Cell`, association |
-| `02-microflows-core.mdl` | Board generation, validation, hint, reset |
+| `02-microflows-core.mdl` | Logical solver, board generation, validation, hint, reset |
 | `03-microflows-pad.mdl` | The nine number-pad wrappers |
 | `04-page-play.mdl` | The board page |
 | `05-home-and-nav.mdl` | New-game actions, landing page, back-link |
