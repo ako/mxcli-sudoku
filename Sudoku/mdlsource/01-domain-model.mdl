@@ -37,8 +37,9 @@ create persistent entity Sudoku."Game" (
   "Level": Sudoku."Difficulty" default Easy,
   /** Playing until every cell matches the solution */
   "Status": Sudoku."GameStatus" default Playing,
-  /** When the game was dealt */
-  "StartedAt": autocreateddate,
+  /** When the game was dealt. An autocreateddate is always stored as
+   *  'CreatedDate' — mxcli renames the declared identifier to match. */
+  "CreatedDate": autocreateddate,
   /** Number of cells revealed at deal time */
   "GivenCount": integer default 0,
   /** Number of cells the player has filled in */

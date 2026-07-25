@@ -1,0 +1,329 @@
+-- =====================================================================
+-- Sudoku — board page, Nocturne layout
+-- =====================================================================
+-- Rebuilt to the developed Nocturne frame: chrome header (puzzle number,
+-- date, difficulty switch), progress bar, board, selected-square status
+-- line, and a right rail holding the number pad and tools.
+--
+-- The pad sits in the Game's data context so each key can show how many of
+-- that digit are left; the keys act on Game_SelectedCell. Keys are
+-- CONTAINERS with OnClick rather than ACTIONBUTTONs, because a button
+-- cannot hold the two stacked labels (digit over "n LEFT") the design uses.
+-- =====================================================================
+
+create or replace page Sudoku.Game_Play
+(
+  params: { $Game: Sudoku."Game" },
+  title: 'Sudoku',
+  layout: Atlas_Core.Atlas_Default,
+  class: 'sd-page sd-dark'
+)
+{
+  container sdApp (class: 'sd-app') {
+    dataview dvGame (datasource: $Game, class: 'sd-game', FormOrientation: Vertical) {
+
+      -- ============================ header ============================
+      container sdTop (class: 'sd-top') {
+        container sdBrand (class: 'sd-brand') {
+          container sdMark (class: 'sd-mark') {
+            dynamictext sdMarkText (content: 'S', class: 'sd-mark-text')
+          }
+          container sdBrandText (class: 'sd-brand-text') {
+            dynamictext sdPuzzleName (
+              content: 'Sudoku · No. {1}',
+              contentparams: [{1} = "PuzzleNo"],
+              class: 'sd-puzzle-name'
+            )
+            dynamictext sdPuzzleDate (
+              content: '{1}',
+              contentparams: [{1} = "DateLabel"],
+              class: 'sd-puzzle-date'
+            )
+          }
+        }
+        container sdTopRight (class: 'sd-top-right') {
+          container sdSeg (class: 'sd-seg') {
+            actionbutton segEasy (
+              caption: 'EASY',
+              action: microflow Sudoku.ACT_NewEasy,
+              class: 'sd-seg-btn',
+              dynamicclasses: 'if $currentObject/Level = Sudoku.Difficulty.Easy then ''sd-seg-on'' else '''''
+            )
+            actionbutton segMedium (
+              caption: 'MEDIUM',
+              action: microflow Sudoku.ACT_NewMedium,
+              class: 'sd-seg-btn',
+              dynamicclasses: 'if $currentObject/Level = Sudoku.Difficulty.Medium then ''sd-seg-on'' else '''''
+            )
+            actionbutton segHard (
+              caption: 'HARD',
+              action: microflow Sudoku.ACT_NewHard,
+              class: 'sd-seg-btn',
+              dynamicclasses: 'if $currentObject/Level = Sudoku.Difficulty.Hard then ''sd-seg-on'' else '''''
+            )
+          }
+          container sdCount (class: 'sd-count') {
+            dynamictext sdCountText (
+              content: '{1} / 81',
+              contentparams: [{1} = "FilledCount"],
+              class: 'sd-count-text'
+            )
+          }
+        }
+      }
+
+      -- =========================== progress ===========================
+      container sdProg (class: 'sd-prog') {
+        container sdProgTrack (class: 'sd-prog-track') {
+          container sdProgFill (
+            class: 'sd-prog-fill',
+            dynamicclasses: '''sd-pb-'' + toString($currentObject/ProgressBucket)'
+          ) {
+            dynamictext sdProgSpacer (content: ' ')
+          }
+        }
+      }
+
+      -- ======================= board + right rail =====================
+      container sdMain (class: 'sd-main') {
+
+        container sdBoardCol (class: 'sd-board-col') {
+          container sdBoardWrap (class: 'sd-board-wrap') {
+            gallery galBoard (
+              datasource: database from Sudoku."Cell"
+                where [Sudoku."Cell_Game" = $Game]
+                sort by "Row" asc, "Col" asc,
+              DesktopColumns: 9,
+              TabletColumns: 9,
+              PhoneColumns: 9,
+              PageSize: 81,
+              class: 'sd-board'
+            ) {
+              template tplCell {
+                container sdCell (
+                  dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
+                  OnClick: microflow Sudoku.ACT_SelectCell(Cell: $currentObject)
+                ) {
+                  dynamictext sdCellNum (content: '{1}', contentparams: [{1} = "Value"], class: 'sd-num')
+                }
+              }
+            }
+          }
+
+          container sdStatus (class: 'sd-status') {
+            dynamictext sdStatusSel (
+              content: 'ROW {1} · COLUMN {2} · BOX {3}',
+              contentparams: [{1} = "SelRow", {2} = "SelCol", {3} = "SelBox"],
+              class: 'sd-status-left',
+              visible: ["HasSelection"]
+            )
+            dynamictext sdStatusIdle (
+              content: 'SELECT A SQUARE',
+              class: 'sd-status-left',
+              visible: ["HasSelection" = false]
+            )
+            dynamictext sdStatusRight (
+              content: '{1} CONFLICTS · {2} EMPTY',
+              contentparams: [{1} = "ErrorCount", {2} = "EmptyCount"],
+              class: 'sd-status-right'
+            )
+          }
+        }
+
+        container sdRail (class: 'sd-rail') {
+
+          container sdPad (
+            class: 'sd-pad',
+            dynamicclasses: 'if $currentObject/HasSelection and $currentObject/SelEditable = false then ''sd-pad-locked'' else '''''
+          ) {
+            container key1 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining1 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set1(Game: $Game)
+            ) {
+              dynamictext key1d (content: '1', class: 'sd-key-digit')
+              dynamictext key1n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining1"],
+                class: 'sd-key-left',
+                visible: ["Remaining1" != 0]
+              )
+              dynamictext key1z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining1" = 0])
+            }
+            container key2 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining2 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set2(Game: $Game)
+            ) {
+              dynamictext key2d (content: '2', class: 'sd-key-digit')
+              dynamictext key2n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining2"],
+                class: 'sd-key-left',
+                visible: ["Remaining2" != 0]
+              )
+              dynamictext key2z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining2" = 0])
+            }
+            container key3 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining3 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set3(Game: $Game)
+            ) {
+              dynamictext key3d (content: '3', class: 'sd-key-digit')
+              dynamictext key3n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining3"],
+                class: 'sd-key-left',
+                visible: ["Remaining3" != 0]
+              )
+              dynamictext key3z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining3" = 0])
+            }
+            container key4 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining4 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set4(Game: $Game)
+            ) {
+              dynamictext key4d (content: '4', class: 'sd-key-digit')
+              dynamictext key4n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining4"],
+                class: 'sd-key-left',
+                visible: ["Remaining4" != 0]
+              )
+              dynamictext key4z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining4" = 0])
+            }
+            container key5 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining5 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set5(Game: $Game)
+            ) {
+              dynamictext key5d (content: '5', class: 'sd-key-digit')
+              dynamictext key5n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining5"],
+                class: 'sd-key-left',
+                visible: ["Remaining5" != 0]
+              )
+              dynamictext key5z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining5" = 0])
+            }
+            container key6 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining6 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set6(Game: $Game)
+            ) {
+              dynamictext key6d (content: '6', class: 'sd-key-digit')
+              dynamictext key6n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining6"],
+                class: 'sd-key-left',
+                visible: ["Remaining6" != 0]
+              )
+              dynamictext key6z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining6" = 0])
+            }
+            container key7 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining7 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set7(Game: $Game)
+            ) {
+              dynamictext key7d (content: '7', class: 'sd-key-digit')
+              dynamictext key7n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining7"],
+                class: 'sd-key-left',
+                visible: ["Remaining7" != 0]
+              )
+              dynamictext key7z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining7" = 0])
+            }
+            container key8 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining8 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set8(Game: $Game)
+            ) {
+              dynamictext key8d (content: '8', class: 'sd-key-digit')
+              dynamictext key8n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining8"],
+                class: 'sd-key-left',
+                visible: ["Remaining8" != 0]
+              )
+              dynamictext key8z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining8" = 0])
+            }
+            container key9 (
+              class: 'sd-key',
+              dynamicclasses: 'if $currentObject/Remaining9 = 0 then ''sd-key-done'' else ''''',
+              OnClick: microflow Sudoku.ACT_Set9(Game: $Game)
+            ) {
+              dynamictext key9d (content: '9', class: 'sd-key-digit')
+              dynamictext key9n (
+                content: '{1} LEFT',
+                contentparams: [{1} = "Remaining9"],
+                class: 'sd-key-left',
+                visible: ["Remaining9" != 0]
+              )
+              dynamictext key9z (content: 'DONE', class: 'sd-key-left', visible: ["Remaining9" = 0])
+            }
+          }
+
+          container sdLockNote (
+            class: 'sd-lock-note',
+            visible: ["HasSelection" and "SelEditable" = false]
+          ) {
+            dynamictext sdLockText (
+              content: 'That square was dealt with the puzzle — pick an empty one.',
+              class: 'sd-lock-text'
+            )
+          }
+
+          container sdTools (class: 'sd-tools') {
+            container toolErase (class: 'sd-tool', OnClick: microflow Sudoku.ACT_ClearValue(Game: $Game)) {
+              dynamictext toolEraseT (content: 'ERASE', class: 'sd-tool-text')
+            }
+            container toolHint (class: 'sd-tool', OnClick: microflow Sudoku.ACT_Hint(Game: $Game)) {
+              dynamictext toolHintT (content: 'HINT', class: 'sd-tool-text')
+            }
+            container toolReset (class: 'sd-tool', OnClick: microflow Sudoku.ACT_ResetBoard(Game: $Game)) {
+              dynamictext toolResetT (content: 'RESET', class: 'sd-tool-text')
+            }
+            container toolNew (class: 'sd-tool', OnClick: show_page Sudoku.Home) {
+              dynamictext toolNewT (content: 'NEW', class: 'sd-tool-text')
+            }
+          }
+
+          container sdPanel (class: 'sd-panel') {
+            dynamictext sdPanelKicker (content: 'BOARD', class: 'sd-panel-kicker')
+            dynamictext sdMsg (content: '{1}', contentparams: [{1} = "Message"], class: 'sd-panel-body')
+          }
+
+          container sdWin (class: 'sd-win', visible: ["Status" = Sudoku."GameStatus".Solved]) {
+            dynamictext sdWinKicker (content: 'SOLVED · NO CONFLICTS', class: 'sd-win-kicker')
+            dynamictext sdWinText (
+              content: 'Puzzle No. {1} complete.',
+              contentparams: [{1} = "PuzzleNo"],
+              class: 'sd-win-text'
+            )
+          }
+
+          container sdStats (class: 'sd-stats') {
+            container sdStat1 (class: 'sd-stat') {
+              dynamictext sdStat1v (content: '{1}', contentparams: [{1} = "GivenCount"], class: 'sd-stat-value')
+              dynamictext sdStat1l (content: 'GIVEN', class: 'sd-stat-label')
+            }
+            container sdStat2 (class: 'sd-stat') {
+              dynamictext sdStat2v (content: '{1}', contentparams: [{1} = "HintCount"], class: 'sd-stat-value')
+              dynamictext sdStat2l (content: 'HINTS', class: 'sd-stat-label')
+            }
+            container sdStat3 (class: 'sd-stat') {
+              dynamictext sdStat3v (
+                content: '{1}',
+                contentparams: [{1} = "ErrorCount"],
+                class: 'sd-stat-value',
+                dynamicclasses: 'if $currentObject/ErrorCount > 0 then ''sd-stat-bad'' else '''''
+              )
+              dynamictext sdStat3l (content: 'CONFLICTS', class: 'sd-stat-label')
+            }
+          }
+        }
+      }
+    }
+  }
+}

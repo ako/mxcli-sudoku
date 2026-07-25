@@ -12,6 +12,7 @@ The toolchain that builds and runs it is set up by committed automation; see
 |---|---|
 | **Landing page** | `Sudoku.Home` — pick Easy / Medium / Hard |
 | **Board** | `Sudoku.Game_Play` — 9x9 grid, number pad, live validation |
+| **Theme** | "Nocturne" — dark, mint accent, from a Claude design prototype |
 | **Module** | `Sudoku` (the scaffolded `MyFirstModule` is left untouched) |
 
 **Playing.** Choose a difficulty and a fresh board is dealt. Select a square,
@@ -84,13 +85,46 @@ client-side state that a later microflow wouldn't see. A Mendix button can only
 map object parameters — not literals — so each digit gets a thin wrapper
 (`ACT_Set1`…`ACT_Set9`) delegating to the single copy of the move logic.
 
+### Chrome and controls
+
+The board page follows the developed "Nocturne" frames of the design handoff:
+
+- **Header** — logo mark, puzzle number (`PuzzleNo`, an autonumber starting at
+  2831), the deal date preformatted as `SAT 25 JUL 2026`, an EASY/MEDIUM/HARD
+  switch that highlights the current tier, and a filled/81 counter.
+- **Progress bar** — a widget cannot take a dynamic inline width, so
+  `ACT_Refresh` publishes a 0..20 `ProgressBucket` and one CSS class per 5%
+  sets the width.
+- **Number pad** — keys are CONTAINERs with `OnClick`, not ACTIONBUTTONs,
+  because a button cannot hold the two stacked labels the design uses (digit
+  over "4 LEFT"). A digit placed nine times dims and reads DONE.
+- **Status line** — `ROW r · COLUMN c · BOX b` for the selected square, plus
+  conflicts and empty counts.
+- **Locked pad** — selecting a dealt square dims the pad and says so, rather
+  than letting `ACT_ApplyValue` discard the digit silently.
+
+The **Game owns the selection** through `Game_SelectedCell`. That is what lets
+the pad live in the Game's data context (so it can show per-digit remainders)
+while its keys still act on the selected square, and it replaces the gallery's
+own selection with a `Cell.IsSelected` flag the theme can style.
+
 ### Styling
 
 Atlas-first, per the four-layer model:
 
-- **Layer 1** — `theme/web/custom-variables.scss`: `--brand-primary` retuned to `#3b5bdb`.
-- **Layer 2** — `theme/web/_sudoku.scss`: only what Atlas has no vocabulary for —
-  the rule grid, digit treatment, number pad, difficulty cards.
+- **Layer 1** — `theme/web/custom-variables.scss`: `--brand-primary` retuned to
+  the Nocturne mint `#5FD3C4`.
+- **Layer 2** — `theme/web/_sudoku.scss`: the palette (`#0B0D12` ground,
+  `#0F1115` panels, `#5FD3C4` accent, `#FF6B6B` conflicts), the rule grid,
+  digit treatment, pad, chrome and cards.
+- The app **commits to a single dark theme** rather than a
+  `prefers-color-scheme` flip: Atlas's own widgets ship light-only surfaces and
+  a half-dark result reads worse than a consistent one. That is affordable here
+  because the board uses no Atlas input widgets — every control is a container
+  or a button. The Atlas topbar and sidebar are hidden on Sudoku pages, since
+  the design carries its own chrome.
+- Webfonts (Space Grotesk, JetBrains Mono) are `@import`ed on the **first line**
+  of `main.scss`; a CSS `@import` emitted after any rule is silently dropped.
 
 ## Source layout
 
@@ -99,11 +133,20 @@ MDL source lives in `Sudoku/mdlsource/` and is applied in order:
 | Script | Contents |
 |---|---|
 | `01-domain-model.mdl` | Module, enumerations, `Game` + `Cell`, association |
-| `02-microflows-core.mdl` | Logical solver, board generation, validation, hint, reset |
-| `03-microflows-pad.mdl` | The nine number-pad wrappers |
-| `04-page-play.mdl` | The board page |
-| `05-home-and-nav.mdl` | New-game actions, landing page, back-link |
-| `06-navigation.mdl` | Responsive profile → `Sudoku.Home` |
+| `02-domain-refinements.mdl` | Selection, per-digit remainders, progress, date label |
+| `03-microflows-engine.mdl` | `ACT_Refresh`, logic solver, generator, hint, reset |
+| `04-microflows-moves.mdl` | Select, apply, clear, nine pad wrappers |
+| `05-page-play.mdl` | The board page (Nocturne) |
+| `06-home.mdl` | New-game actions, landing page, back-link |
+| `07-navigation.mdl` | Responsive profile → `Sudoku.Home` |
+
+The numbering **is** the dependency order — each script only references what
+earlier ones created, so a fresh project applies them 01→07 with no forward
+references. The one cycle in the model (`Home` → `ACT_New*` → `Game_Play` →
+`Home`) is broken by the ALTER at the end of `06`, which is why the board page
+must not reference `Sudoku.Home` itself. `01` is create-only and will report
+"already exists" when re-run against a built project; `02`-`07` are
+`create or replace` / additive.
 
 Re-apply any of them (each is `create or replace`):
 
@@ -134,7 +177,21 @@ game played to completion (solved banner, 0 conflicts, no JS errors). The
 generator was checked independently by reading every dealt board out of
 PostgreSQL and asserting each row, column and 3x3 box contains 1-9 exactly once.
 
+The Nocturne pass was verified the same way: a dealt board renders 81 squares,
+9 keys and 4 tools with the Atlas shell hidden; selecting a square updates the
+status line and the mint ring; placing a digit decrements that key's remaining
+count and advances the progress bucket; selecting a dealt square locks the pad
+and leaves the board unchanged; and a full solve reaches the win banner with all
+nine keys reading DONE and no JS errors.
+
 Known cosmetic lint findings, all informational: `MPR008` (MDL auto-positions
 overlap on the Studio Pro canvas inside `ACT_DealGame`'s nested loops) and
 `SEC001` (no entity access rules — project security level is `Off`, the Mendix
 default for a prototype).
+
+Two build notes worth knowing, both hit during this work: a **page-structure
+change can leave the client bundle unbuilt**, which shows up as a 404 on
+`/dist/pages/<Page>.js` and a board that never renders — restart
+`mxcli run` to force a full re-bundle. And running `mxbuild` by hand while
+`mxcli run --watch` is live makes both fight over `deployment/`, wedging the
+watch loop; restart it rather than debugging the model.

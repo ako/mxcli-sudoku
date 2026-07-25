@@ -1,22 +1,166 @@
 -- =====================================================================
--- Sudoku — core game logic
+-- Sudoku — board engine
 -- =====================================================================
--- A board must be three things: a valid grid, solvable, and *fully
--- determined* (exactly one solution). The first is free from the seed
--- pattern below; the last two need a solver, which is what ACT_SolveGrid
--- provides.
+-- Order inside this pipeline matters and is dependency-driven:
+--   ACT_Refresh has no callees, so it comes first; ACT_ResetBoard and
+--   ACT_Hint call it. Nothing here calls the move layer (04), the pages,
+--   or anything defined later, so the whole file applies cleanly on a
+--   fresh project.
 --
--- Representation. Mendix microflows have no arrays, and holding the
--- working grid as 81 Cell objects would put thousands of database
--- operations in the middle of the solver. So the grid travels as an
--- 81-character string ('0' = empty), indexed i = row*9 + col, read with
--- substring() and written by splicing. Cell objects are created once, at
--- the end, from the finished puzzle and solution strings.
+-- A board must be valid, solvable, and *fully determined* (exactly one
+-- solution). The first is free from the seed pattern; the last two need
+-- ACT_SolveGrid.
 --
--- No integer division anywhere: Mendix `div` returns a Decimal (CE0117),
--- so row/col are recovered by subtracting 9 in a short loop, and the 3x3
--- box origin by two comparisons.
+-- Representation. Mendix microflows have no arrays, and holding the working
+-- grid as 81 Cell objects would put thousands of database operations inside
+-- the solver. So the grid travels as an 81-character string ('0' = empty),
+-- indexed i = row*9 + col, read with substring() and written by splicing.
+-- Cell objects are created once, at the end.
+--
+-- No integer division anywhere: Mendix `div` returns a Decimal (CE0117).
 -- =====================================================================
+
+/**
+ * Recomputes counters, per-digit remainders and per-cell error flags.
+ *
+ * Beyond the filled/error counts this now produces the data the Nocturne
+ * chrome needs: how many of each digit are still to place (the pad's
+ * "n LEFT" / "DONE" labels), the empty count, and a 0..20 progress bucket
+ * that the progress bar turns into a width via a CSS class.
+ *
+ * @param $Game The game to re-evaluate
+ * @returns True when the board is complete and correct
+ */
+create or replace microflow Sudoku.ACT_Refresh (
+  $Game: Sudoku."Game"
+)
+returns boolean as $IsSolved
+folder 'Game'
+begin
+  declare $IsSolved boolean = false;
+  declare $filled integer = 0;
+  declare $errors integer = 0;
+  declare $correct integer = 0;
+  declare $v integer = 0;
+  declare $r1 integer = 0;
+  declare $r2 integer = 0;
+  declare $r3 integer = 0;
+  declare $r4 integer = 0;
+  declare $r5 integer = 0;
+  declare $r6 integer = 0;
+  declare $r7 integer = 0;
+  declare $r8 integer = 0;
+  declare $r9 integer = 0;
+  declare $bucket integer = 0;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $Cell in $Cells
+  begin
+    if $Cell/"Value" != empty then
+      set $filled = $filled + 1;
+      set $v = $Cell/"Value";
+
+      -- Tally placed digits so the pad can show what is left
+      if $v = 1 then
+        set $r1 = $r1 + 1;
+      end if;
+      if $v = 2 then
+        set $r2 = $r2 + 1;
+      end if;
+      if $v = 3 then
+        set $r3 = $r3 + 1;
+      end if;
+      if $v = 4 then
+        set $r4 = $r4 + 1;
+      end if;
+      if $v = 5 then
+        set $r5 = $r5 + 1;
+      end if;
+      if $v = 6 then
+        set $r6 = $r6 + 1;
+      end if;
+      if $v = 7 then
+        set $r7 = $r7 + 1;
+      end if;
+      if $v = 8 then
+        set $r8 = $r8 + 1;
+      end if;
+      if $v = 9 then
+        set $r9 = $r9 + 1;
+      end if;
+
+      if $Cell/"Value" = $Cell/"SolutionValue" then
+        set $correct = $correct + 1;
+        if $Cell/"IsInvalid" then
+          change $Cell ("IsInvalid" = false);
+          add $Cell to $Changed;
+        end if;
+      else
+        set $errors = $errors + 1;
+        if $Cell/"IsInvalid" = false then
+          change $Cell ("IsInvalid" = true);
+          add $Cell to $Changed;
+        end if;
+      end if;
+    else
+      if $Cell/"IsInvalid" then
+        change $Cell ("IsInvalid" = false);
+        add $Cell to $Changed;
+      end if;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  -- Progress in twentieths, so one CSS class per 5% can set the bar width
+  set $bucket = 0;
+  while $bucket < 20 and ($bucket + 1) * 81 <= $filled * 20
+  begin
+    set $bucket = $bucket + 1;
+  end while;
+
+  change $Game (
+    "FilledCount" = $filled,
+    "ErrorCount" = $errors,
+    "EmptyCount" = 81 - $filled,
+    "ProgressBucket" = $bucket,
+    "Remaining1" = 9 - $r1,
+    "Remaining2" = 9 - $r2,
+    "Remaining3" = 9 - $r3,
+    "Remaining4" = 9 - $r4,
+    "Remaining5" = 9 - $r5,
+    "Remaining6" = 9 - $r6,
+    "Remaining7" = 9 - $r7,
+    "Remaining8" = 9 - $r8,
+    "Remaining9" = 9 - $r9);
+
+  if $correct = 81 then
+    set $IsSolved = true;
+    change $Game (
+      "Status" = Sudoku."GameStatus".Solved,
+      "Message" = 'Solved — every square checks out.');
+  else
+    if $errors > 0 then
+      change $Game (
+        "Status" = Sudoku."GameStatus".Playing,
+        "Message" = toString($errors) + ' square(s) conflict with the solution.');
+    else
+      change $Game (
+        "Status" = Sudoku."GameStatus".Playing,
+        "Message" = toString(81 - $filled) + ' squares to go.');
+    end if;
+  end if;
+
+  commit $Game refresh;
+  return $IsSolved;
+end;
+/
 
 /**
  * Solves as far as pure logic allows.
@@ -564,6 +708,8 @@ begin
     "FilledCount" = $givens,
     "ErrorCount" = 0,
     "HintCount" = 0,
+    "DealtAt" = [%CurrentDateTime%],
+    "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEE dd MMM yyyy'),
     "Message" = 'Pick a square, then tap a number.');
   commit $Game;
 
@@ -616,159 +762,13 @@ begin
   end while;
 
   commit $Cells;
+
+  -- Publish the derived counters (per-digit remainders, empty count,
+  -- progress bucket) so a freshly dealt board reads correctly before the
+  -- player's first move.
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
   return $Game;
-end;
-/
-
-/**
- * Recomputes progress counters and per-cell error flags for a game.
- *
- * Marks every filled square that disagrees with the solution, updates the
- * filled/error counts, and flips the game to Solved once all 81 squares
- * match. Cell changes are batched into one commit.
- *
- * @param $Game The game to re-evaluate
- * @returns True when the board is complete and correct
- */
-create or replace microflow Sudoku.ACT_Refresh (
-  $Game: Sudoku."Game"
-)
-returns boolean as $IsSolved
-folder 'Game'
-begin
-  declare $IsSolved boolean = false;
-  declare $filled integer = 0;
-  declare $errors integer = 0;
-  declare $correct integer = 0;
-
-  if $Game = empty then
-    return false;
-  end if;
-
-  retrieve $Cells from $Game/Sudoku."Cell_Game";
-  $Changed = create list of Sudoku."Cell";
-
-  loop $Cell in $Cells
-  begin
-    if $Cell/"Value" != empty then
-      set $filled = $filled + 1;
-      if $Cell/"Value" = $Cell/"SolutionValue" then
-        set $correct = $correct + 1;
-        if $Cell/"IsInvalid" then
-          change $Cell ("IsInvalid" = false);
-          add $Cell to $Changed;
-        end if;
-      else
-        set $errors = $errors + 1;
-        if $Cell/"IsInvalid" = false then
-          change $Cell ("IsInvalid" = true);
-          add $Cell to $Changed;
-        end if;
-      end if;
-    else
-      if $Cell/"IsInvalid" then
-        change $Cell ("IsInvalid" = false);
-        add $Cell to $Changed;
-      end if;
-    end if;
-  end loop;
-
-  commit $Changed refresh;
-
-  if $correct = 81 then
-    set $IsSolved = true;
-    change $Game (
-      "FilledCount" = $filled,
-      "ErrorCount" = $errors,
-      "Status" = Sudoku."GameStatus".Solved,
-      "Message" = 'Solved! Every square checks out.');
-  else
-    if $errors > 0 then
-      change $Game (
-        "FilledCount" = $filled,
-        "ErrorCount" = $errors,
-        "Status" = Sudoku."GameStatus".Playing,
-        "Message" = toString($errors) + ' square(s) conflict with the solution.');
-    else
-      change $Game (
-        "FilledCount" = $filled,
-        "ErrorCount" = $errors,
-        "Status" = Sudoku."GameStatus".Playing,
-        "Message" = 'Looking good — ' + toString(81 - $filled) + ' squares to go.');
-    end if;
-  end if;
-
-  commit $Game refresh;
-  return $IsSolved;
-end;
-/
-
-/**
- * Writes a digit into a square, then re-evaluates the board.
- *
- * Given squares are read-only and are ignored. This is the single place
- * where a move is applied; the number-pad microflows are thin wrappers.
- *
- * @param $Cell The square to fill
- * @param $Digit The digit 1..9 to write
- * @returns True when the move was applied
- */
-create or replace microflow Sudoku.ACT_ApplyValue (
-  $Cell: Sudoku."Cell",
-  $Digit: integer
-)
-returns boolean as $Applied
-folder 'Moves'
-begin
-  declare $Applied boolean = false;
-
-  if $Cell = empty then
-    return false;
-  end if;
-  if $Cell/"IsEditable" = false then
-    return false;
-  end if;
-
-  change $Cell ("Value" = $Digit) refresh;
-  commit $Cell refresh;
-
-  retrieve $Game from $Cell/Sudoku."Cell_Game";
-  call microflow Sudoku.ACT_Refresh(Game = $Game);
-
-  set $Applied = true;
-  return $Applied;
-end;
-/
-
-/**
- * Clears the player's entry from a square, then re-evaluates the board.
- *
- * @param $Cell The square to clear
- * @returns True when the square was cleared
- */
-create or replace microflow Sudoku.ACT_ClearValue (
-  $Cell: Sudoku."Cell"
-)
-returns boolean as $Cleared
-folder 'Moves'
-begin
-  declare $Cleared boolean = false;
-
-  if $Cell = empty then
-    return false;
-  end if;
-  if $Cell/"IsEditable" = false then
-    return false;
-  end if;
-
-  change $Cell ("Value" = empty, "IsInvalid" = false) refresh;
-  commit $Cell refresh;
-
-  retrieve $Game from $Cell/Sudoku."Cell_Game";
-  call microflow Sudoku.ACT_Refresh(Game = $Game);
-
-  set $Cleared = true;
-  return $Cleared;
 end;
 /
 

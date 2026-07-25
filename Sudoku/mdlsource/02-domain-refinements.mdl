@@ -1,0 +1,112 @@
+-- =====================================================================
+-- Sudoku — domain refinements for the Nocturne UI
+-- =====================================================================
+-- The number pad needs Game-level data (how many of each digit are still
+-- to place) while its keys act on the selected square. Rather than read
+-- the selection from a gallery widget, the Game now *owns* the selection
+-- through Game_SelectedCell. That single change lets the pad, the status
+-- line and the progress bar all live in the Game's data context.
+--
+-- One ALTER per attribute: a single ALTER ENTITY accepts `default` only on
+-- its first ADD clause.
+-- =====================================================================
+
+-- Preformatted for the header: a widget cannot apply a date pattern via
+-- contentparams, so the label is built once at deal time.
+alter entity Sudoku."Game"
+  add attribute "DateLabel": string(40);
+/
+
+-- An `autocreateddate` becomes Mendix's SYSTEM createdDate member, which a
+-- widget cannot bind (CE1613). Keep an explicit datetime for the header.
+alter entity Sudoku."Game"
+  add attribute "DealtAt": datetime;
+/
+
+-- Sequential puzzle number shown in the header
+alter entity Sudoku."Game"
+  add attribute "PuzzleNo": autonumber default 2831;
+/
+
+-- How many of each digit are still to be placed (9 minus those on the board)
+alter entity Sudoku."Game"
+  add attribute "Remaining1": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining2": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining3": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining4": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining5": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining6": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining7": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining8": integer default 9;
+/
+
+alter entity Sudoku."Game"
+  add attribute "Remaining9": integer default 9;
+/
+
+-- Selected-square readout, shown under the board
+alter entity Sudoku."Game"
+  add attribute "SelRow": integer default 0;
+/
+
+alter entity Sudoku."Game"
+  add attribute "SelCol": integer default 0;
+/
+
+alter entity Sudoku."Game"
+  add attribute "SelBox": integer default 0;
+/
+
+alter entity Sudoku."Game"
+  add attribute "HasSelection": boolean default false;
+/
+
+-- Whether the selected square can be written to, so the pad can lock
+-- itself instead of silently swallowing digits on a dealt square.
+alter entity Sudoku."Game"
+  add attribute "SelEditable": boolean default true;
+/
+
+-- Board progress: EmptyCount for the status line, ProgressBucket (0..20)
+-- for the progress bar, which is widened by a CSS class per 5%.
+alter entity Sudoku."Game"
+  add attribute "EmptyCount": integer default 81;
+/
+
+alter entity Sudoku."Game"
+  add attribute "ProgressBucket": integer default 0;
+/
+
+-- Drives the selected-square highlight, replacing gallery selection
+alter entity Sudoku."Cell"
+  add attribute "IsSelected": boolean default false;
+/
+
+/**
+ * The square the player currently has selected, if any.
+ */
+create association Sudoku."Game_SelectedCell"
+from Sudoku."Game" to Sudoku."Cell"
+type reference;
+/
