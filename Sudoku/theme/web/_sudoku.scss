@@ -378,3 +378,17 @@
   .sd-hero-title { font-size: 34px; }
   .sd-num { font-size: 18px; }
 }
+
+// A dealt square is read-only — replace the pad with a quiet explanation
+// instead of buttons whose digits ACT_ApplyValue would discard.
+.sd-pad-locked {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+}
+
+.sd-locked-text {
+  font-size: 14px;
+  color: var(--sd-muted);
+}

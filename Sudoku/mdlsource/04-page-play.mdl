@@ -95,7 +95,17 @@ create or replace page Sudoku.Game_Play
       -- ---------------------------------------------------------------
       container sdPadWrap (class: 'sd-pad-wrap') {
         dataview dvSel (datasource: selection galBoard, class: 'sd-sel') {
-          container sdPad (class: 'sd-pad') {
+
+          -- A dealt square is read-only: say so rather than offering a pad
+          -- whose digits would be silently discarded by ACT_ApplyValue.
+          container sdPadLocked (class: 'sd-pad-locked', visible: ["IsEditable" = false]) {
+            dynamictext sdLockedText (
+              content: 'That square was dealt with the puzzle — pick an empty one.',
+              class: 'sd-locked-text'
+            )
+          }
+
+          container sdPad (class: 'sd-pad', visible: ["IsEditable"]) {
             actionbutton k1 (caption: '1', action: microflow Sudoku.ACT_Set1(Cell: $currentObject), class: 'sd-key')
             actionbutton k2 (caption: '2', action: microflow Sudoku.ACT_Set2(Cell: $currentObject), class: 'sd-key')
             actionbutton k3 (caption: '3', action: microflow Sudoku.ACT_Set3(Cell: $currentObject), class: 'sd-key')
@@ -124,6 +134,9 @@ create or replace page Sudoku.Game_Play
           action: microflow Sudoku.ACT_ResetBoard(Game: $Game),
           class: 'sd-btn'
         )
+        -- The "New game" button is appended by 05-home-and-nav.mdl, once
+        -- Sudoku.Home exists (Home -> ACT_New* -> Game_Play -> Home is a
+        -- reference cycle; the ALTER there is what breaks it).
       }
     }
   }

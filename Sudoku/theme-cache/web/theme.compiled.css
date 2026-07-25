@@ -30092,5 +30092,16 @@ Do not change this file because it is core styling. Customizing core files will 
     font-size: 18px;
   }
 }
+.sd-pad-locked {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 48px;
+}
+
+.sd-locked-text {
+  font-size: 14px;
+  color: var(--sd-muted);
+}
 
 /*# sourceMappingURL=theme.compiled.css.map */
