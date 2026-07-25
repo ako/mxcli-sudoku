@@ -1,0 +1,403 @@
+-- =====================================================================
+-- Sudoku — core game logic
+-- =====================================================================
+-- Board generation uses the classic "seed pattern + random symmetry"
+-- construction, which is loop-friendly and always yields a valid grid:
+--
+--   base(r,c) = ((3*(r mod 3) + (r div 3) + c) mod 9) + 1
+--
+-- Iterating band/row-in-band and stack/col-in-stack lets us read
+-- (r mod 3) and (r div 3) straight off the loop counters, so no integer
+-- division is needed anywhere (Mendix `div` returns a Decimal — CE0117).
+-- Validity is then preserved by three random transforms:
+--   * rotate the three rows inside each band
+--   * rotate the three columns inside each stack
+--   * rotate the digit alphabet 1..9
+-- giving 9 * 3^3 * 3^3 = 6,561 distinct boards.
+-- =====================================================================
+
+/**
+ * Deals a fresh, randomly generated Sudoku board.
+ *
+ * Builds a valid 9x9 solution, then reveals roughly $GivenPct percent of
+ * the squares as "givens". Every Cell keeps its SolutionValue so that
+ * validating a move later is a direct comparison.
+ *
+ * @param $Level Difficulty recorded on the game
+ * @param $GivenPct Percent chance (0..100) that a square is revealed
+ * @returns The dealt Game, with its 81 Cells committed
+ */
+create or replace microflow Sudoku.ACT_DealGame (
+  $Level: enum Sudoku."Difficulty",
+  $GivenPct: integer
+)
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  -- Random symmetry transforms (see header)
+  declare $digitRot integer = round(random() * 8);
+  declare $bandOff0 integer = round(random() * 2);
+  declare $bandOff1 integer = round(random() * 2);
+  declare $bandOff2 integer = round(random() * 2);
+  declare $stackOff0 integer = round(random() * 2);
+  declare $stackOff1 integer = round(random() * 2);
+  declare $stackOff2 integer = round(random() * 2);
+
+  -- Loop counters and working values
+  declare $band integer = 0;
+  declare $rib integer = 0;
+  declare $stack integer = 0;
+  declare $cib integer = 0;
+  declare $off integer = 0;
+  declare $ribp integer = 0;
+  declare $cibp integer = 0;
+  declare $rowOut integer = 0;
+  declare $colOut integer = 0;
+  declare $c integer = 0;
+  declare $v integer = 0;
+  declare $roll integer = 0;
+  declare $givens integer = 0;
+  declare $cls string = '';
+
+  $Game = create Sudoku."Game" (
+    "Level" = $Level,
+    "Status" = Sudoku."GameStatus".Playing,
+    "GivenCount" = 0,
+    "FilledCount" = 0,
+    "ErrorCount" = 0,
+    "HintCount" = 0,
+    "Message" = 'Pick a square, then tap a number.');
+  commit $Game;
+
+  $Cells = create list of Sudoku."Cell";
+
+  @annotation 'Walk the three horizontal bands'
+  while $band < 3
+  begin
+    set $rib = 0;
+    while $rib < 3
+    begin
+      -- Rotate rows within this band
+      set $off = $bandOff0;
+      if $band = 1 then
+        set $off = $bandOff1;
+      end if;
+      if $band = 2 then
+        set $off = $bandOff2;
+      end if;
+      set $ribp = $rib + $off;
+      if $ribp >= 3 then
+        set $ribp = $ribp - 3;
+      end if;
+      set $rowOut = 3 * $band + $ribp;
+
+      set $stack = 0;
+      while $stack < 3
+      begin
+        set $cib = 0;
+        while $cib < 3
+        begin
+          -- Rotate columns within this stack
+          set $off = $stackOff0;
+          if $stack = 1 then
+            set $off = $stackOff1;
+          end if;
+          if $stack = 2 then
+            set $off = $stackOff2;
+          end if;
+          set $cibp = $cib + $off;
+          if $cibp >= 3 then
+            set $cibp = $cibp - 3;
+          end if;
+          set $colOut = 3 * $stack + $cibp;
+
+          -- Seed value at the pre-transform coordinates, then rotate digits
+          set $c = 3 * $stack + $cib;
+          set $v = 3 * $rib + $band + $c;
+          if $v >= 9 then
+            set $v = $v - 9;
+          end if;
+          set $v = $v + $digitRot;
+          if $v >= 9 then
+            set $v = $v - 9;
+          end if;
+          set $v = $v + 1;
+
+          -- Precompute the 3x3 box borders so the page needs no big expression
+          set $cls = 'sd-cell';
+          if $colOut = 2 or $colOut = 5 then
+            set $cls = $cls + ' sd-br';
+          end if;
+          if $rowOut = 2 or $rowOut = 5 then
+            set $cls = $cls + ' sd-bb';
+          end if;
+
+          set $roll = round(random() * 99);
+          if $roll < $GivenPct then
+            set $cls = $cls + ' sd-given';
+          else
+            set $cls = $cls + ' sd-open';
+          end if;
+
+          $Cell = create Sudoku."Cell" (
+            "Row" = $rowOut,
+            "Col" = $colOut,
+            "SolutionValue" = $v,
+            "IsGiven" = false,
+            "IsEditable" = true,
+            "IsInvalid" = false,
+            "CellClass" = $cls,
+            Sudoku."Cell_Game" = $Game);
+
+          if $roll < $GivenPct then
+            change $Cell ("Value" = $v, "IsGiven" = true, "IsEditable" = false);
+            set $givens = $givens + 1;
+          end if;
+
+          add $Cell to $Cells;
+          set $cib = $cib + 1;
+        end while;
+        set $stack = $stack + 1;
+      end while;
+      set $rib = $rib + 1;
+    end while;
+    set $band = $band + 1;
+  end while;
+
+  commit $Cells;
+
+  change $Game ("GivenCount" = $givens, "FilledCount" = $givens);
+  commit $Game;
+  return $Game;
+end;
+/
+
+/**
+ * Recomputes progress counters and per-cell error flags for a game.
+ *
+ * Marks every filled square that disagrees with the solution, updates the
+ * filled/error counts, and flips the game to Solved once all 81 squares
+ * match. Cell changes are batched into one commit.
+ *
+ * @param $Game The game to re-evaluate
+ * @returns True when the board is complete and correct
+ */
+create or replace microflow Sudoku.ACT_Refresh (
+  $Game: Sudoku."Game"
+)
+returns boolean as $IsSolved
+folder 'Game'
+begin
+  declare $IsSolved boolean = false;
+  declare $filled integer = 0;
+  declare $errors integer = 0;
+  declare $correct integer = 0;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $Cell in $Cells
+  begin
+    if $Cell/"Value" != empty then
+      set $filled = $filled + 1;
+      if $Cell/"Value" = $Cell/"SolutionValue" then
+        set $correct = $correct + 1;
+        if $Cell/"IsInvalid" then
+          change $Cell ("IsInvalid" = false);
+          add $Cell to $Changed;
+        end if;
+      else
+        set $errors = $errors + 1;
+        if $Cell/"IsInvalid" = false then
+          change $Cell ("IsInvalid" = true);
+          add $Cell to $Changed;
+        end if;
+      end if;
+    else
+      if $Cell/"IsInvalid" then
+        change $Cell ("IsInvalid" = false);
+        add $Cell to $Changed;
+      end if;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  if $correct = 81 then
+    set $IsSolved = true;
+    change $Game (
+      "FilledCount" = $filled,
+      "ErrorCount" = $errors,
+      "Status" = Sudoku."GameStatus".Solved,
+      "Message" = 'Solved! Every square checks out.');
+  else
+    if $errors > 0 then
+      change $Game (
+        "FilledCount" = $filled,
+        "ErrorCount" = $errors,
+        "Status" = Sudoku."GameStatus".Playing,
+        "Message" = toString($errors) + ' square(s) conflict with the solution.');
+    else
+      change $Game (
+        "FilledCount" = $filled,
+        "ErrorCount" = $errors,
+        "Status" = Sudoku."GameStatus".Playing,
+        "Message" = 'Looking good — ' + toString(81 - $filled) + ' squares to go.');
+    end if;
+  end if;
+
+  commit $Game refresh;
+  return $IsSolved;
+end;
+/
+
+/**
+ * Writes a digit into a square, then re-evaluates the board.
+ *
+ * Given squares are read-only and are ignored. This is the single place
+ * where a move is applied; the number-pad microflows are thin wrappers.
+ *
+ * @param $Cell The square to fill
+ * @param $Digit The digit 1..9 to write
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_ApplyValue (
+  $Cell: Sudoku."Cell",
+  $Digit: integer
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  declare $Applied boolean = false;
+
+  if $Cell = empty then
+    return false;
+  end if;
+  if $Cell/"IsEditable" = false then
+    return false;
+  end if;
+
+  change $Cell ("Value" = $Digit) refresh;
+  commit $Cell refresh;
+
+  retrieve $Game from $Cell/Sudoku."Cell_Game";
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Applied = true;
+  return $Applied;
+end;
+/
+
+/**
+ * Clears the player's entry from a square, then re-evaluates the board.
+ *
+ * @param $Cell The square to clear
+ * @returns True when the square was cleared
+ */
+create or replace microflow Sudoku.ACT_ClearValue (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Cleared
+folder 'Moves'
+begin
+  declare $Cleared boolean = false;
+
+  if $Cell = empty then
+    return false;
+  end if;
+  if $Cell/"IsEditable" = false then
+    return false;
+  end if;
+
+  change $Cell ("Value" = empty, "IsInvalid" = false) refresh;
+  commit $Cell refresh;
+
+  retrieve $Game from $Cell/Sudoku."Cell_Game";
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Cleared = true;
+  return $Cleared;
+end;
+/
+
+/**
+ * Clears every square the player filled in, keeping the dealt givens.
+ *
+ * @param $Game The game to reset
+ * @returns True when the board was reset
+ */
+create or replace microflow Sudoku.ACT_ResetBoard (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Reset
+folder 'Game'
+begin
+  declare $Reset boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $Cell in $Cells
+  begin
+    if $Cell/"IsGiven" = false then
+      change $Cell ("Value" = empty, "IsInvalid" = false);
+      add $Cell to $Changed;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  change $Game ("HintCount" = 0) refresh;
+  commit $Game refresh;
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Reset = true;
+  return $Reset;
+end;
+/
+
+/**
+ * Reveals the solution for one empty square.
+ *
+ * @param $Game The game to give a hint for
+ * @returns True when a square was revealed
+ */
+create or replace microflow Sudoku.ACT_Hint (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Revealed
+folder 'Game'
+begin
+  declare $Revealed boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Empty from Sudoku."Cell"
+    where [Sudoku."Cell_Game" = $Game and "Value" = empty]
+    limit 1;
+
+  if $Empty = empty then
+    return false;
+  end if;
+
+  change $Empty ("Value" = $Empty/"SolutionValue", "IsInvalid" = false) refresh;
+  commit $Empty refresh;
+
+  change $Game ("HintCount" = $Game/"HintCount" + 1) refresh;
+  commit $Game refresh;
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Revealed = true;
+  return $Revealed;
+end;
+/

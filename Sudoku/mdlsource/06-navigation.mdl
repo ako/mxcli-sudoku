@@ -1,0 +1,13 @@
+-- =====================================================================
+-- Sudoku — navigation
+-- =====================================================================
+-- Point the Responsive profile at the Sudoku landing page.
+-- =====================================================================
+
+create or replace navigation Responsive
+  home page Sudoku.Home
+  menu (
+    menu item 'Play Sudoku' page Sudoku.Home;
+  )
+;
+/

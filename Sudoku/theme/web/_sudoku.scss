@@ -1,0 +1,380 @@
+// =============================================================================
+// Sudoku — Layer 2 identity styling
+// -----------------------------------------------------------------------------
+// Atlas provides the page shell, buttons and card surfaces; this file only adds
+// the shapes Atlas has no vocabulary for — the 9x9 rule grid with its heavier
+// 3x3 box borders, the digit treatment, and the number pad.
+//
+// Selectors lean on classes this app owns (.sd-*). The one place we must reach
+// into Mendix's own DOM is the Gallery's grid container, matched with a
+// substring selector so it survives widget class-name drift.
+// =============================================================================
+
+.sd-page {
+  --sd-cell: 52px;
+  --sd-line: #d6dbe3;   // hairline for cards / tiles
+  --sd-grid: #c3ccd9;   // thin rule between squares
+  --sd-rule: #2c3440;   // heavy rule around each 3x3 box
+  --sd-ink: #1f2933;    // dealt (given) digits
+  --sd-user: #3b5bdb;   // digits the player entered
+  --sd-bad: #d64545;    // conflicting digits
+  --sd-sel: #e7edff;    // selected square
+  --sd-surface: #ffffff;
+  --sd-muted: #6b7684;
+}
+
+.sd-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 4px 16px 56px;
+}
+
+// The app is a single-purpose game; drop the Atlas sidebar rail so the board
+// gets the full canvas instead of a 48px stub of truncated menu text.
+.mx-page:has(.sd-shell) .region-sidebar {
+  display: none !important;
+}
+
+// ---------------------------------------------------------------- board header
+.sd-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.sd-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--sd-ink);
+}
+
+.sd-msg {
+  margin: 4px 0 0;
+  color: var(--sd-muted);
+  font-size: 14px;
+}
+
+.sd-chip {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--sd-sel);
+  border: 1px solid rgba(59, 91, 219, 0.25);
+}
+
+.sd-chip-text {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sd-user);
+}
+
+// ----------------------------------------------------------------- stats strip
+.sd-stats {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.sd-stat {
+  flex: 1;
+  background: var(--sd-surface);
+  border: 1px solid var(--sd-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+// Mendix renders DynamicText as an inline <span>; stack value over label.
+.sd-stat-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--sd-ink);
+}
+
+.sd-stat-bad { color: var(--sd-bad); }
+
+.sd-stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--sd-muted);
+  margin-top: 2px;
+}
+
+// --------------------------------------------------------------- solved banner
+.sd-win {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #e9f7ef;
+  border: 1px solid #a8dcbd;
+}
+
+.sd-win-text {
+  color: #1a7a48;
+  font-weight: 600;
+}
+
+// ================================================================== the board
+.sd-board-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 22px;
+}
+
+.sd-board {
+  display: inline-block;
+  background: var(--sd-surface);
+  border: 2px solid var(--sd-rule);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(21, 32, 56, 0.10);
+}
+
+// Mendix Gallery lays its items out in a CSS grid; force an exact 9-up board
+// and strip the default gaps/padding so the rules meet cleanly.
+.sd-board [class*="gallery-items"] {
+  display: grid !important;
+  grid-template-columns: repeat(9, var(--sd-cell)) !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.sd-board [class*="gallery-items"] > * {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+// A game board has no use for the Gallery's own chrome — the empty top bar and
+// the "1 item selected / Clear selection" footer both sit inside the rules.
+.sd-board .widget-gallery-top-bar,
+.sd-board .widget-gallery-footer {
+  display: none !important;
+}
+
+.sd-cell {
+  box-sizing: border-box;   // keep the rule inside the grid track
+  width: var(--sd-cell);
+  height: var(--sd-cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--sd-grid);
+  border-bottom: 1px solid var(--sd-grid);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease;
+}
+
+.sd-open:hover { background: #f2f5fb; }
+
+// Heavier rules on the 3x3 box seams (precomputed into CellClass at deal time)
+.sd-br { border-right: 2px solid var(--sd-rule) !important; }
+.sd-bb { border-bottom: 2px solid var(--sd-rule) !important; }
+
+// The board's own border supplies the outer edge
+.sd-board [class*="gallery-items"] > *:nth-child(9n) .sd-cell { border-right: none !important; }
+.sd-board [class*="gallery-items"] > *:nth-child(n + 73) .sd-cell { border-bottom: none !important; }
+
+.sd-num {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--sd-user);
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-given {
+  cursor: default;
+}
+
+.sd-given .sd-num {
+  color: var(--sd-ink);
+  font-weight: 700;
+}
+
+.sd-bad { background: #fdeded; }
+
+.sd-bad .sd-num {
+  color: var(--sd-bad);
+  font-weight: 700;
+}
+
+// Selection — Mendix marks the selected item with aria-selected / a class
+.sd-board [aria-selected="true"] .sd-cell,
+.sd-board [class*="selected"] .sd-cell {
+  background: var(--sd-sel);
+  box-shadow: inset 0 0 0 2px var(--sd-user);
+}
+
+// ================================================================ number pad
+.sd-pad-wrap {
+  min-height: 64px;          // reserve space so selecting a square doesn't jump
+  margin-bottom: 18px;
+}
+
+.sd-pad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.sd-key {
+  min-width: 48px;
+  height: 48px;
+  padding: 0 12px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--sd-ink);
+  background: var(--sd-surface);
+  border: 1px solid var(--sd-line);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(21, 32, 56, 0.06);
+  transition: all 0.12s ease;
+}
+
+.sd-key:hover,
+.sd-key:focus {
+  border-color: var(--sd-user);
+  color: var(--sd-user);
+  background: #f7f9ff;
+}
+
+.sd-key-erase {
+  min-width: 92px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sd-muted);
+}
+
+// ================================================================== controls
+.sd-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sd-btn {
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  background: var(--sd-surface);
+  border: 1px solid var(--sd-line);
+  color: var(--sd-ink);
+}
+
+.sd-btn:hover {
+  border-color: var(--sd-user);
+  color: var(--sd-user);
+}
+
+.sd-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--sd-muted);
+}
+
+// =================================================================== landing
+.sd-home { padding-top: 24px; }
+
+.sd-hero {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.sd-hero-title {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--sd-ink);
+}
+
+.sd-hero-sub {
+  margin: 10px 0 0;
+  font-size: 16px;
+  color: var(--sd-muted);
+}
+
+.sd-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.sd-card {
+  background: var(--sd-surface);
+  border: 1px solid var(--sd-line);
+  border-radius: 16px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 8px 24px rgba(21, 32, 56, 0.06);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.sd-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(21, 32, 56, 0.12);
+}
+
+.sd-card-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--sd-user);
+}
+
+.sd-card-easy .sd-card-kicker { color: #1a7a48; }
+.sd-card-hard .sd-card-kicker { color: #c2410c; }
+
+.sd-card-name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--sd-ink);
+}
+
+.sd-card-desc {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--sd-muted);
+  flex: 1;
+}
+
+.sd-cta {
+  height: 42px;
+  border-radius: 10px;
+  font-weight: 600;
+  width: 100%;
+}
+
+.sd-home-foot {
+  margin-top: 28px;
+  text-align: center;
+}
+
+.sd-foot-text {
+  font-size: 13px;
+  color: var(--sd-muted);
+}
+
+// ================================================================ responsive
+@media (max-width: 720px) {
+  .sd-page { --sd-cell: 38px; }
+  .sd-cards { grid-template-columns: 1fr; }
+  .sd-hero-title { font-size: 34px; }
+  .sd-num { font-size: 18px; }
+}

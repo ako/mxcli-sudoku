@@ -1,0 +1,160 @@
+-- =====================================================================
+-- Sudoku — number-pad actions
+-- =====================================================================
+-- A Mendix button can only map object parameters from the page context,
+-- not literals, so each digit gets a thin wrapper. All of them delegate
+-- to ACT_ApplyValue, which holds the single copy of the move logic.
+-- =====================================================================
+
+/**
+ * Number-pad action: writes 1 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set1 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 1);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 2 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set2 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 2);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 3 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set3 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 3);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 4 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set4 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 4);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 5 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set5 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 5);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 6 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set6 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 6);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 7 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set7 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 7);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 8 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set8 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 8);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 9 into the selected square.
+ *
+ * @param $Cell The square currently selected on the board
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set9 (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Cell = $Cell, Digit = 9);
+  return $Applied;
+end;
+/

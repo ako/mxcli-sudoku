@@ -1,0 +1,130 @@
+-- =====================================================================
+-- Sudoku — the board page
+-- =====================================================================
+-- The board is a 9-column Gallery over the game's 81 Cells. Each cell's
+-- CellClass (precomputed at deal time) carries the 3x3 box borders and
+-- the given/open state; DynamicClasses layers the error state on top.
+--
+-- Selecting a square feeds the number pad below it through a DataView
+-- bound to the gallery selection, so every move is a normal server-side
+-- microflow — no client-side dirty state to reconcile.
+-- =====================================================================
+
+create or replace page Sudoku.Game_Play
+(
+  params: { $Game: Sudoku."Game" },
+  title: 'Sudoku',
+  layout: Atlas_Core.Atlas_Default,
+  class: 'sd-page'
+)
+{
+  container sdShell (class: 'sd-shell') {
+
+    dataview dvGame (datasource: $Game, class: 'sd-game', FormOrientation: Vertical) {
+
+      -- ---------------------------------------------------------------
+      -- Header: title, difficulty chip, live status line
+      -- ---------------------------------------------------------------
+      container sdHead (class: 'sd-head') {
+        container sdHeadText (class: 'sd-head-text') {
+          dynamictext sdTitle (content: 'Sudoku', rendermode: H1, class: 'sd-title')
+          dynamictext sdMsg (
+            content: '{1}',
+            contentparams: [{1} = "Message"],
+            rendermode: Paragraph,
+            class: 'sd-msg'
+          )
+        }
+        container sdChip (class: 'sd-chip') {
+          dynamictext sdLevel (content: '{1}', contentparams: [{1} = "Level"], class: 'sd-chip-text')
+        }
+      }
+
+      -- ---------------------------------------------------------------
+      -- Stats strip
+      -- ---------------------------------------------------------------
+      container sdStats (class: 'sd-stats') {
+        container sdStat1 (class: 'sd-stat') {
+          dynamictext sdStat1v (content: '{1}', contentparams: [{1} = "FilledCount"], class: 'sd-stat-value')
+          dynamictext sdStat1l (content: 'of 81 filled', class: 'sd-stat-label')
+        }
+        container sdStat2 (class: 'sd-stat') {
+          dynamictext sdStat2v (content: '{1}', contentparams: [{1} = "ErrorCount"], class: 'sd-stat-value sd-stat-bad')
+          dynamictext sdStat2l (content: 'conflicts', class: 'sd-stat-label')
+        }
+        container sdStat3 (class: 'sd-stat') {
+          dynamictext sdStat3v (content: '{1}', contentparams: [{1} = "HintCount"], class: 'sd-stat-value')
+          dynamictext sdStat3l (content: 'hints used', class: 'sd-stat-label')
+        }
+      }
+
+      -- ---------------------------------------------------------------
+      -- Solved banner
+      -- ---------------------------------------------------------------
+      container sdWin (class: 'sd-win', visible: ["Status" = Sudoku."GameStatus".Solved]) {
+        dynamictext sdWinText (content: 'Solved — every square checks out.', class: 'sd-win-text')
+      }
+
+      -- ---------------------------------------------------------------
+      -- The 9x9 board
+      -- ---------------------------------------------------------------
+      container sdBoardWrap (class: 'sd-board-wrap') {
+        gallery galBoard (
+          datasource: database from Sudoku."Cell"
+            where [Sudoku."Cell_Game" = $Game]
+            sort by "Row" asc, "Col" asc,
+          selection: single,
+          DesktopColumns: 9,
+          TabletColumns: 9,
+          PhoneColumns: 9,
+          PageSize: 81,
+          class: 'sd-board'
+        ) {
+          template tplCell {
+            container sdCell (
+              dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsInvalid then '' sd-bad'' else '''')'
+            ) {
+              dynamictext sdCellNum (content: '{1}', contentparams: [{1} = "Value"], class: 'sd-num')
+            }
+          }
+        }
+      }
+
+      -- ---------------------------------------------------------------
+      -- Number pad — driven by the board selection
+      -- ---------------------------------------------------------------
+      container sdPadWrap (class: 'sd-pad-wrap') {
+        dataview dvSel (datasource: selection galBoard, class: 'sd-sel') {
+          container sdPad (class: 'sd-pad') {
+            actionbutton k1 (caption: '1', action: microflow Sudoku.ACT_Set1(Cell: $currentObject), class: 'sd-key')
+            actionbutton k2 (caption: '2', action: microflow Sudoku.ACT_Set2(Cell: $currentObject), class: 'sd-key')
+            actionbutton k3 (caption: '3', action: microflow Sudoku.ACT_Set3(Cell: $currentObject), class: 'sd-key')
+            actionbutton k4 (caption: '4', action: microflow Sudoku.ACT_Set4(Cell: $currentObject), class: 'sd-key')
+            actionbutton k5 (caption: '5', action: microflow Sudoku.ACT_Set5(Cell: $currentObject), class: 'sd-key')
+            actionbutton k6 (caption: '6', action: microflow Sudoku.ACT_Set6(Cell: $currentObject), class: 'sd-key')
+            actionbutton k7 (caption: '7', action: microflow Sudoku.ACT_Set7(Cell: $currentObject), class: 'sd-key')
+            actionbutton k8 (caption: '8', action: microflow Sudoku.ACT_Set8(Cell: $currentObject), class: 'sd-key')
+            actionbutton k9 (caption: '9', action: microflow Sudoku.ACT_Set9(Cell: $currentObject), class: 'sd-key')
+            actionbutton kx (caption: 'Erase', action: microflow Sudoku.ACT_ClearValue(Cell: $currentObject), class: 'sd-key sd-key-erase')
+          }
+        }
+      }
+
+      -- ---------------------------------------------------------------
+      -- Board controls
+      -- ---------------------------------------------------------------
+      container sdControls (class: 'sd-controls') {
+        actionbutton btnHint (
+          caption: 'Hint',
+          action: microflow Sudoku.ACT_Hint(Game: $Game),
+          class: 'sd-btn'
+        )
+        actionbutton btnReset (
+          caption: 'Reset board',
+          action: microflow Sudoku.ACT_ResetBoard(Game: $Game),
+          class: 'sd-btn'
+        )
+      }
+    }
+  }
+}

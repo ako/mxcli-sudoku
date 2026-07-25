@@ -1,0 +1,89 @@
+-- =====================================================================
+-- Sudoku — domain model
+-- =====================================================================
+-- A Game holds one puzzle; 81 Cell objects hold the board. Each Cell
+-- stores both the player's Value and the SolutionValue, so validating a
+-- move is a straight comparison (no row/column/box scanning needed).
+-- =====================================================================
+
+create module Sudoku;
+/
+
+/**
+ * Puzzle difficulty — drives how many cells are revealed at deal time.
+ */
+create enumeration Sudoku."Difficulty" (
+  Easy 'Easy',
+  Medium 'Medium',
+  Hard 'Hard'
+);
+/
+
+/**
+ * Lifecycle of a single game.
+ */
+create enumeration Sudoku."GameStatus" (
+  Playing 'Playing',
+  Solved 'Solved'
+);
+/
+
+/**
+ * One Sudoku game: the board metadata and running progress counters.
+ */
+@position(100, 100)
+create persistent entity Sudoku."Game" (
+  /** Difficulty the board was dealt at */
+  "Level": Sudoku."Difficulty" default Easy,
+  /** Playing until every cell matches the solution */
+  "Status": Sudoku."GameStatus" default Playing,
+  /** When the game was dealt */
+  "StartedAt": autocreateddate,
+  /** Number of cells revealed at deal time */
+  "GivenCount": integer default 0,
+  /** Number of cells the player has filled in */
+  "FilledCount": integer default 0,
+  /** Number of filled cells that conflict with the solution */
+  "ErrorCount": integer default 0,
+  /** Number of hints used */
+  "HintCount": integer default 0,
+  /** Status line shown above the board */
+  "Message": string(200)
+);
+/
+
+/**
+ * One square of the 9x9 board.
+ *
+ * Row/Col are zero-based (0..8). CellClass is precomputed at deal time so
+ * the page can style the 3x3 box borders without a large inline expression.
+ */
+@position(400, 100)
+create persistent entity Sudoku."Cell" (
+  /** Zero-based row index, 0..8 */
+  "Row": integer default 0,
+  /** Zero-based column index, 0..8 */
+  "Col": integer default 0,
+  /** The player's entry — empty when the square is blank */
+  "Value": integer,
+  /** The correct answer for this square */
+  "SolutionValue": integer default 0,
+  /** True when the square was revealed at deal time */
+  "IsGiven": boolean default false,
+  /** True when the player may change this square */
+  "IsEditable": boolean default true,
+  /** True when the current entry conflicts with the solution */
+  "IsInvalid": boolean default false,
+  /** Precomputed CSS classes: box borders + given/open state */
+  "CellClass": string(100)
+);
+/
+
+/**
+ * Every Cell belongs to one Game; deleting the Game clears its board.
+ */
+create association Sudoku."Cell_Game"
+from Sudoku."Cell" to Sudoku."Game"
+type reference
+delete_behavior DELETE_AND_REFERENCES;
+/
