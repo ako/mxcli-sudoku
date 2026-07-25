@@ -23,10 +23,10 @@ playwright-report/
 test-results/
 .playwright/
 
-# --- Mendix scratch (no project scaffolded yet; ignore future scratch .mpr) ---
-*.mpr
-*.mpr.bak
-*.mpr.lock
+# --- Mendix build outputs / local scratch ---
+# The scaffolded app (Sudoku/) is committed; its own Sudoku/.gitignore governs
+# project internals (keeps Sudoku.mpr, ignores *.mpr.lock / *.mpr.bak, etc.).
+# Do NOT add a blanket *.mpr rule here — it would exclude the real project model.
 deployment/
 .mendix-cache/
 mxbuild.log

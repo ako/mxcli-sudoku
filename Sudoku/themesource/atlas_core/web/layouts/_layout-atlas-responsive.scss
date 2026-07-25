@@ -1,0 +1,346 @@
+/* ==========================================================================
+   Atlas layout
+
+   Extra styling for responsive layouts
+========================================================================== */
+@mixin layout-atlas-responsive() {
+    .layout-atlas {
+        .mx-scrollcontainer {
+            &:not(.mx-scrollcontainer-open) {
+                .region-sidebar {
+                    .mx-scrollcontainer-wrapper {
+                        transition: padding var(--navsidebar-animation-duration) var(--navsidebar-animation-function);
+                    }
+                }
+            }
+            &.mx-scrollcontainer-open {
+                .region-sidebar {
+                    .mx-scrollcontainer-wrapper {
+                        padding-left: var(--spacing-medium);
+                        padding-right: var(--spacing-medium);
+                        transition: padding var(--navsidebar-animation-duration) var(--navsidebar-animation-function);
+                    }
+                }
+            }
+        }
+    }
+
+    .layout-atlas-responsive,
+    .layout-atlas-responsive-default,
+    .layout-atlas-responsive-sidebar {
+        @media (min-width: $screen-md) {
+            --closed-sidebar-width: var(--navsidebar-width-closed);
+            .mx-scrollcontainer-shrink:not(.mx-scrollcontainer-open) > .region-sidebar,
+            .mx-scrollcontainer-push:not(.mx-scrollcontainer-open) > .region-sidebar,
+            .mx-scrollcontainer-slide:not(.mx-scrollcontainer-open) > .region-sidebar {
+                @if (not $use-modern-client) {
+                    width: var(--navsidebar-width-closed) !important;
+                }
+
+                .mx-scrollcontainer-wrapper .mx-navigationtree ul li {
+                    &.mx-navigationtree-has-items a {
+                        white-space: nowrap;
+                    }
+
+                    &.mx-navigationtree-has-items:hover > ul {
+                        position: absolute;
+                        z-index: 100;
+                        top: var(--topbar-minimalheight);
+                        bottom: 0;
+                        left: var(--navsidebar-icon-width);
+                        display: block;
+                        min-width: auto;
+                        padding: var(--spacing-small) 0;
+
+                        & > li.mx-navigationtree-has-items:hover > ul {
+                            top: 0;
+                            left: 100%;
+                        }
+                    }
+
+                    &.mx-navigationtree-has-items,
+                    &.mx-navigationtree-collapsed {
+                        ul {
+                            display: none;
+                        }
+                    }
+                }
+            }
+
+            .widget-sidebar:not(.widget-sidebar-expanded) {
+                .mx-navigationtree ul li {
+                    &.mx-navigationtree-has-items:hover {
+                        ul {
+                            position: absolute;
+                            z-index: 100;
+                            top: 0;
+                            bottom: 0;
+                            left: var(--navsidebar-icon-width);
+                            display: block;
+                            overflow-y: auto;
+                            min-width: auto;
+                            padding: var(--spacing-small) 0;
+                        }
+                    }
+
+                    &.mx-navigationtree-has-items,
+                    .mx-navigationtree-collapsed {
+                        ul {
+                            display: none;
+                        }
+                    }
+                }
+            }
+        }
+
+        @if (not $use-modern-client) {
+            .mx-scrollcontainer-slide {
+                &:not(.mx-scrollcontainer-open) > .region-sidebar {
+                    overflow: hidden;
+                }
+
+                &.mx-scrollcontainer-open > .region-sidebar {
+                    width: var(--navsidebar-width-closed) !important;
+
+                    & > .mx-scrollcontainer-wrapper {
+                        position: relative;
+                    }
+                }
+
+                .region-sidebar > .mx-scrollcontainer-wrapper {
+                    z-index: 2;
+                    left: calc(-1 * var(--navsidebar-width-closed));
+                    background-color: inherit;
+                }
+            }
+
+            // Push aside for mobile
+            @media (max-width: $screen-sm-max) {
+                .mx-scrollcontainer-open:not(.mx-scrollcontainer-slide) {
+                    width: 1100px;
+                }
+
+                .mx-scrollcontainer-slide .toggle-btn {
+                    display: inline-block !important;
+                }
+            }
+        }
+
+        // Sidebar
+        .region-sidebar {
+            scrollbar-color: transparent transparent;
+            &:hover {
+                scrollbar-color: var(--navigation-scrollbar-color);
+            }
+
+            .toggle-btn {
+                width: var(--navsidebar-icon-width);
+                border-color: transparent;
+                border-radius: 0;
+                background: transparent;
+            }
+
+            .mx-scrollcontainer-wrapper {
+                .toggle-btn-wrapper {
+                    display: flex;
+                    padding: var(--spacing-small);
+                    align-items: center;
+                    min-height: calc(var(--topbar-minimalheight) + 4px);
+                    background: var(--navsidebar-sub-bg);
+                }
+
+                .toggle-btn {
+                    padding: var(--spacing-medium);
+
+                    img {
+                        width: 24px;
+                        height: 24px;
+                    }
+                }
+
+                .toggle-text {
+                    color: #fff;
+                    font-weight: bold;
+                }
+
+                .mx-navigationtree .navbar-inner > ul > li {
+                    & > a {
+                        height: var(--navsidebar-icon-height);
+                        padding: var(--spacing-small) 0;
+                        margin: var(--spacing-small) 0 0 0;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        border-radius: var(--navsidebar-border-radius);
+                        // Glyph icon
+                        .glyphicon,
+                        .mx-icon-lined,
+                        .mx-icon-filled {
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: var(--navsidebar-icon-width);
+                            height: var(--navsidebar-icon-height);
+                            padding: var(--spacing-small) var(--spacing-medium);
+                            border-radius: var(--navsidebar-border-radius);
+                        }
+                        img {
+                            width: var(--navsidebar-icon-width);
+                            padding: var(--spacing-small) var(--spacing-medium);
+                        }
+                    }
+                    &.mx-navigationtree-has-items:not(.mx-navigationtree-collapsed) > a {
+                        border-radius: var(--navsidebar-border-radius) var(--navigation-border-radius) 0 0;
+                        background-color: var(--navsidebar-sub-bg-header);
+                    }
+                }
+            }
+        }
+
+        // Topbar
+        .region-topbar {
+            padding: 0 var(--spacing-small);
+
+            .toggle-btn {
+                padding: 0;
+                border-color: transparent;
+                border-radius: 0;
+                background: transparent;
+                display: flex;
+            }
+
+            .mx-icon-filled,
+            .mx-icon-lined {
+                font-size: 18px;
+            }
+        }
+    }
+
+    // Topbar variant
+    .layout-atlas-responsive-topbar {
+        .region-topbar {
+            padding: 0 var(--spacing-medium);
+            @media (max-width: $screen-sm-max) {
+                padding: 0 var(--spacing-small);
+            }
+        }
+
+        .mx-scrollcontainer-slide {
+            &:not(.mx-scrollcontainer-open) > .region-sidebar {
+                overflow: hidden;
+            }
+
+            &.mx-scrollcontainer-open > .region-sidebar {
+                z-index: 100;
+            }
+        }
+
+        @if (not $use-modern-client) {
+            .mx-scrollcontainer-slide {
+                &:not(.mx-scrollcontainer-open) > .region-sidebar {
+                    overflow: hidden;
+                }
+
+                &.mx-scrollcontainer-open > .region-sidebar {
+                    & > .mx-scrollcontainer-wrapper {
+                        position: relative;
+                        background: var(--sidebar-bg);
+                        width: var(--navsidebar-width-open);
+                        z-index: 100;
+                    }
+                }
+            }
+
+            // Push aside for mobile
+            @media (max-width: $screen-sm-max) {
+                .mx-scrollcontainer-open:not(.mx-scrollcontainer-slide) {
+                    width: 1100px;
+                }
+
+                .mx-scrollcontainer-slide .toggle-btn {
+                    display: inline-block !important;
+                }
+            }
+        }
+    }
+
+    .layout-atlas-responsive-sidebar {
+        .sidebar-wrapper {
+            padding: var(--spacing-medium) 0 var(--spacing-medium) 0;
+            transition: padding var(--navsidebar-animation-duration) var(--navsidebar-animation-function);
+        }
+
+        .mx-scrollcontainer-shrink {
+            .toggle-btn-sidebar {
+                width: var(--navsidebar-toggle-size);
+                height: var(--navsidebar-toggle-size);
+                border: 1px solid var(--border-color-default);
+                opacity: 0;
+                padding: 0;
+                overflow: hidden;
+                position: absolute;
+                background: var(--color-base);
+                border-radius: 100%;
+                transition: all var(--navsidebar-animation-duration) var(--navsidebar-animation-function);
+                color: var(--font-color-header);
+                left: calc(var(--navsidebar-width-closed) - var(--navsidebar-toggle-size) / 2);
+                .mx-icon-filled,
+                .mx-icon-lined {
+                    line-height: var(--line-height-base);
+                }
+            }
+
+            .region-sidebar:hover {
+                .toggle-btn-sidebar {
+                    opacity: 1;
+                    &:hover {
+                        background-color: var(--brand-primary);
+                        color: var(--font-color-contrast);
+                        transform: scale(1.1);
+                        box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.3);
+                    }
+                }
+            }
+
+            &.mx-scrollcontainer-open {
+                .toggle-btn-sidebar {
+                    left: calc(var(--sidebar-size, var(--navsidebar-width-open)) - var(--navsidebar-toggle-size) / 2);
+                    rotate: 180deg;
+                }
+            }
+
+            @media (max-width: $screen-sm-max) {
+                :not(&.mx-scrollcontainer-open) {
+                    .toggle-btn-sidebar-mobile {
+                        // shown only for mobile
+                        color: var(--brand-primary-800);
+                        background: transparent;
+                        border: 0;
+                    }
+                }
+            }
+        }
+
+        .widget-language-selector {
+            .current-language-text {
+                color: var(--font-color-header);
+            }
+            .language-arrow {
+                color: var(--font-color-header);
+                .arrow-image {
+                    filter: none;
+                }
+            }
+        }
+    }
+
+    // Fix Safari issue of sidebar disappearing
+    .profile-tablet {
+        .mx-scrollcontainer:not(.mx-scrollcontainer-open) > .region-sidebar {
+            overflow-y: hidden;
+
+            .mx-scrollcontainer-wrapper {
+                overflow: visible;
+            }
+        }
+    }
+}
