@@ -484,12 +484,69 @@ PostgreSQL directly) before the cause turned out to be client-side.
 `--runtime-log <path>`. The pipe is already being read; writing it through costs
 almost nothing and makes the warm loop debuggable.
 
+### Retested against PR #38 (`6d3cde89`) — tee landed, **but the app log is not on stdout**
+
+The tee itself works exactly as asked: `run` announces
+`Runtime log: <projectDir>/.mxcli/runtime.log` at boot, creates the file, appends
+across restarts behind a `=== runtime start <ts> ===` marker, and `--runtime-log`
+overrides the path (`-` disables). `go test ./cmd/mxcli/docker/...` passes.
+
+What it captures is only what the JVM writes to fd 1/2 — four lines:
+
+```
+=== runtime start 2026-07-26T05:39:55Z ===
+Picked up JAVA_TOOL_OPTIONS: …
+[rtlauncher:container$] INFO Container start took 6182. Ready to accept admin requests.
+```
+
+The **Mendix application log is not on stdout at all.** It is delivered to log
+subscribers, and the standalone runtime boots with none attached. Proof: a probe
+copy of `ACT_SelectCell` with `log info|warning|error node 'ProbeNode' …`, driven
+by a real click — **0 lines** in `runtime.log`. Then a forced runtime exception
+(`change` on an empty object) — also **0 lines** in `runtime.log`, while the
+browser showed the generic "An error occurred, please contact your system
+administrator."
+
+Attaching a subscriber by hand puts everything where it was wanted:
+
+```bash
+curl -H "X-M2EE-Authentication: $(printf 'mxcli-local-dev' | base64)" \
+     -H 'Content-Type: application/json' -d '{"action":"create_log_subscriber",
+       "params":{"name":"file","type":"file","autosubscribe":"INFO",
+                 "filename":"…/.mxcli/runtime.log"}}' http://127.0.0.1:8090/
+```
+
+and the same click then yields the log nodes *and* the microflow stack, pinned to
+the exact activity:
+
+```
+INFO    - ProbeNode: MXCLI-PROBE-INFO selection flow entered
+WARNING - ProbeNode: MXCLI-PROBE-WARN selection flow entered
+ERROR   - ProbeNode: MXCLI-PROBE-ERROR selection flow entered
+ERROR   - Connector: … Change object 'Some(Nothing)' should not be null
+            at Sudoku.ACT_SelectCell (Change : 'Change 'Nothing' (IsSelected)')
+          com.mendix.modules.microflowengine.MicroflowException: …
+```
+
+**Remaining ask:** call `create_log_subscriber` once during boot, right beside the
+existing `update_configuration` call in `localboot.go`, pointing at the same
+`RuntimeLogPath`. Two caveats found while testing: do **not** follow it with
+`start_logging` — the runtime has already started logging and the action throws
+`LoggingException: Logging has already been started.`; and `create_log_subscriber`
+with no params returns a bare `JSONException`, so the params are required.
+`get_log_messages` is still not an action on this runtime, so the subscriber —
+not polling — is the route.
+
+Keeping the stdout tee is still worth it: JVM-level failures (OOM, a runtime that
+dies before the admin API is up) never reach a subscriber.
+
 ---
 
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
 `go test ./mdl/visitor/... ./mdl/executor/... ./cmd/mxcli/docker/...` passes.
+Finding 25 was retested later against `main` at `6d3cde89` (PR #38 merged).
 
 | # | Finding | Status |
 |---|---|---|
@@ -505,7 +562,7 @@ Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
 | 23 | theme errors generic | **Fixed** |
 | 2, 4, 8, 10–14, 18–22 | — | Open / not claimed |
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
-| 25 | runtime log unreachable from `run --local` | **New** |
+| 25 | runtime log unreachable from `run --local` | Partial (#38) — tee works, app log needs a subscriber |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
