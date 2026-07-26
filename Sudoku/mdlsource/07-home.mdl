@@ -15,6 +15,8 @@ create or replace microflow Sudoku.ACT_NewEasy ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_NewEasy';
+
   $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
@@ -30,6 +32,8 @@ create or replace microflow Sudoku.ACT_NewMedium ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_NewMedium';
+
   $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
@@ -45,6 +49,8 @@ create or replace microflow Sudoku.ACT_NewHard ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_NewHard';
+
   $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;

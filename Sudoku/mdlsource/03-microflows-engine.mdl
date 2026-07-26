@@ -37,6 +37,8 @@ create or replace microflow Sudoku.ACT_MarkPeers (
 returns boolean as $Marked
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_MarkPeers';
+
   declare $Marked boolean = false;
   declare $sel integer = 0;
   declare $want boolean = false;
@@ -92,6 +94,8 @@ create or replace microflow Sudoku.ACT_Refresh (
 returns boolean as $IsSolved
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_Refresh';
+
   declare $IsSolved boolean = false;
   declare $filled integer = 0;
   declare $errors integer = 0;
@@ -275,6 +279,8 @@ create or replace microflow Sudoku.ACT_SolveGrid (
 returns string as $Result
 folder 'Engine'
 begin
+  log info node 'Sudoku' 'ACT_SolveGrid';
+
   declare $Result string = '';
   declare $g string = '';
   declare $progress boolean = true;
@@ -562,6 +568,8 @@ create or replace microflow Sudoku.ACT_DealGame (
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_DealGame givens=' + toString($TargetGivens);
+
   -- Validity-preserving shuffles
   declare $digitRot integer = round(random() * 8);
   declare $bandOff0 integer = round(random() * 2);
@@ -873,6 +881,8 @@ create or replace microflow Sudoku.ACT_ResetBoard (
 returns boolean as $Reset
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_ResetBoard';
+
   declare $Reset boolean = false;
 
   if $Game = empty then
@@ -913,6 +923,8 @@ create or replace microflow Sudoku.ACT_Hint (
 returns boolean as $Revealed
 folder 'Game'
 begin
+  log info node 'Sudoku' 'ACT_Hint';
+
   declare $Revealed boolean = false;
 
   if $Game = empty then

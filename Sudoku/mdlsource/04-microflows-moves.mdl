@@ -29,6 +29,8 @@ create or replace microflow Sudoku.ACT_ToggleNote (
 returns boolean as $Toggled
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_ToggleNote digit=' + toString($Digit);
+
   declare $Toggled boolean = false;
 
   if $Cell = empty then
@@ -88,6 +90,8 @@ create or replace microflow Sudoku.ACT_LogMove (
 returns boolean as $Logged
 folder 'History'
 begin
+  log info node 'Sudoku' 'ACT_LogMove';
+
   declare $Logged boolean = false;
   declare $next integer = 0;
 
@@ -133,6 +137,8 @@ create or replace microflow Sudoku.ACT_ToggleNotes (
 returns boolean as $Mode
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_ToggleNotes';
+
   declare $Mode boolean = false;
 
   if $Game = empty then
@@ -170,6 +176,8 @@ begin
   if $Cell = empty then
     return false;
   end if;
+
+  log info node 'Sudoku' 'ACT_SelectCell row=' + toString($Cell/"Row" + 1) + ' col=' + toString($Cell/"Col" + 1);
 
   retrieve $Game from $Cell/Sudoku."Cell_Game";
   if $Game = empty then
@@ -237,6 +245,8 @@ create or replace microflow Sudoku.ACT_ApplyValue (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_ApplyValue digit=' + toString($Digit);
+
   declare $Applied boolean = false;
 
   if $Game = empty then
@@ -289,6 +299,8 @@ create or replace microflow Sudoku.ACT_ClearValue (
 returns boolean as $Cleared
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_ClearValue';
+
   declare $Cleared boolean = false;
 
   if $Game = empty then
@@ -332,6 +344,8 @@ create or replace microflow Sudoku.ACT_Set1 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set1';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 1);
   return $Applied;
 end;
@@ -349,6 +363,8 @@ create or replace microflow Sudoku.ACT_Set2 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set2';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 2);
   return $Applied;
 end;
@@ -366,6 +382,8 @@ create or replace microflow Sudoku.ACT_Set3 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set3';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 3);
   return $Applied;
 end;
@@ -383,6 +401,8 @@ create or replace microflow Sudoku.ACT_Set4 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set4';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 4);
   return $Applied;
 end;
@@ -400,6 +420,8 @@ create or replace microflow Sudoku.ACT_Set5 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set5';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 5);
   return $Applied;
 end;
@@ -417,6 +439,8 @@ create or replace microflow Sudoku.ACT_Set6 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set6';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 6);
   return $Applied;
 end;
@@ -434,6 +458,8 @@ create or replace microflow Sudoku.ACT_Set7 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set7';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 7);
   return $Applied;
 end;
@@ -451,6 +477,8 @@ create or replace microflow Sudoku.ACT_Set8 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set8';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 8);
   return $Applied;
 end;
@@ -468,6 +496,8 @@ create or replace microflow Sudoku.ACT_Set9 (
 returns boolean as $Applied
 folder 'Moves'
 begin
+  log info node 'Sudoku' 'ACT_Set9';
+
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 9);
   return $Applied;
 end;
@@ -485,6 +515,8 @@ create or replace microflow Sudoku.ACT_Undo (
 returns boolean as $Undone
 folder 'History'
 begin
+  log info node 'Sudoku' 'ACT_Undo';
+
   declare $Undone boolean = false;
 
   if $Game = empty then
@@ -530,6 +562,8 @@ create or replace microflow Sudoku.ACT_Redo (
 returns boolean as $Redone
 folder 'History'
 begin
+  log info node 'Sudoku' 'ACT_Redo';
+
   declare $Redone boolean = false;
   declare $target integer = 0;
 

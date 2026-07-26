@@ -200,6 +200,27 @@ The app serves at <http://127.0.0.1:8080/>. Set `MXCLI_HUB_SECRET` (and
 optionally `MXCLI_HUB_URL`) in the environment to also register it with an
 `mxcli tunnel-hub` for a public preview URL.
 
+### Watching what the UI triggers
+
+Every action microflow logs its own name to the log node `Sudoku`, so playing
+the app prints the call chain:
+
+```bash
+scripts/trace.sh          # follow live  (--all for the history so far)
+```
+
+```
+07:12:03  ACT_Set1
+07:12:03  ACT_ApplyValue digit=1
+07:12:03  ACT_LogMove
+07:12:03  ACT_Refresh
+07:12:03  ACT_MarkPeers
+```
+
+The lines come from `Sudoku/.mxcli/runtime.log`, which `mxcli run --local` fills
+with the Mendix application log — see [FINDINGS.md](FINDINGS.md) #25 for how that
+plumbing came to exist.
+
 ## Verification
 
 `mx check` reports **0 errors**. Beyond that the app was driven with Playwright:
