@@ -530,15 +530,47 @@ ERROR   - Connector: … Change object 'Some(Nothing)' should not be null
 
 **Remaining ask:** call `create_log_subscriber` once during boot, right beside the
 existing `update_configuration` call in `localboot.go`, pointing at the same
-`RuntimeLogPath`. Two caveats found while testing: do **not** follow it with
-`start_logging` — the runtime has already started logging and the action throws
-`LoggingException: Logging has already been started.`; and `create_log_subscriber`
-with no params returns a bare `JSONException`, so the params are required.
-`get_log_messages` is still not an action on this runtime, so the subscriber —
-not polling — is the route.
+`RuntimeLogPath`. One caveat: `create_log_subscriber` with no params returns a
+bare `JSONException`, so the params are required. `get_log_messages` is still not
+an action on this runtime, so the subscriber — not polling — is the route.
 
 Keeping the stdout tee is still worth it: JVM-level failures (OOM, a runtime that
 dies before the admin API is up) never reach a subscriber.
+
+### Retested against PR #39 (`a2f8d823`) — the subscriber is registered but never started
+
+`Start` now calls `create_log_subscriber` with
+`{type: file, name: mxcli-run-local, autosubscribe: INFO, filename: <abs RuntimeLogPath>, max_size: 1GiB, max_rotate: 0}`, on every start so a restarted JVM
+is re-attached, best-effort so a logging failure can't fail the boot.
+`go test ./cmd/mxcli/docker/...` passes.
+
+It still captures nothing. On a fresh boot, `runtime.log` holds the same four
+stdout lines, and driving a click through a probe microflow carrying
+`log info|warning|error node 'ProbeNode' …` adds **0 lines**.
+
+The missing call is `start_logging`. A standalone runtime boots with logging
+**not started**, so a registered subscriber sits inert. Isolated on one boot:
+
+| step | probe lines in `runtime.log` |
+|---|---|
+| boot (mxcli attaches its subscriber), then click | **0** |
+| `start_logging` → `{"feedback":{},"result":0}`, then click | **6** |
+
+Nothing else changed between the two rows. After that call the file gets the log
+nodes *and* a server-side failure in full — `ERROR - Connector: … Change object
+'Some(Nothing)' should not be null / at Sudoku.ACT_SelectCell (Change : …)`
+followed by the `MicroflowException` stack.
+
+**Correction to the note above, which is what sent this the wrong way.** I wrote
+that `start_logging` must not be called because it throws `LoggingException:
+Logging has already been started.` That was wrong. Logging is *not* running on a
+fresh runtime; I had probed `start_logging` bare a moment earlier in the same
+session, and my second call was what threw. On a fresh JVM the first call
+succeeds with `result: 0`.
+
+So `attachFileLogSubscriber` needs one more `CallM2EE(c.opts, "start_logging",
+nil)` after the subscriber is created — treating an "already been started" error
+as success, since `Start` also runs on paths where the JVM is not fresh.
 
 ---
 
@@ -546,7 +578,8 @@ dies before the admin API is up) never reach a subscriber.
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
 `go test ./mdl/visitor/... ./mdl/executor/... ./cmd/mxcli/docker/...` passes.
-Finding 25 was retested later against `main` at `6d3cde89` (PR #38 merged).
+Finding 25 was retested later against `main` at `6d3cde89` (PR #38) and
+`a2f8d823` (PR #39).
 
 | # | Finding | Status |
 |---|---|---|
@@ -562,7 +595,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38 merged).
 | 23 | theme errors generic | **Fixed** |
 | 2, 4, 8, 10–14, 18–22 | — | Open / not claimed |
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
-| 25 | runtime log unreachable from `run --local` | Partial (#38) — tee works, app log needs a subscriber |
+| 25 | runtime log unreachable from `run --local` | Partial (#38, #39) — tee + subscriber land; needs `start_logging` |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
