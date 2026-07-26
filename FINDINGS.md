@@ -781,10 +781,31 @@ So any log filter built around microflows silently drops every nanoflow line.
 `scripts/trace.sh` here now matches `Sudoku|Client_Nanoflow`. Either the runtime
 should keep the declared node, or the docs should say it does not.
 
-Measured cost: forwarding those lines used **0 network requests** during the
-interaction (Playwright saw no request of any kind while the nanoflow ran), so
-it appears to ride the already-open `mxdevtools` websocket. Do not assume the
-same in a production build with dev tools off.
+Measured cost: forwarding those lines used **0 HTTP requests** during the
+interaction. They ride the already-open **`ws://…/mxdevtools/` websocket** —
+confirmed by reading the frames, four of which carried the probe payload:
+
+```
+WS FRAME carries NFPROBE   x4      (debug, info, warning, error)
+ws frames sent during the toggle: 6
+```
+
+So a nanoflow's log reaching the server log is a **dev-tools artefact**. With
+dev tools off — any production build — expect the browser console and nothing
+else. Anything built on `Client_Nanoflow` lines is a development-only facility.
+
+**Levels: `debug` is sent but dropped.** All four levels leave the client, and
+the level survives for three of them; the server discards `debug`:
+
+| in the nanoflow | browser console | server log |
+|---|---|---|
+| `log debug` | `debug [Nanoflow] NFPROBE-DEBUG` | **absent** |
+| `log info` | `info …` | `INFO - Client_Nanoflow: NFPROBE-INFO` |
+| `log warning` | `warning …` | `WARNING - Client_Nanoflow: …` |
+| `log error` | `error …` | `ERROR - Client_Nanoflow: …` |
+
+Use `info` and up in a nanoflow if you want it in `runtime.log`; `debug` is
+browser-only even though the client does put it on the wire.
 
 ### Debugging: paused nanoflows are invisible to the obvious call
 
@@ -822,6 +843,21 @@ browser — the console closed the flow with
 `Finished execution … took 13331.8 milliseconds`, i.e. exactly the pause.
 `get_debugger_status.client_connected` flips to `true` once a browser attaches,
 which is the only hint that nanoflow debugging is live at all.
+
+**Second trap: a nanoflow's `debug_id` is single-use.** Stepping works, but every
+step **issues a new `debug_id`** and invalidates the old one. Microflows behave
+the opposite way. Same script, same `step over`, run three times:
+
+```
+nanoflow   e82ddd93 at 2ccf6e32 -> 8b586465 at 1e458f73 -> 3a6ea730 at 2467b992 -> 92008581 at 9928f9b9
+microflow  dec595f0 at RetrieveByXPath -> dec595f0 at Gateway -> dec595f0 at Change
+```
+
+Reusing the id you stepped with fails on the *second* step with
+`Could not find microflow/nanoflow in debug with id: …`, which reads like the
+flow ended rather than like a stale handle. Any tool that caches the id across
+steps — the obvious design, and what a microflow lets you get away with — breaks
+after one step on a nanoflow. Re-read `poll_events` between steps.
 
 `scripts/mfdebug.sh` covers both: `nactivities`, `nbreak`, and `events`.
 

@@ -118,6 +118,9 @@ case "${1:-}" in
   list)     dbg get_list "{\"debug_id\":\"${2:?need a debug id}\",\"variable_name\":\"${3:?need a variable}\"}" | pretty ;;
 
   step)
+    # NOTE for nanoflows: each step issues a NEW debug_id and invalidates the
+    # one you stepped with, so re-read 'events' between steps. Microflow
+    # debug_ids stay stable and can be reused.
     case "${2:-}" in
       over|into|out) dbg "step_$2" "{\"debug_id\":\"${3:?need a debug id}\"}" | pretty ;;
       *) echo "usage: $0 step over|into|out <debug-id>" >&2; exit 2 ;;

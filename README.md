@@ -253,7 +253,8 @@ scripts/mfdebug.sh disable
 
 Nanoflows break through the same endpoint — `nactivities` and `nbreak` — but a
 paused nanoflow never shows up under `paused`; it arrives as an event, so use
-`events` instead. That asymmetry is the one thing worth remembering.
+`events` instead. And a nanoflow's `debug_id` is single-use — each step mints a
+new one, unlike a microflow's — so re-read `events` between steps.
 
 A breakpoint pauses **whoever** hits it, browser included, and their request
 hangs until `continue`. Always finish with `disable`. The protocol it speaks is
