@@ -16,6 +16,13 @@
 #   scripts/mfdebug.sh unbreak <object-id>
 #   scripts/mfdebug.sh disable                     # always finish with this
 #
+# Nanoflows run in the browser but break through the same endpoint:
+#
+#   scripts/mfdebug.sh nactivities Sudoku.NF_ToggleNotes
+#   scripts/mfdebug.sh nbreak Sudoku.NF_ToggleNotes <object-id>
+#   scripts/mfdebug.sh events                      # paused NANOflows show up here,
+#                                                  # never in 'paused'
+#
 # A breakpoint pauses whoever hits it, including a real user in a browser —
 # 'continue' and 'disable' are how you give the app back.
 set -uo pipefail
@@ -53,9 +60,9 @@ dbg() { # dbg <action> <params-json> [--no-token]
 # are the model's own object GUIDs, read out of the .mpr via 'mxcli bson dump'
 # (BSON stores them as little-endian .NET GUIDs, hence bytes_le).
 activities() {
-  local flow="$1" mx="$ROOT/Sudoku/mxcli"
+  local flow="$1" kind="${2:-microflow}" mx="$ROOT/Sudoku/mxcli"
   [ -x "$mx" ] || mx=mxcli
-  "$mx" bson dump -p "$PROJECT" -t microflow -o "$flow" 2>/dev/null |
+  "$mx" bson dump -p "$PROJECT" -t "$kind" -o "$flow" 2>/dev/null |
   python3 -c '
 import json, base64, uuid, sys
 def walk(n, out):
@@ -91,14 +98,22 @@ case "${1:-}" in
     printf '%s' "$tok" > "$TOKEN_FILE"
     printf '%s\n' "$out" | pretty ;;
 
-  activities) activities "${2:?usage: $0 activities Module.Microflow}" ;;
+  activities)  activities "${2:?usage: $0 activities Module.Microflow}" microflow ;;
+  nactivities) activities "${2:?usage: $0 nactivities Module.Nanoflow}" nanoflow ;;
 
   break)
     dbg add_breakpoint "{\"microflow_name\":\"${2:?need a microflow}\",\"object_id\":\"${3:?need an object id}\",\"condition\":\"${4:-}\"}" | pretty ;;
+  nbreak)
+    # Same action, but keyed by nanoflow_name. 'objectId' is rejected here —
+    # the id field is 'object_id' for both flow kinds.
+    dbg add_breakpoint "{\"nanoflow_name\":\"${2:?need a nanoflow}\",\"object_id\":\"${3:?need an object id}\",\"condition\":\"${4:-}\"}" | pretty ;;
   unbreak)
     dbg remove_breakpoint "{\"object_id\":\"${2:?need an object id}\"}" | pretty ;;
 
   paused)   dbg get_paused_microflows '{}' | pretty ;;
+  # Paused NANOFLOWS never appear in get_paused_microflows — they are delivered
+  # as 'paused_microflow' events instead, so this is the only way to see one.
+  events)   dbg poll_events '{}' | pretty ;;
   object)   dbg get_object "{\"debug_id\":\"${2:?need a debug id}\",\"variable_name\":\"${3:?need a variable}\"}" | pretty ;;
   list)     dbg get_list "{\"debug_id\":\"${2:?need a debug id}\",\"variable_name\":\"${3:?need a variable}\"}" | pretty ;;
 
@@ -113,5 +128,5 @@ case "${1:-}" in
 
   stop)     dbg stop_session '{}' | pretty; rm -f "$TOKEN_FILE" ;;
 
-  *) sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
 esac

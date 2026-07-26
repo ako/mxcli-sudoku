@@ -319,7 +319,7 @@ create or replace page Sudoku.Game_Play
             container toolNotes (
               class: 'sd-tool',
               dynamicclasses: 'if $currentObject/NotesMode then ''sd-tool-on'' else ''''',
-              OnClick: microflow Sudoku.ACT_ToggleNotes(Game: $Game)
+              OnClick: nanoflow Sudoku.NF_ToggleNotes(Game: $Game)
             ) {
               dynamictext toolNotesT (content: 'NOTES', class: 'sd-tool-text')
             }

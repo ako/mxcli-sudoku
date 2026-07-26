@@ -160,10 +160,19 @@ MDL source lives in `Sudoku/mdlsource/` and is applied in order:
 | `02-domain-refinements.mdl` | Selection, per-digit remainders, progress, date label |
 | `03-microflows-engine.mdl` | `ACT_Refresh`, logic solver, generator, hint, reset |
 | `04-microflows-moves.mdl` | Select, apply, clear, nine pad wrappers |
+| `04a-nanoflows.mdl` | Client-side moves — runs in the browser |
 | `05-page-done.mdl` | The completion page (no outgoing references) |
 | `06-page-play.mdl` | The board page (Nocturne) |
 | `07-home.mdl` | New-game actions, landing page, back-links |
 | `08-navigation.mdl` | Responsive profile → `Sudoku.Home` |
+
+`04a` is a nanoflow — it runs in the browser, not on the server. The Notes
+switch flips one boolean, and doing that through a microflow cost two `/xas/`
+round trips and ~37 KB (the gallery refetching all 81 squares, because the Game
+was committed with `refresh`). As a nanoflow it is **0 round trips, 0 bytes**.
+It deliberately does not commit: Mendix carries an object's uncommitted client
+state into the next microflow that takes it as a parameter, so `ACT_ApplyValue`
+still sees the mode the player picked.
 
 The numbering **is** the dependency order — each script only references what
 earlier ones created, so a fresh project applies them 01→08 with no forward
@@ -215,7 +224,12 @@ scripts/trace.sh          # follow live  (--all for the history so far)
 07:12:03  ACT_LogMove
 07:12:03  ACT_Refresh
 07:12:03  ACT_MarkPeers
+22:52:27  NF_ToggleNotes
 ```
+
+Nanoflow lines arrive too, but the runtime rewrites their log node to
+`Client_Nanoflow` rather than the one the script declares, so the filter has to
+match both — see [FINDINGS.md](FINDINGS.md) #28.
 
 The lines come from `Sudoku/.mxcli/runtime.log`, which `mxcli run --local` fills
 with the Mendix application log — see [FINDINGS.md](FINDINGS.md) #25 for how that
@@ -236,6 +250,10 @@ scripts/mfdebug.sh step over <debug-id>
 scripts/mfdebug.sh continue
 scripts/mfdebug.sh disable
 ```
+
+Nanoflows break through the same endpoint — `nactivities` and `nbreak` — but a
+paused nanoflow never shows up under `paused`; it arrives as an event, so use
+`events` instead. That asymmetry is the one thing worth remembering.
 
 A breakpoint pauses **whoever** hits it, browser included, and their request
 hangs until `continue`. Always finish with `disable`. The protocol it speaks is

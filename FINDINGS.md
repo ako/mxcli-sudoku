@@ -300,6 +300,15 @@ and `deployment/web`, restart.
 **Suggestion:** `mxcli run` could detect a foreign writer, or surface the real
 mxbuild error rather than the generic "contains errors".
 
+**Seen again from `mx check`, not just `mxbuild`.** Running the validator while
+the loop was live produced a build failure whose only Error entry was
+`"Could not check expression. Checking will resume after the next change."` —
+the serve process had been knocked out of a consistent state by the other
+reader. The raw output being surfaced (the PR-build improvement above) is what
+made that diagnosable at all. Recovery is cheaper than the original: touch any
+source file and let the next build go through. Worth knowing that `mx check` is
+a foreign writer too, since it looks read-only.
+
 ---
 
 ## 16. `mxcli run --hub` registers once and never re-registers
@@ -742,6 +751,99 @@ preview URL if it succeeds later.
 
 ---
 
+## 28. Nanoflow logging and debugging both work — with two traps
+
+**Docs / Gap.** Nothing in the skill docs says where a nanoflow's `log` output
+goes, or that nanoflows can be debugged at all. Both work; neither behaves the
+way the microflow experience suggests.
+
+### Logging: the declared node is discarded
+
+`log info node 'Sudoku' 'NF_ToggleNotes';` inside a nanoflow reaches **two**
+places. The browser console gets it, wrapped, along with free per-execution
+timing:
+
+```
+debug: [Nanoflow] [flow_ojr_92] Starting execution of nanoflow Sudoku.NF_ToggleNotes.
+info:  [Nanoflow] NF_ToggleNotes
+debug: [Nanoflow] [flow_ojr_92] Finished execution of nanoflow Sudoku.NF_ToggleNotes. Execution took 6.7 milliseconds.
+```
+
+And it reaches the server log — but under the node **`Client_Nanoflow`**, not
+the node the script declared:
+
+```
+22:51:00.357 INFO - Client_Nanoflow: NF_ToggleNotes     <- nanoflow, node rewritten
+22:50:54.441 INFO - Sudoku: ACT_Refresh                 <- microflow, node kept
+```
+
+So any log filter built around microflows silently drops every nanoflow line.
+`scripts/trace.sh` here now matches `Sudoku|Client_Nanoflow`. Either the runtime
+should keep the declared node, or the docs should say it does not.
+
+Measured cost: forwarding those lines used **0 network requests** during the
+interaction (Playwright saw no request of any kind while the nanoflow ran), so
+it appears to ride the already-open `mxdevtools` websocket. Do not assume the
+same in a production build with dev tools off.
+
+### Debugging: paused nanoflows are invisible to the obvious call
+
+Nanoflow breakpoints go through the same `<app>/debugger/` endpoint and the same
+`add_breakpoint` action as microflows (#26), keyed by `nanoflow_name`:
+
+```json
+{"action":"add_breakpoint","session_token":"…",
+ "params":{"nanoflow_name":"Sudoku.NF_ToggleNotes","object_id":"<activity GUID>","condition":""}}
+```
+
+The id field is still `object_id` for both flow kinds. Using `objectId` — which
+*is* a real constant in `DebuggerConstants$`, bound to `NANOFLOW_OBJECT_ID` —
+fails with a leaked NPE: `Invalid breakpoint:Cannot invoke "String.length()"
+because "name" is null`.
+
+**The trap:** a paused nanoflow **never appears in `get_paused_microflows`**.
+That action keeps returning `{"paused_microflows": []}` while the browser sits
+frozen mid-flow. Paused nanoflows are delivered as *events*:
+
+```
+poll_events -> {"events":[{"type":"paused_microflow","data":{
+   "debug_id":"5528e595-…","microflow_name":"Sudoku.NF_ToggleNotes",
+   "object_id":"d5399b09-…","variables":{"Game":{…,"entity":"Sudoku.Game"},
+                                         "Mode":{"type":"boolean","value":true}}}}]}
+```
+
+— note the event type is still `paused_microflow` even for a nanoflow. Without
+knowing to poll, the only symptom is a browser that stops responding and a
+console that logged `Starting execution` with no matching `Finished`.
+
+Everything downstream then works on that `debug_id`: `get_object` expanded the
+client-side `Game` (`EmptyCount 31`, `Message`, …), and `continue` released the
+browser — the console closed the flow with
+`Finished execution … took 13331.8 milliseconds`, i.e. exactly the pause.
+`get_debugger_status.client_connected` flips to `true` once a browser attaches,
+which is the only hint that nanoflow debugging is live at all.
+
+`scripts/mfdebug.sh` covers both: `nactivities`, `nbreak`, and `events`.
+
+### Why it mattered here
+
+Replacing one microflow with a nanoflow (`ACT_ToggleNotes` → `NF_ToggleNotes`),
+measured over four toggles each:
+
+| | round trips | bytes | click → UI updated |
+|---|---|---|---|
+| microflow | 2 | ~37 KB | ~140 ms |
+| nanoflow | **0** | **0** | **~73 ms** |
+
+The 37 KB was the gallery refetching all 81 squares because the Game was
+committed with `refresh` — to flip one boolean. The nanoflow deliberately does
+**not** commit, and the mode still reaches the server: Mendix sends an object's
+uncommitted client state along when a later microflow takes it as a parameter,
+which was verified by toggling notes and then writing a pencil mark through the
+server-side `ACT_ApplyValue`.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -766,6 +868,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 25 | runtime log unreachable from `run --local` | **Fixed** (#38, #39, #41) — verified end to end |
 | 26 | microflow debugger not exposed by mxcli | **New** — protocol mapped, driven end to end |
 | 27 | unreachable hub aborts the whole run | **New** |
+| 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is

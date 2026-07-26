@@ -19,7 +19,7 @@ if [ ! -f "$LOG" ]; then
 fi
 
 # 'HH:MM:SS  ACT_Name detail' — drop the date and the log-node prefix.
-tidy() { sed -n 's/^[0-9-]* \([0-9:]*\)\.[0-9]* INFO - Sudoku: /\1  /p'; }
+tidy() { sed -n 's/^[0-9-]* \([0-9:]*\)\.[0-9]* INFO - \(Sudoku\|Client_Nanoflow\): /\1  /p'; }
 
 case "${1:-}" in
   --all) tidy < "$LOG" ;;
