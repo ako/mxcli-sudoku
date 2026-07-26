@@ -455,6 +455,37 @@ a scratch file and apply that.
 
 ---
 
+## 25. `mxcli run --local` swallows the Mendix runtime log
+
+**Gap.** The warm loop prints its own progress — build, reload, hub connection —
+but the runtime's own log never surfaces anywhere a developer can read it:
+
+- The runtime's stdout and stderr are a pipe consumed by `mxcli`
+  (`/proc/<runtime-pid>/fd/1 -> pipe:[…]`, same inode for fd/2), so redirecting
+  `mxcli run` to a file captures mxcli's lines only.
+- `~/.mxcli/logs/mxcli-<date>.log` is a structured record of MDL sessions
+  (`session_start`, `execute`, `session_end`). Zero runtime lines.
+- `run` has no `--log-file`, `--verbose` or log-level flag.
+- The M2EE admin API on 8090 answers `runtime_status` (`running`) with the local
+  password, but `get_log_messages` returns `{"result":-5,"message":"Action not
+  found."}`.
+
+So when a microflow throws server-side, the browser shows the generic Mendix
+error dialog and there is **nothing to correlate it against** — no stack trace,
+no log node, no `LOG ERROR` output from your own microflows either. Debugging
+falls back to reproducing in the client and reading the `/xas/` response bodies
+off a Playwright page, which is a poor substitute for a stack.
+
+This cost real time on an "error when selecting a cell" report: the whole
+server side had to be excluded by other means (driving the UI, and querying
+PostgreSQL directly) before the cause turned out to be client-side.
+
+**Ask:** tee the runtime's stdout to `<project>/.mxcli/runtime.log` — or add
+`--runtime-log <path>`. The pipe is already being read; writing it through costs
+almost nothing and makes the warm loop debuggable.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -474,6 +505,7 @@ Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
 | 23 | theme errors generic | **Fixed** |
 | 2, 4, 8, 10–14, 18–22 | — | Open / not claimed |
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
+| 25 | runtime log unreachable from `run --local` | **New** |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
