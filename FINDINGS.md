@@ -713,6 +713,35 @@ disable the debugger on shutdown so a stray breakpoint cannot outlive the sessio
 
 ---
 
+## 27. An unreachable hub takes the whole app down with it
+
+**Bug.** `mxcli run --hub <url>` treats hub registration as fatal. With the hub
+host down, the launch aborts:
+
+```
+Starting incremental web client bundler...
+Registering with hub https://hub.mxcli.org...
+Error: hub registration: contacting hub: Post "https://hub.mxcli.org/api/register":
+       net/http: TLS handshake timeout
+```
+
+No runtime, no local app — `curl 127.0.0.1:8080` gives nothing. The tunnel is a
+*convenience* on top of a local run, so losing it should cost the preview URL and
+nothing else.
+
+The odd part is that mxcli already handles this correctly once running: when the
+hub died mid-session at 07:46:44, the chisel client logged
+`websocket: close 1006` and retried every 30s indefinitely while the local app
+kept serving. Only registration *at startup* is fatal.
+
+**Ask:** warn and continue local-only when the initial registration fails, then
+retry in the background on the schedule the client already uses. Re-print the
+preview URL if it succeeds later.
+
+**Workaround:** drop `--hub` and run `mxcli run --local …`.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -736,6 +765,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
 | 25 | runtime log unreachable from `run --local` | **Fixed** (#38, #39, #41) — verified end to end |
 | 26 | microflow debugger not exposed by mxcli | **New** — protocol mapped, driven end to end |
+| 27 | unreachable hub aborts the whole run | **New** |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
