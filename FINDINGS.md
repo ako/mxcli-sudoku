@@ -572,14 +572,61 @@ So `attachFileLogSubscriber` needs one more `CallM2EE(c.opts, "start_logging",
 nil)` after the subscriber is created — treating an "already been started" error
 as success, since `Start` also runs on paths where the JVM is not fresh.
 
+### FIXED, PR #41 (`5fb58dbf`) — verified end to end
+
+`configureRuntimeLogging` now calls `create_log_subscriber` then `start_logging`.
+On a clean boot `runtime.log` fills immediately, and it turns out to capture the
+**whole startup sequence**, not just what follows the call — the runtime buffers
+its log until logging starts, then replays:
+
+```
+=== runtime start 2026-07-26T06:57:32Z ===
+[rtlauncher:container$] INFO Container start took 4536. …
+06:57:38.358 INFO - Core: Mendix Runtime 11.12.1 (build 11.12.1). …
+06:57:38.391 INFO - Configuration: updateConfiguration: ApplicationRootUrl=…
+06:57:41.401 INFO - ConnectionBus: Database product information: PostgreSQL 16.13
+```
+
+Re-running the two probes with **no manual admin call** at any point:
+
+| probe | result |
+|---|---|
+| `log info/warning/error node 'ProbeNode'` in `ACT_SelectCell`, one click | all three lines, at the right levels |
+| `change` on an empty object, one click | `ERROR - Connector: … Change object 'Some(Nothing)' should not be null` + `at Sudoku.ACT_SelectCell (Change : 'Change 'Nothing' (IsSelected)')` + the `MicroflowException` stack |
+
+The restart path holds too, which is the case the code explicitly claims. Adding
+an attribute to `Sudoku.Game` forced `build … applied via restart`; the second
+`=== runtime start ===` marker appeared, no "application log not attached"
+warning, and a click after the restart logged all three probe lines. Finding #25
+is closed: a server-side failure in the warm loop is now diagnosable from one
+file.
+
+**One cosmetic follow-up.** The "already started" tolerance matches on the
+substring `already`, but that word is not in the response. A second
+`start_logging` against a live runtime returns:
+
+```json
+{"result": 1,
+ "cause":   "class com.mendix.logging.LoggingException occurred while executing an admin action request. See logging output for details.",
+ "message": "class com.mendix.m2ee.api.internal.AdminException occurred …"}
+```
+
+`M2EEError()` prefers `cause`, so the guard misses and `Start` prints
+`(runtime application log not attached: start_logging: class
+com.mendix.logging.LoggingException …)` on any re-`Start` against a still-running
+JVM — the DB-update retry path named in the comment. Harmless (it is best-effort,
+and logging is in fact attached), but the warning is spurious and says the
+opposite of the truth. Matching `logging.LoggingException`, or just not warning
+when `create_log_subscriber` itself succeeded, would close it.
+
 ---
 
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
 `go test ./mdl/visitor/... ./mdl/executor/... ./cmd/mxcli/docker/...` passes.
-Finding 25 was retested later against `main` at `6d3cde89` (PR #38) and
-`a2f8d823` (PR #39).
+Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
+`a2f8d823` (PR #39) and `5fb58dbf` (PR #41, where it closed).
 
 | # | Finding | Status |
 |---|---|---|
@@ -595,7 +642,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38) and
 | 23 | theme errors generic | **Fixed** |
 | 2, 4, 8, 10–14, 18–22 | — | Open / not claimed |
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
-| 25 | runtime log unreachable from `run --local` | Partial (#38, #39) — tee + subscriber land; needs `start_logging` |
+| 25 | runtime log unreachable from `run --local` | **Fixed** (#38, #39, #41) — verified end to end |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
