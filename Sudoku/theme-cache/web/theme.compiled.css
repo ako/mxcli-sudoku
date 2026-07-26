@@ -30053,6 +30053,18 @@ Do not change this file because it is core styling. Customizing core files will 
   font-weight: 500;
 }
 
+.sd-peer {
+  background: rgba(95, 211, 196, 0.09);
+}
+
+.sd-peer .sd-num {
+  color: var(--sd-accent);
+}
+
+.sd-given.sd-peer .sd-num {
+  color: #9FE6DC;
+}
+
 .sd-bad {
   background: rgba(255, 107, 107, 0.12);
 }
@@ -30418,15 +30430,15 @@ Do not change this file because it is core styling. Customizing core files will 
 
 .sd-lock-note {
   padding: 11px 14px;
-  background: rgba(255, 107, 107, 0.07);
-  border: 1px solid rgba(255, 107, 107, 0.28);
+  background: var(--sd-surface);
+  border: 1px solid var(--sd-line-2);
   border-radius: 10px;
 }
 
 .sd-lock-text {
   display: block;
   font-size: 12px;
-  color: var(--sd-bad);
+  color: var(--sd-muted-2);
 }
 
 .sd-notes {

@@ -246,6 +246,22 @@
 .sd-given { cursor: default; background: rgba(255, 255, 255, 0.014); }
 .sd-given .sd-num { color: var(--sd-ink-2); font-weight: 500; }
 
+// Selecting a filled square lights up every square holding the same digit,
+// so a digit's placement can be read at a glance. Declared BEFORE .sd-bad and
+// .sd-sel (equal specificity, so source order decides) — a conflict must stay
+// red and the selected square must keep its ring even when both also match.
+.sd-peer {
+  background: rgba(95, 211, 196, 0.09);
+}
+
+.sd-peer .sd-num {
+  color: var(--sd-accent);
+}
+
+.sd-given.sd-peer .sd-num {
+  color: #9FE6DC;   // a dealt digit stays calmer than a player's own
+}
+
 .sd-bad { background: rgba(255, 107, 107, 0.12); }
 .sd-bad .sd-num { color: var(--sd-bad); font-weight: 700; }
 
@@ -556,17 +572,19 @@
   pointer-events: none;
 }
 
+// Selecting a dealt square is a legitimate move now that it highlights the
+// digit's group, so this reads as information rather than an error.
 .sd-lock-note {
   padding: 11px 14px;
-  background: rgba(255, 107, 107, 0.07);
-  border: 1px solid rgba(255, 107, 107, 0.28);
+  background: var(--sd-surface);
+  border: 1px solid var(--sd-line-2);
   border-radius: 10px;
 }
 
 .sd-lock-text {
   display: block;
   font-size: 12px;
-  color: var(--sd-bad);
+  color: var(--sd-muted-2);
 }
 
 // =========================================================== pencil marks

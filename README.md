@@ -27,6 +27,9 @@ grid inside the square instead of an answer, and writing an answer clears that
 square's marks. `Undo` / `Redo` step through answer changes — pencil marks are
 deliberately not reversible. `Result` opens the completion page.
 
+Selecting a square that already holds a digit highlights every other square with
+the same digit, which makes scanning for a number's placement much quicker.
+
 ### How boards are generated
 
 `Sudoku.ACT_DealGame` produces boards that are valid, solvable, **and fully
@@ -108,6 +111,11 @@ The board page follows the developed "Nocturne" frames of the design handoff:
   conflicts and empty counts.
 - **Locked pad** — selecting a dealt square dims the pad and says so, rather
   than letting `ACT_ApplyValue` discard the digit silently.
+- **Same-digit highlight** — selecting a filled square lights up every square
+  holding that digit (`Cell.IsPeer`, recomputed by `ACT_MarkPeers` on selection
+  and after every move). Declared *before* `.sd-bad` and `.sd-sel` in the theme,
+  since equal specificity means source order decides: a conflict must stay red
+  and the selected square must keep its ring even when both also match.
 - **Notes** — nine `N1`..`N9` booleans per cell, not one packed string: a widget
   cannot index into a string, and each mark needs its own visibility expression.
   Each mark is pinned to its slot with `grid-area`, or hidden marks would

@@ -212,6 +212,8 @@ begin
   set $Game/Sudoku."Game_SelectedCell" = $Cell;
   commit $Game refresh;
 
+  call microflow Sudoku.ACT_MarkPeers(Game = $Game);
+
   set $Selected = true;
   return $Selected;
 end;

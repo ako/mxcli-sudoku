@@ -98,6 +98,12 @@ alter entity Sudoku."Game"
   add attribute "ProgressBucket": integer default 0;
 /
 
+-- Set on every square holding the same digit as the selected one, so
+-- selecting a filled square lights up its whole group.
+alter entity Sudoku."Cell"
+  add attribute "IsPeer": boolean default false;
+/
+
 -- Drives the selected-square highlight, replacing gallery selection
 alter entity Sudoku."Cell"
   add attribute "IsSelected": boolean default false;

@@ -21,6 +21,61 @@
 -- =====================================================================
 
 /**
+ * Lights up every square holding the same digit as the selected one.
+ *
+ * Selecting a filled square marks its whole group so the digit's placement
+ * can be read at a glance; selecting a blank square clears the marks. Runs
+ * after every move as well as on selection, since a move changes which
+ * squares belong to the group.
+ *
+ * @param $Game The game being played
+ * @returns True when the marks were recomputed
+ */
+create or replace microflow Sudoku.ACT_MarkPeers (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Marked
+folder 'Game'
+begin
+  declare $Marked boolean = false;
+  declare $sel integer = 0;
+  declare $want boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Selected from $Game/Sudoku."Game_SelectedCell";
+  if $Selected != empty then
+    if $Selected/"Value" != empty then
+      set $sel = $Selected/"Value";
+    end if;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $C in $Cells
+  begin
+    set $want = false;
+    if $sel > 0 and $C/"Value" = $sel then
+      set $want = true;
+    end if;
+    -- Only touch squares whose flag actually moves, so the commit stays small
+    if $C/"IsPeer" != $want then
+      change $C ("IsPeer" = $want);
+      add $C to $Changed;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  set $Marked = true;
+  return $Marked;
+end;
+/
+
+/**
  * Recomputes counters, per-digit remainders and per-cell error flags.
  *
  * Beyond the filled/error counts this now produces the data the Nocturne
@@ -188,6 +243,10 @@ begin
   end if;
 
   commit $Game refresh;
+
+  -- A move changes which squares share the selected digit
+  call microflow Sudoku.ACT_MarkPeers(Game = $Game);
+
   return $IsSolved;
 end;
 /

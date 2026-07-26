@@ -101,7 +101,7 @@ create or replace page Sudoku.Game_Play
             ) {
               template tplCell {
                 container sdCell (
-                  dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
+                  dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsPeer then '' sd-peer'' else '''') + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
                   OnClick: microflow Sudoku.ACT_SelectCell(Cell: $currentObject)
                 ) {
                   dynamictext sdCellNum (
@@ -295,7 +295,7 @@ create or replace page Sudoku.Game_Play
             visible: ["HasSelection" and "SelEditable" = false]
           ) {
             dynamictext sdLockText (
-              content: 'That square was dealt with the puzzle — pick an empty one.',
+              content: 'Dealt square — its matches are highlighted. Pick an empty square to enter a digit.',
               class: 'sd-lock-text'
             )
           }
