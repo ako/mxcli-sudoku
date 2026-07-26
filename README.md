@@ -221,6 +221,26 @@ The lines come from `Sudoku/.mxcli/runtime.log`, which `mxcli run --local` fills
 with the Mendix application log — see [FINDINGS.md](FINDINGS.md) #25 for how that
 plumbing came to exist.
 
+### Breakpoints
+
+The runtime also carries a real debugger. `scripts/mfdebug.sh` drives it:
+
+```bash
+scripts/mfdebug.sh enable
+scripts/mfdebug.sh session
+scripts/mfdebug.sh activities Sudoku.ACT_Hint     # ids you can break on
+scripts/mfdebug.sh break Sudoku.ACT_Hint <object-id>
+scripts/mfdebug.sh paused                         # variables in scope
+scripts/mfdebug.sh object <debug-id> Game
+scripts/mfdebug.sh step over <debug-id>
+scripts/mfdebug.sh continue
+scripts/mfdebug.sh disable
+```
+
+A breakpoint pauses **whoever** hits it, browser included, and their request
+hangs until `continue`. Always finish with `disable`. The protocol it speaks is
+written up in [FINDINGS.md](FINDINGS.md) #26.
+
 ## Verification
 
 `mx check` reports **0 errors**. Beyond that the app was driven with Playwright:

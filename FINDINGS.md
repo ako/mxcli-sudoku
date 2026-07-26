@@ -621,6 +621,98 @@ when `create_log_subscriber` itself succeeded, would close it.
 
 ---
 
+## 26. The microflow debugger works from the shell, but mxcli exposes none of it
+
+**Gap / opportunity.** The runtime ships a full interactive debugger — breakpoints,
+paused flows, variable inspection, stepping — and `mxcli run --local` never
+mentions it. `grep -ri "debugger\|breakpoint" *.go` in the mxcli tree returns
+nothing outside a docs aside. It is reachable today, so this is a wiring gap
+rather than a missing capability. Everything below was driven against the live
+Sudoku app.
+
+**Two APIs, and that is the part that is not obvious.** The M2EE admin API on
+:8090 only switches the debugger on and off:
+
+| action | params | result |
+|---|---|---|
+| `get_debugger_status` | — | `{number_of_paused_microflows, client_connected, enabled}` |
+| `enable_debugger` | `{"password": "…"}` | `result: 0` — bare call fails with a `JSONException` |
+| `disable_debugger` | — | `result: 0` |
+
+Breakpoints live somewhere else entirely: the runtime serves a **second endpoint
+at `<app>/debugger/`** — the one Studio Pro drives. It 401s until you send
+
+```
+X-Debugger-Authentication: base64(<the password passed to enable_debugger>)
+```
+
+Raw password, `Basic`, and `Bearer` all 401; the body of a 401 is `{}`, with no
+`WWW-Authenticate`, so the scheme is not discoverable by probing. I read it off
+`DebuggerConstants$` and `DebuggerHandler` in
+`com.mendix.mxruntime.jar` with `javap`.
+
+**The protocol.** `POST` `{action, session_token, params}`; replies are
+`{result, status, message}` with `status: 0` for success and `2` for an error.
+
+```
+start_session {breakpoints:[]}      -> {session_token, runtime_version, project_id, paused_microflows}
+add_breakpoint {microflow_name, object_id, condition}
+remove_breakpoint {object_id}
+get_paused_microflows {}            -> paused flows, each with every variable in scope
+get_object {debug_id, variable_name} / get_list / get_object_from_list
+step_over | step_into | step_out {debug_id}
+continue {debug_id} | continue_all {}
+poll_events {} | execute {…} | stop_session {}
+```
+
+Three details cost time and are worth writing down:
+
+1. `params` is mandatory even when empty — `get_paused_microflows` without it
+   answers `Missing property: params`.
+2. `add_breakpoint` takes the breakpoint's fields **flat in `params`**, not
+   nested under a `breakpoint` key, despite `BREAKPOINT` existing as a constant.
+   Nested gives the unhelpful `Invalid breakpoint`.
+3. `object_id` is the **model GUID of the activity**, and nothing in the runtime
+   will tell you what it is. A wrong one at least fails loudly:
+   `Microflow object with object id '…' not found in microflow 'Sudoku.ACT_SelectCell'`.
+
+That third point is where mxcli already holds the missing piece. The GUIDs are in
+the `.mpr`, and `mxcli bson dump -t microflow -o <flow>` prints them — as
+little-endian .NET GUIDs, so `uuid.UUID(bytes_le=…)`:
+
+```
+09a75aa2-64d4-425b-84a9-24e82541d2b2  ActionActivity
+369e5ece-6b4f-464a-a6c7-5703bcfb26fa  ExclusiveSplit    $Game = empty
+d9bbc0f9-1386-4ad0-b627-78370a595bab  ActionActivity
+```
+
+**Verified end to end.** Breakpoint on the retrieve in `Sudoku.ACT_Hint`, `Hint`
+clicked in a browser, flow paused:
+
+```
+stopped at Sudoku.ACT_Hint -> RetrieveByXPath
+variables : $gatewayOutput, Game, Revealed, currentDeviceType, currentSession, currentUser
+get_object Game -> PuzzleNo 2934, Level Easy, FilledCount 50, EmptyCount 31, HintCount 0
+step over -> now at Gateway, and 'Empty' has appeared in scope
+continue_all -> the trace log resumes and the click completes
+```
+
+`scripts/mfdebug.sh` in this repo wraps the whole flow (`enable`, `session`,
+`activities`, `break`, `paused`, `object`, `step`, `continue`, `disable`).
+
+**Ask:** an `mxcli debug` command. mxcli already owns both halves — the admin
+password and app URL from `run --local`, and the activity GUIDs from the model —
+so it is the only tool that can offer breakpoints **by name** (`mxcli debug break
+Sudoku.ACT_Hint --activity 3` or `--caption '$Game = empty'`) instead of by
+GUID. That is the whole difference between this being usable and being a curiosity.
+
+**Caveat worth surfacing in any such command:** a breakpoint pauses *whoever*
+hits it, including a real user in a browser, and the request just hangs. Anything
+that sets one should make `continue`/`disable` obvious, and `run --local` should
+disable the debugger on shutdown so a stray breakpoint cannot outlive the session.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -643,6 +735,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 2, 4, 8, 10–14, 18–22 | — | Open / not claimed |
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
 | 25 | runtime log unreachable from `run --local` | **Fixed** (#38, #39, #41) — verified end to end |
+| 26 | microflow debugger not exposed by mxcli | **New** — protocol mapped, driven end to end |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
