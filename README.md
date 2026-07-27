@@ -166,6 +166,18 @@ Atlas-first, per the four-layer model:
 - Webfonts (Space Grotesk, JetBrains Mono) are `@import`ed on the **first line**
   of `main.scss`; a CSS `@import` emitted after any rule is silently dropped.
 
+## Opening it in Studio Pro
+
+The complete Mendix project is committed, so mxcli is not required to open it —
+clone the repo and open `Sudoku/Sudoku.mpr` in **Studio Pro 11.12.1**. The model
+(`Sudoku.mpr` + `mprcontents/`), the theme (`theme/`, `themesource/`), the
+marketplace widgets (`widgets/`) and `javascriptsource/` are all in the tree.
+
+Only generated content is left out — `deployment/`, `*.mda`, `*.mpr.bak`,
+`.mendix-cache/` and the empty `userlib/`, `resources/`, `modules/` folders that
+Studio Pro recreates on open. Verified by extracting the committed tree to a
+clean directory and running Mendix's own validator against it: **0 errors**.
+
 ## Source layout
 
 MDL source lives in `Sudoku/mdlsource/` and is applied in order:

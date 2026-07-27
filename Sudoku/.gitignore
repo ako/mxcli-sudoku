@@ -18,6 +18,9 @@
 /vendorlib/temp/
 /.svn/
 
+# Build output — a deployment archive, rebuilt by mxbuild / Studio Pro
+/*.mda
+
 # MPR v2 journal files
 /mprcontents/mprjournal*
 
