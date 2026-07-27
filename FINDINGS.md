@@ -1042,6 +1042,35 @@ Three details the PR got right that are easy to get wrong:
 redundant — `configure` and `agent-env` are replaced by the flags; `metrics`,
 `spans` and `trace` are still handy as readers.
 
+### Follow-up: the console exporter cannot produce a flame chart
+
+`--trace` defaults to `OTEL_TRACES_EXPORTER=console`, which is right for
+"is tracing on?" but prints only name, ids, kind and attributes — **no
+start/end timestamps and no parent span id**. Neither a call tree nor a duration
+can be reconstructed from it. An OTLP endpoint carries both, and since your own
+`OTEL_*` wins, pointing at one needs no new mxcli feature:
+
+```bash
+OTEL_TRACES_EXPORTER=otlp OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 mxcli run --local --trace …
+```
+
+`scripts/otlp-collect.py` (a dependency-free OTLP/HTTP receiver) and
+`scripts/flame.py` in this repo turn that into a flame chart.
+
+**Tracing overhead distorts the profile it is measuring**, and by enough to
+mislead. The same deal, traced two ways:
+
+| | total | `ACT_Refresh` share | the `SELECT sudoku` inside it |
+|---|---|---|---|
+| default span filters | **358 ms** | 10.3% | **4.3 ms** |
+| filters off (per-activity) | **3,774 ms** | 57.5% | **2,026 ms** |
+
+Unfiltered, that query looks like the app's dominant cost and is not — it is
+~4 ms of work buried under ~19,700 spans of instrumentation. Anyone reading a
+flame chart from an unfiltered Mendix trace will chase the wrong thing. Filters
+on for timing; filters off only to see the *shape* of a small flow.
+
 ---
 
 ## Verification summary

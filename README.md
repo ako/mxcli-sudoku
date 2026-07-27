@@ -252,6 +252,31 @@ per-activity tracing turns one board deal into ~110,000 spans and 5.8s instead
 of 433 spans and 0.9s. Your own `OTEL_*` environment wins over the defaults, so
 exporting to a real collector instead of the console still works.
 
+### Flame charts
+
+The console exporter prints span names but no timings or parents, so it cannot
+make a flame chart. Point the agent at the bundled OTLP collector instead:
+
+```bash
+scripts/otlp-collect.py --out spans.jsonl &            # :4318, no dependencies
+OTEL_TRACES_EXPORTER=otlp OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 \
+  mxcli run --local --watch --trace -p "$PWD/Sudoku/Sudoku.mpr"
+
+scripts/flame.py spans.jsonl --list                    # what was captured
+scripts/flame.py spans.jsonl --flow ACT_SelectCell --html chart.html
+```
+
+`flame.py` prints an ASCII flame chart — nesting, duration, share of the root,
+sub-microflows, activities and database queries — and `--html` writes a
+self-contained visual one.
+
+**Read the numbers with care.** Unfiltered per-activity tracing distorts what it
+measures: the same deal profiles at 358ms with the default span filters and
+3,774ms without, and a `SELECT` that really takes 4ms appears as 2,026ms. Use
+the filters for timing, and turn them off only to inspect the *shape* of a small
+flow.
+
 `scripts/otel.sh` reads the results back: `metrics` (the Mendix counters,
 aggregated), `spans` (volume by name), `trace` (one request as a tree). Details
 in [FINDINGS.md](FINDINGS.md) #29.
