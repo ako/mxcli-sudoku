@@ -1117,7 +1117,7 @@ meant four different tools:
 
 | what | where | how you query it |
 |---|---|---|
-| model metadata | the `.mpr` | `mxcli -c "SELECT … FROM CATALOG.MICROFLOWS"` |
+| model metadata | `.mxcli/catalog.db` (SQLite, 70 tables) | `mxcli -c "SELECT … FROM CATALOG.*"` |
 | app data | PostgreSQL | `psql`, or `mxcli oql` against the running app |
 | traces | OTLP spans | grep a JSONL file, or a trace UI |
 | metrics | `/prometheus` | curl and eyeball |
@@ -1125,8 +1125,41 @@ meant four different tools:
 
 Each is fine alone. The useful questions cross them, and none of them can.
 
-**Tested: DuckDB reads all of it in place**, no ETL step — `pip install duckdb`,
-`ATTACH` the app's PostgreSQL read-only, and `read_json_auto` the rest.
+**Tested: DuckDB reads all of it in place**, no ETL step and no export — the
+catalog and the app's PostgreSQL are both `ATTACH`ed read-only, telemetry is
+`read_json_auto`. Scope is the **dev container only**: dev data, dev telemetry,
+DuckDB as a separate process. Nothing needs to go into mxcli for this to work.
+
+**The catalog is already a database, so query it directly.** `.mxcli/catalog.db`
+is SQLite with 70 tables — far more than the `CATALOG.*` views expose in a
+single query, and always current. Exporting it to JSON first (which is what I
+did initially) is strictly worse: it drags in mxcli's human-readable chatter,
+loses 65 of the tables, and goes stale.
+
+**`REFRESH CATALOG FULL` matters.** Plain `REFRESH` leaves `activities_data`,
+`refs` and `xpath_expressions_data` **empty** — 0 rows, no error. Full mode
+fills them: 718 activities, 472 refs here.
+
+And `activities_data` turns out to answer an earlier open question. Its `Id` is
+the **model GUID the debugger takes** (#26) — the one I was extracting by hand
+with `mxcli bson dump` and a little-endian GUID walker:
+
+```
+SELECT Id, Name, ActivityType, Sequence FROM activities_data
+ WHERE MicroflowQualifiedName = 'Sudoku.ACT_Hint' ORDER BY Sequence;
+
+d9bbc0f9-1386-4ad0-b627-78370a595bab   6  RetrieveAction   ActionActivity
+```
+
+`d9bbc0f9…` is exactly the GUID I set a breakpoint on. So the catalog gives the
+GUID *plus* the action name and its position in the flow — better than the BSON
+walk, which only knew `ActionActivity`. `scripts/mfdebug.sh activities` now
+reads the catalog and keeps the BSON walk only as a fallback for a
+catalog that has not been refreshed in FULL mode.
+
+That also softens the correlation problem from #29: spans still carry no
+activity GUID, but the catalog supplies an *ordered, named* activity list per
+microflow, so a positional join is grounded in real data rather than guesswork.
 `scripts/warehouse.py` builds it; two cross-source joins that were previously
 impossible in one query:
 

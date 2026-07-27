@@ -56,12 +56,39 @@ dbg() { # dbg <action> <params-json> [--no-token]
     -H 'Content-Type: application/json' -d "$body" "$APP/debugger/"
 }
 
-# List every breakpointable object in a microflow: id, kind, caption. The ids
-# are the model's own object GUIDs, read out of the .mpr via 'mxcli bson dump'
-# (BSON stores them as little-endian .NET GUIDs, hence bytes_le).
+# List every breakpointable object in a flow: id, position, action, kind.
+#
+# These are the model's own object GUIDs. mxcli's catalog already holds them —
+# activities_data.Id is the same GUID the debugger takes, alongside the action
+# name and its position in the flow, which the raw model does not hand you as
+# readably. Needs `mxcli -c "REFRESH CATALOG FULL"`; plain REFRESH leaves
+# activities_data empty, so the BSON walk stays as a fallback.
 activities() {
   local flow="$1" kind="${2:-microflow}" mx="$ROOT/Sudoku/mxcli"
+  local cat="$ROOT/Sudoku/.mxcli/catalog.db"
   [ -x "$mx" ] || mx=mxcli
+
+  if [ -f "$cat" ]; then
+    local rows
+    rows=$(python3 -c '
+import sqlite3, sys
+db, flow = sys.argv[1], sys.argv[2]
+try:
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    rows = con.execute(
+        "SELECT Id, Name, ActivityType, Sequence FROM activities_data "
+        "WHERE MicroflowQualifiedName = ? ORDER BY Sequence", (flow,)).fetchall()
+except sqlite3.Error:
+    rows = []
+for gid, name, typ, seq in rows:
+    print(f"{gid}  {seq:>3}  {name:<24} {typ}")
+' "$cat" "$flow")
+    if [ -n "$rows" ]; then printf '%s\n' "$rows"; return; fi
+    echo "  (catalog has no activities for $flow — run: mxcli -c 'REFRESH CATALOG FULL')" >&2
+  fi
+
+  # Fallback: read the GUIDs out of the .mpr itself (BSON stores them as
+  # little-endian .NET GUIDs, hence bytes_le).
   "$mx" bson dump -p "$PROJECT" -t "$kind" -o "$flow" 2>/dev/null |
   python3 -c '
 import json, base64, uuid, sys

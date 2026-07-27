@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 """Assemble one queryable view over everything the app emits.
 
-Four sources that otherwise need four different tools:
+Development only: this attaches the dev database and reads the dev container's
+own telemetry. Nothing here is meant to point at a deployed environment.
 
-  model catalog   mxcli's CATALOG.* (entities, microflows, pages)  -> JSON
-  app data        the app's own PostgreSQL                         -> ATTACHed live
-  traces          OTLP spans from scripts/otlp-collect.py          -> JSONL
-  metrics         the /prometheus scrape                           -> text
-  logs            .mxcli/runtime.log                               -> text
+Sources, none of which is copied or transformed — DuckDB reads them in place:
 
-DuckDB reads all of them in place — no ETL, no loading step — so a question
-that spans two of them is one SQL query instead of a script.
+  model catalog   .mxcli/catalog.db (SQLite, 70 tables)   ATTACH  -> cat.*
+  app data        the app's own PostgreSQL                ATTACH  -> pg.*
+  traces          OTLP spans from scripts/otlp-collect.py view    -> spans
+  metrics         the /prometheus scrape                  view    -> metrics
+  logs            .mxcli/runtime.log                      view    -> logs
 
-  scripts/warehouse.py build                 # gather sources, create the views
+So a question that spans two of them is one SQL query instead of a script.
+Run `mxcli -c "REFRESH CATALOG FULL"` first if you want activities and refs —
+plain REFRESH leaves those tables empty.
+
+  scripts/warehouse.py build                 # create the views, report row counts
   scripts/warehouse.py sql "SELECT …"        # ad-hoc query
   scripts/warehouse.py hot-microflows        # canned: cost vs model complexity
   scripts/warehouse.py hot-tables            # canned: query time vs live rows
+  scripts/warehouse.py slow-activities       # canned: span time vs model activity
 """
-import argparse, json, os, pathlib, re, subprocess, sys
+import argparse, json, os, pathlib, re, sys
 
 try:
     import duckdb
@@ -32,27 +37,11 @@ ADMIN = os.environ.get("MXCLI_ADMIN_URL", "http://127.0.0.1:8090")
 ADMIN_PASS = os.environ.get("MXCLI_ADMIN_PASS", "mxcli-local-dev")
 DB = os.environ.get("MXCLI_DB_NAME", "sudoku")
 SPANS = os.environ.get("MXCLI_SPANS", str(WH / "spans.jsonl"))
-
-
-def catalog(query, out):
-    """mxcli --json still prints human chatter first (a catalog refresh, then
-    'Found N result(s)'), so take everything from the opening bracket."""
-    mx = str(MXCLI) if MXCLI.exists() else "mxcli"
-    r = subprocess.run([mx, "-p", PROJECT, "--json", "-c", query],
-                       capture_output=True, text=True)
-    i = r.stdout.find("[")
-    if i < 0:
-        sys.exit(f"no JSON from mxcli for: {query}\n{r.stdout[:300]}{r.stderr[:300]}")
-    out.write_text(r.stdout[i:])
-    return out
+CATALOG = os.environ.get("MXCLI_CATALOG", str(ROOT / "Sudoku" / ".mxcli" / "catalog.db"))
 
 
 def build():
     WH.mkdir(parents=True, exist_ok=True)
-    catalog("SELECT Name, QualifiedName, ModuleName, Folder, ActivityCount, "
-            "Complexity, ReturnType FROM CATALOG.MICROFLOWS", WH / "microflows.json")
-    catalog("SELECT Name, QualifiedName, ModuleName FROM CATALOG.ENTITIES",
-            WH / "entities.json")
 
     # /prometheus is a text format; parse to JSONL so it joins like a table.
     import urllib.request, base64
@@ -89,7 +78,8 @@ def build():
 
     con = connect()
     print(f"warehouse at {WH / 'warehouse.duckdb'}")
-    for t in ("microflows", "entities", "spans", "metrics", "logs"):
+    for t in ("cat.microflows_data", "cat.entities_data", "cat.activities_data",
+              "cat.refs", "spans", "metrics", "logs"):
         try:
             n = con.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
             print(f"  {t:<12} {n:>8}")
@@ -110,12 +100,16 @@ def connect():
                     "AS pg (TYPE postgres, READ_ONLY);")
     except duckdb.Error:
         pass                                   # already attached, or no database
+    con.execute("INSTALL sqlite; LOAD sqlite;")
+    try:
+        con.execute(f"ATTACH '{CATALOG}' AS cat (TYPE sqlite, READ_ONLY);")
+    except duckdb.Error:
+        pass                                   # already attached, or not built yet
+
     def view(name, path, extra=""):
         if pathlib.Path(path).exists() and pathlib.Path(path).stat().st_size:
             con.execute(f"CREATE OR REPLACE VIEW {name} AS "
                         f"SELECT *{extra} FROM read_json_auto('{path}')")
-    view("microflows", WH / "microflows.json")
-    view("entities", WH / "entities.json")
     view("metrics", WH / "metrics.jsonl")
     view("logs", WH / "logs.jsonl")
     view("spans", SPANS, extra=', ("end" - "start")/1e6 AS ms')
@@ -127,7 +121,7 @@ SELECT  m.Name AS microflow, count(*) AS calls,
         round(avg(s.ms), 2) AS avg_ms, round(max(s.ms), 2) AS max_ms,
         m.ActivityCount::INT AS activities, m.Complexity::INT AS mccabe
 FROM    spans s
-JOIN    microflows m ON s.attrs."mx.microflow.name" = m.QualifiedName
+JOIN    cat.microflows_data m ON s.attrs."mx.microflow.name" = m.QualifiedName
 GROUP BY ALL ORDER BY avg_ms DESC"""
 
 HOT_TABLES = """
@@ -136,14 +130,30 @@ SELECT  coalesce(e.Name, '(system)') AS entity,
         s.attrs."db.operation" AS op,
         count(*) AS queries, round(sum(s.ms), 2) AS total_ms
 FROM    spans s
-LEFT JOIN entities e ON lower('sudoku$' || e.Name) = lower(s.attrs."db.sql.table")
+LEFT JOIN cat.entities_data e ON lower(e.ModuleName || '$' || e.Name) = lower(s.attrs."db.sql.table")
 WHERE   s.scope LIKE 'io.opentelemetry.jdbc%' AND s.attrs."db.sql.table" IS NOT NULL
+GROUP BY ALL ORDER BY total_ms DESC"""
+
+
+SLOW_ACTIVITIES = """
+-- Span time per activity type, against how many of that type the model holds.
+-- The catalog's activities_data.Id is the model GUID and Sequence is the
+-- position, so this can be tightened to a per-activity join.
+SELECT  s.attrs."mx.microflow.name"      AS microflow,
+        s.name                            AS span,
+        count(*)                          AS executions,
+        round(sum(s.ms), 2)               AS total_ms,
+        (SELECT count(*) FROM cat.activities_data a
+          WHERE a.MicroflowQualifiedName = s.attrs."mx.microflow.name") AS activities_in_model
+FROM    spans s
+WHERE   s.attrs."mx.microflow.name" IS NOT NULL AND s.name NOT LIKE 'Microflow %'
 GROUP BY ALL ORDER BY total_ms DESC"""
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["build", "sql", "hot-microflows", "hot-tables"])
+    ap.add_argument("command", choices=["build", "sql", "hot-microflows",
+                                        "hot-tables", "slow-activities"])
     ap.add_argument("query", nargs="?")
     args = ap.parse_args()
     if args.command == "build":
@@ -151,7 +161,7 @@ def main():
         return
     con = connect()
     q = {"sql": args.query, "hot-microflows": HOT_MICROFLOWS,
-         "hot-tables": HOT_TABLES}[args.command]
+         "hot-tables": HOT_TABLES, "slow-activities": SLOW_ACTIVITIES}[args.command]
     if not q:
         sys.exit("give a query")
     con.sql(q).show(max_rows=40)

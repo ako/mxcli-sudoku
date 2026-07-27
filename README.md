@@ -301,16 +301,22 @@ flow.
 ### Querying it all together
 
 Model metadata, app data, traces, metrics and logs otherwise need four different
-query languages. DuckDB reads all of them in place — the app's PostgreSQL
-`ATTACH`ed read-only, everything else as JSON:
+query languages. DuckDB reads all of them in place — **development only**, as a
+separate process, nothing added to mxcli:
 
 ```bash
 pip install duckdb
-scripts/warehouse.py build            # gather sources, create the views
+mxcli -p Sudoku/Sudoku.mpr -c "REFRESH CATALOG FULL"   # fills activities + refs
+scripts/warehouse.py build            # create the views
 scripts/warehouse.py hot-microflows   # runtime cost x model complexity
 scripts/warehouse.py hot-tables       # query time x entity x live row counts
 scripts/warehouse.py sql "SELECT …"   # anything else
 ```
+
+`.mxcli/catalog.db` (SQLite, 70 tables) and the app's PostgreSQL are both
+`ATTACH`ed read-only as `cat.*` and `pg.*`; traces, metrics and logs are JSON
+views. Plain `REFRESH CATALOG` leaves `activities_data` and `refs` empty — use
+`FULL`.
 
 The point is the joins. `hot-microflows` shows that `ACT_Set1` — two activities,
 McCabe 1 — costs five times `ACT_MarkPeers` at fourteen activities, which no
