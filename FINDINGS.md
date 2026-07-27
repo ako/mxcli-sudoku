@@ -1058,6 +1058,43 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 mxcli run --local --trace …
 `scripts/otlp-collect.py` (a dependency-free OTLP/HTTP receiver) and
 `scripts/flame.py` in this repo turn that into a flame chart.
 
+**Trace context crosses app boundaries in both directions, out of the box.**
+For a multi-app solution this is the question that matters, and it needed no
+configuration beyond `--trace` on each app. Tested with two runtimes, the second
+started as `mxcli run --local --app-port 8081 --admin-port 8091 --serve-port 6544
+--db-name sudokub --trace --trace-service SudokuB`, both exporting to one
+collector, with a `rest call` in app A pointed at app B:
+
+```
+trace eba84a43…   apps: Sudoku, SudokuB
+[Sudoku]  POST /*                              21.19ms  100.0%
+  [Sudoku]  Call microflow Sudoku.ACT_Hint     17.98ms   84.8%
+    [Sudoku]  Microflow Sudoku.ACT_Hint        13.38ms   63.1%
+      [Sudoku]  CallRest activity              12.56ms   59.3%
+        [Sudoku]  GET                           8.39ms   39.6%
+          [SudokuB]  GET /*                     4.08ms   19.2%   <- the other app
+```
+
+- **Outgoing:** a Mendix `rest call` injects W3C `traceparent`. Confirmed
+  against a header-echoing server before wiring up the second app:
+  `traceparent: 00-b970ddbfc807f620c7c38c381ed0a440-bd672e1ce75254cf-03`, whose
+  span id is the `GET` child of the `CallRest` activity.
+- **Incoming:** the runtime *extracts* a supplied context rather than starting a
+  new trace. `curl -H 'traceparent: 00-abcdef00112233445566778899aabbcc-1234567890abcdef-01'`
+  produced `GET /* trace=abcdef00112233445566778899aabbcc parent=1234567890abcdef`
+  — the caller's ids, adopted verbatim. (`com.mendix.modules.opentelemetry.MxRuntimeRequestGetter`
+  is the class that does it.)
+
+Two things this depends on, worth stating because both are easy to get wrong:
+**one collector** — per-app console exporters cannot be correlated at all, since
+console output has no timestamps or parent ids (below) — and a **distinct
+`OTEL_SERVICE_NAME` per app**, which `--trace` already defaults to the `.mpr`
+name, so two apps built from one project need `--trace-service` to tell them
+apart. `service.name` rides on the OTLP Resource, not the span, so a collector
+that ignores Resource loses which app a span came from; `scripts/otlp-collect.py`
+reads it and `flame.py` prefixes each row with `[app]` when a trace crosses more
+than one.
+
 **Tracing overhead distorts the profile it is measuring**, and by enough to
 mislead. The same deal, traced two ways:
 

@@ -271,6 +271,27 @@ scripts/flame.py spans.jsonl --flow ACT_SelectCell --html chart.html
 sub-microflows, activities and database queries — and `--html` writes a
 self-contained visual one.
 
+**Across apps.** Trace context propagates over REST/OData in both directions
+with no extra configuration — a `rest call` injects W3C `traceparent`, and an
+incoming one is adopted rather than starting a fresh trace. Point every app at
+the same collector and give each a distinct service name:
+
+```bash
+mxcli run --local --trace --trace-service AppB --app-port 8081 \
+  --admin-port 8091 --serve-port 6544 --db-name appb -p AppB/AppB.mpr
+```
+
+`flame.py` then prefixes each row with the app it came from:
+
+```
+[Sudoku]  Microflow Sudoku.ACT_Hint        13.38ms   63.1%
+  [Sudoku]  CallRest activity              12.56ms   59.3%
+    [Sudoku]  GET                           8.39ms   39.6%
+      [SudokuB]  GET /*                     4.08ms   19.2%
+```
+
+Per-app console exporters cannot be correlated — one collector is required.
+
 **Read the numbers with care.** Unfiltered per-activity tracing distorts what it
 measures: the same deal profiles at 358ms with the default span filters and
 3,774ms without, and a `SELECT` that really takes 4ms appears as 2,026ms. Use

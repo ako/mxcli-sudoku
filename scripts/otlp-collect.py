@@ -96,9 +96,24 @@ def parse_span(buf, scope):
     return s
 
 
+def service_name(rs_buf):
+    """Resource.attributes -> service.name. With several apps reporting to one
+    collector this is the only thing that says which app a span came from."""
+    for res in sub(rs_buf, 1):                    # Resource
+        for kv in sub(res, 1):                    # KeyValue
+            key = val = None
+            for f, wt, v in fields(kv):
+                if f == 1 and wt == WIRE_LEN: key = v.decode("utf-8", "replace")
+                elif f == 2 and wt == WIRE_LEN: val = any_value(v)
+            if key == "service.name":
+                return val
+    return ""
+
+
 def parse_request(body):
     spans = []
     for rs in sub(body, 1):                       # resource_spans
+        svc = service_name(rs)
         for ss in sub(rs, 2):                     # scope_spans
             scope = ""
             for isc in sub(ss, 1):                # instrumentation scope
@@ -106,7 +121,9 @@ def parse_request(body):
                     if f == 1 and wt == WIRE_LEN:
                         scope = v.decode("utf-8", "replace")
             for sp in sub(ss, 2):                 # spans
-                spans.append(parse_span(sp, scope))
+                s = parse_span(sp, scope)
+                s["service"] = svc
+                spans.append(s)
     return spans
 
 

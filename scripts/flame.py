@@ -25,12 +25,14 @@ def load(path):
     return spans
 
 
-def label(s):
+def label(s, with_service=False):
     """A readable name: microflow spans carry their qualified name as an attr."""
     n = s.get("name", "?")
     mf = s.get("attrs", {}).get("mx.microflow.name")
     if mf and n.startswith("Microflow "):
-        return f"Microflow {mf}"
+        n = f"Microflow {mf}"
+    if with_service and s.get("service"):
+        n = f"[{s['service']}] {n}"
     return n
 
 
@@ -60,7 +62,16 @@ def fold(children):
     return out
 
 
-def render(root, kids, min_ms, width=44):
+def services(root, kids):
+    out, stack = set(), [root]
+    while stack:
+        s = stack.pop()
+        out.add(s.get("service", ""))
+        stack.extend(kids.get(s["span_id"], []))
+    return {x for x in out if x}
+
+
+def render(root, kids, min_ms, width=44, multi=False):
     total = root["end"] - root["start"] or 1
     lines = []
 
@@ -71,7 +82,7 @@ def render(root, kids, min_ms, width=44):
         if ms < min_ms and depth > 0:
             return
         bar = BAR * max(1, round(frac * width))
-        name = label(span)
+        name = label(span, with_service=multi)
         if count > 1:
             name += f"  x{count}"
         tag = "  [db]" if is_db(span) else ""
@@ -145,7 +156,7 @@ def colour(s):
     return "#4A5160"                                      # control flow
 
 
-def html(root, kids, path):
+def html(root, kids, path, multi=False):
     """A self-contained flame chart: nested divs, width proportional to time."""
     total = root["end"] - root["start"] or 1
     rows = []
@@ -159,8 +170,8 @@ def html(root, kids, path):
         rows.append(
             f'<div class="s" style="left:{left:.4f}%;width:{width:.4f}%;'
             f'top:{depth * 22}px;background:{colour(span)}" '
-            f'title="{label(span)} — {ms:.2f}ms">'
-            f'<span>{label(span)}</span></div>'
+            f'title="{label(span, with_service=True)} — {ms:.2f}ms">'
+            f'<span>{label(span, with_service=multi)}</span></div>'
         )
         for c in kids.get(span["span_id"], []):
             walk(c, depth + 1)
@@ -238,15 +249,18 @@ def main():
                                   -(s["end"] - s["start"])))
         root = cands[0]
 
-    print(f"trace {root['trace_id']}   root {label(root)}")
+    svcs = services(root, kids)
+    multi = len(svcs) > 1
+    print(f"trace {root['trace_id']}   root {label(root)}"
+          + (f"   apps: {', '.join(sorted(svcs))}" if multi else ""))
     print("-" * 100)
-    for line in render(root, kids, args.min_ms):
+    for line in render(root, kids, args.min_ms, multi=multi):
         print(line)
     print("-" * 100)
     for line in summarize(root, kids, spans):
         print(line)
     if args.html:
-        print(f"\nwrote {html(root, kids, args.html)}")
+        print(f"\nwrote {html(root, kids, args.html, multi)}")
 
 
 if __name__ == "__main__":
