@@ -10,7 +10,9 @@ with the pinned build, on a scratch copy of the project. Results are recorded pe
 entry; the summary table is at the end. Two of my original entries turned out to
 be **my own misdiagnosis** and are corrected in place — #9 and, partly, #3.
 
-Each entry has the symptom, a minimal repro, and the workaround actually used.
+Each entry has the symptom, a minimal repro, and the workaround actually used —
+with one exception: **#31 is a code review of an unmerged PR**, not observed
+behaviour of a shipped build, and says so.
 Severity is from the point of view of someone authoring an app with mxcli:
 
 | | |
@@ -1222,6 +1224,84 @@ database read-only is a decision that deserves an explicit flag, not a default.
 
 ---
 
+## 31. Hub authentication (PR #50, reviewed not merged) — anonymous listing leaks every preview
+
+**Note on status.** Unlike every other entry here, this is a **code review of an
+unmerged PR**, not observed behaviour of a shipped build. `hub.mxcli.org` had not
+been updated, so nothing was exercised against a live hub; the one claim below
+that is proven was proven with a throwaway unit test against the PR branch.
+
+PR #50 adds GitHub OAuth to `mxcli tunnel-hub`: a `Backend.Owner`, an
+HMAC session cookie for viewers, hub API keys minted per user, and an OAuth
+device flow in `mxcli auth hub login`. The design is sound — owner is derived
+server-side (`req.Owner = owner // never trusted from the body`, with `json:"-"`
+keeping it off the wire), keys are stored SHA-256-hashed and returned in plain
+exactly once, `Owner` leads `identity()` so two users cannot collide on a slot,
+`safeReturn` closes the OAuth open-redirect, and `audit.Event` has **no field**
+for a token or cookie, so a secret cannot be logged by accident. Open mode is
+preserved throughout.
+
+### The leak: `/api/backends` returns everything to an anonymous caller
+
+`sessionLogin()` returns `""` for two different situations — **auth is off** and
+**the cookie is missing or invalid** — and `List(sort, "")` means "return
+everything". `/api/backends` has no gate of its own. So on a hub started with
+`--require-auth`, an unauthenticated GET lists every user's previews. Proven
+against the PR branch:
+
+```
+HTTP 200, 2 backend(s) returned to an anonymous caller
+   owner="alice" project="AppA" subdomain="appa"
+   owner="bob"   project="AppB" subdomain="appb"
+```
+
+That exposes subdomain, project, branch, owner login and ports — enough to
+enumerate every live preview and try each one. The owner check on the preview
+path itself is correct; it is the listing that is open.
+
+**Fix:** stop overloading `""`. Resolve the viewer as
+`(login string, authRequired bool)` and have `handleBackends` answer 401 (or an
+empty list) when auth is enabled and no valid session is present, instead of
+falling through to unfiltered. Registry-level filtering *is* tested
+(`List("project", "alice")`); the missing test is the HTTP path with auth on and
+no cookie. The admin HTML page deserves the same check — only the API was proven.
+
+### Operational: an in-memory key store logs out automation on every restart
+
+`KeyStore` is a `map` that dies with the process, and the entry comment for
+`MXCLI_HUB_KEY` describes its purpose as letting "a reaped Claude Code web
+container re-register without an interactive login". After a hub restart that
+env var is a stale credential and registration 401s until a human re-runs
+`mxcli auth hub login`.
+
+This is not hypothetical here: `hub.mxcli.org` went down three times while this
+app was being built (see #27). With `--require-auth` on, each of those becomes
+"no previews for anyone until someone re-authenticates by hand". Persisting the
+key **hashes** — they are only hashes — would close it.
+
+It also compounds #27: a dead hub already aborts the whole local run, and a stale
+key adds a second hard failure at the same point. Both deserve to degrade to
+local-only rather than take `mxcli run` down.
+
+### Smaller
+
+- `exchangeCode` and `fetchLogin` ignore `resp.StatusCode` and decode anyway. Not
+  exploitable — an empty token yields an empty login, which *is* checked — but a
+  GitHub error body decodes "successfully" into a zero value, so the failure
+  surfaces as the wrong message.
+- `signState` reuses the session HMAC with the return URL sitting in the `login`
+  position, making the two token types structurally identical. Not exploitable
+  today (a real login base64-decodes to garbage and `safeReturn` rejects it), but
+  a one-byte domain-separation prefix removes the class.
+- `POST /api/keys` has no rate limit and keys never expire, so a single valid
+  GitHub token can mint unbounded map entries. There is also no way to list or
+  rotate keys — only to revoke the one you are holding.
+- `clientIP` trusts `X-Forwarded-For` unconditionally. Audit-only, but audit IPs
+  are attacker-controlled if the hub is ever reachable without the 443 front in
+  path.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -1249,6 +1329,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
 | 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **Fixed** (#46) — `--metrics` / `--trace` / `--runtime-setting` |
 | 30 | model, data, traces, metrics and logs need four query languages | **New** — DuckDB joins them; logs lack a trace id |
+| 31 | hub auth (PR #50): anonymous `/api/backends` lists every preview | **New** — code review, not a shipped build |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
