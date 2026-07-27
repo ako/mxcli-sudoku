@@ -1,0 +1,26 @@
+{
+  "env": {
+    "MXCLI_QUIET": "1"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "test -x ./mxcli \u0026\u0026 ./mxcli run --local --setup --ensure-db -p Sudoku.mpr || true",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(mxcli:*)",
+      "Bash(./mxcli:*)",
+      "Bash(./mxcli *)",
+      "Bash(playwright-cli:*)",
+      "Bash(playwright-cli *)"
+    ]
+  }
+}

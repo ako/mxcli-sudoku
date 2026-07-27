@@ -1,0 +1,600 @@
+-- =====================================================================
+-- Sudoku — selection and moves
+-- =====================================================================
+-- The Game owns the selection through Game_SelectedCell, so the number pad
+-- lives in the Game's data context and can show how many of each digit are
+-- left while its keys still act on the selected square.
+--
+-- Depends on the engine (03) for ACT_Refresh. Referenced by the board page
+-- (05), so it must precede it.
+--
+-- A Mendix button can only map object parameters from the page context, not
+-- literals, hence one thin wrapper per digit over ACT_ApplyValue.
+-- =====================================================================
+
+/**
+ * Toggles one pencil mark on a square.
+ *
+ * Nine booleans means nine branches — a widget cannot index into a string,
+ * so the notes have to be discrete attributes, and this is the cost.
+ *
+ * @param $Cell The square to mark
+ * @param $Digit The candidate 1..9 to toggle
+ * @returns True when a mark was toggled
+ */
+create or replace microflow Sudoku.ACT_ToggleNote (
+  $Cell: Sudoku."Cell",
+  $Digit: integer
+)
+returns boolean as $Toggled
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_ToggleNote digit=' + toString($Digit);
+
+  declare $Toggled boolean = false;
+
+  if $Cell = empty then
+    return false;
+  end if;
+
+  if $Digit = 1 then
+    change $Cell ("N1" = $Cell/"N1" = false);
+  end if;
+  if $Digit = 2 then
+    change $Cell ("N2" = $Cell/"N2" = false);
+  end if;
+  if $Digit = 3 then
+    change $Cell ("N3" = $Cell/"N3" = false);
+  end if;
+  if $Digit = 4 then
+    change $Cell ("N4" = $Cell/"N4" = false);
+  end if;
+  if $Digit = 5 then
+    change $Cell ("N5" = $Cell/"N5" = false);
+  end if;
+  if $Digit = 6 then
+    change $Cell ("N6" = $Cell/"N6" = false);
+  end if;
+  if $Digit = 7 then
+    change $Cell ("N7" = $Cell/"N7" = false);
+  end if;
+  if $Digit = 8 then
+    change $Cell ("N8" = $Cell/"N8" = false);
+  end if;
+  if $Digit = 9 then
+    change $Cell ("N9" = $Cell/"N9" = false);
+  end if;
+
+  commit $Cell refresh;
+  set $Toggled = true;
+  return $Toggled;
+end;
+/
+
+/**
+ * Appends an answer change to the undo log.
+ *
+ * Anything ahead of the cursor is dropped first, so making a move after an
+ * undo discards the redo tail — the usual editor behaviour.
+ *
+ * @param $Game The game being played
+ * @param $Cell The square about to change
+ * @param $NewValue The value it changes to, empty when cleared
+ * @returns True when the move was logged
+ */
+create or replace microflow Sudoku.ACT_LogMove (
+  $Game: Sudoku."Game",
+  $Cell: Sudoku."Cell",
+  $NewValue: integer
+)
+returns boolean as $Logged
+folder 'History'
+begin
+  log info node 'Sudoku' 'ACT_LogMove';
+
+  declare $Logged boolean = false;
+  declare $next integer = 0;
+
+  if $Game = empty or $Cell = empty then
+    return false;
+  end if;
+
+  retrieve $Tail from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game and "Seq" > $Game/"MoveSeq"];
+  delete $Tail;
+
+  set $next = $Game/"MoveSeq" + 1;
+
+  $Move = create Sudoku."Move" (
+    "Seq" = $next,
+    "OldValue" = $Cell/"Value",
+    "NewValue" = $NewValue,
+    Sudoku."Move_Game" = $Game,
+    Sudoku."Move_Cell" = $Cell);
+  commit $Move;
+
+  change $Game (
+    "MoveSeq" = $next,
+    "MaxSeq" = $next,
+    "CanUndo" = true,
+    "CanRedo" = false) refresh;
+  commit $Game refresh;
+
+  set $Logged = true;
+  return $Logged;
+end;
+/
+
+/**
+ * Switches pencil-mark mode on or off.
+ *
+ * @param $Game The game being played
+ * @returns The new mode
+ */
+create or replace microflow Sudoku.ACT_ToggleNotes (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Mode
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_ToggleNotes';
+
+  declare $Mode boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  set $Mode = $Game/"NotesMode" = false;
+  change $Game ("NotesMode" = $Mode) refresh;
+  commit $Game refresh;
+  return $Mode;
+end;
+/
+
+/**
+ * Selects a square, moving the Game's selection to it.
+ *
+ * Clears the highlight on the previously selected square, points
+ * Game_SelectedCell at this one, and records its row/column/box (1-based)
+ * for the status line under the board.
+ *
+ * @param $Cell The square the player tapped
+ * @returns True when the selection moved
+ */
+create or replace microflow Sudoku.ACT_SelectCell (
+  $Cell: Sudoku."Cell"
+)
+returns boolean as $Selected
+folder 'Moves'
+begin
+  declare $Selected boolean = false;
+  declare $box integer = 0;
+  declare $bandRow integer = 0;
+  declare $bandCol integer = 0;
+
+  if $Cell = empty then
+    return false;
+  end if;
+
+  log info node 'Sudoku' 'ACT_SelectCell row=' + toString($Cell/"Row" + 1) + ' col=' + toString($Cell/"Col" + 1);
+
+  retrieve $Game from $Cell/Sudoku."Cell_Game";
+  if $Game = empty then
+    return false;
+  end if;
+
+  -- Drop the old highlight
+  retrieve $Previous from $Game/Sudoku."Game_SelectedCell";
+  if $Previous != empty then
+    change $Previous ("IsSelected" = false);
+    commit $Previous refresh;
+  end if;
+
+  change $Cell ("IsSelected" = true);
+  commit $Cell refresh;
+
+  -- Box number 1..9, reading band/stack off the row and column
+  set $bandRow = 0;
+  if $Cell/"Row" >= 3 then
+    set $bandRow = 1;
+  end if;
+  if $Cell/"Row" >= 6 then
+    set $bandRow = 2;
+  end if;
+  set $bandCol = 0;
+  if $Cell/"Col" >= 3 then
+    set $bandCol = 1;
+  end if;
+  if $Cell/"Col" >= 6 then
+    set $bandCol = 2;
+  end if;
+  set $box = $bandRow * 3 + $bandCol + 1;
+
+  change $Game (
+    "SelRow" = $Cell/"Row" + 1,
+    "SelCol" = $Cell/"Col" + 1,
+    "SelBox" = $box,
+    "HasSelection" = true,
+    "SelEditable" = $Cell/"IsEditable");
+  set $Game/Sudoku."Game_SelectedCell" = $Cell;
+  commit $Game refresh;
+
+  call microflow Sudoku.ACT_MarkPeers(Game = $Game);
+
+  set $Selected = true;
+  return $Selected;
+end;
+/
+
+/**
+ * Writes a digit into the Game's selected square.
+ *
+ * Takes the Game rather than the square so the number pad can sit in the
+ * Game's data context and show per-digit remainders. Silently ignores a
+ * missing selection, a dealt square, or a digit already placed nine times.
+ *
+ * @param $Game The game being played
+ * @param $Digit The digit 1..9 to write
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_ApplyValue (
+  $Game: Sudoku."Game",
+  $Digit: integer
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_ApplyValue digit=' + toString($Digit);
+
+  declare $Applied boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cell from $Game/Sudoku."Game_SelectedCell";
+  if $Cell = empty then
+    return false;
+  end if;
+  if $Cell/"IsEditable" = false then
+    return false;
+  end if;
+
+  -- Notes mode writes a pencil mark instead of an answer. Only on a blank
+  -- square: a filled square has nothing to pencil.
+  if $Game/"NotesMode" and $Cell/"Value" = empty then
+    call microflow Sudoku.ACT_ToggleNote(Cell = $Cell, Digit = $Digit);
+    set $Applied = true;
+    return $Applied;
+  end if;
+
+  -- Log the change so it can be undone, dropping any redo tail first
+  call microflow Sudoku.ACT_LogMove(Game = $Game, Cell = $Cell, NewValue = $Digit);
+
+  -- An answer supersedes the square's pencil marks
+  change $Cell (
+    "Value" = $Digit,
+    "N1" = false, "N2" = false, "N3" = false,
+    "N4" = false, "N5" = false, "N6" = false,
+    "N7" = false, "N8" = false, "N9" = false) refresh;
+  commit $Cell refresh;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Applied = true;
+  return $Applied;
+end;
+/
+
+/**
+ * Clears the player's entry from the Game's selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the square was cleared
+ */
+create or replace microflow Sudoku.ACT_ClearValue (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Cleared
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_ClearValue';
+
+  declare $Cleared boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cell from $Game/Sudoku."Game_SelectedCell";
+  if $Cell = empty then
+    return false;
+  end if;
+  if $Cell/"IsEditable" = false then
+    return false;
+  end if;
+
+  call microflow Sudoku.ACT_LogMove(Game = $Game, Cell = $Cell, NewValue = empty);
+
+  change $Cell (
+    "Value" = empty,
+    "IsInvalid" = false,
+    "N1" = false, "N2" = false, "N3" = false,
+    "N4" = false, "N5" = false, "N6" = false,
+    "N7" = false, "N8" = false, "N9" = false) refresh;
+  commit $Cell refresh;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Cleared = true;
+  return $Cleared;
+end;
+/
+
+/**
+ * Number-pad action: writes 1 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set1 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set1';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 1);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 2 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set2 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set2';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 2);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 3 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set3 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set3';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 3);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 4 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set4 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set4';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 4);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 5 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set5 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set5';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 5);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 6 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set6 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set6';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 6);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 7 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set7 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set7';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 7);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 8 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set8 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set8';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 8);
+  return $Applied;
+end;
+/
+
+/**
+ * Number-pad action: writes 9 into the selected square.
+ *
+ * @param $Game The game being played
+ * @returns True when the move was applied
+ */
+create or replace microflow Sudoku.ACT_Set9 (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Applied
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'ACT_Set9';
+
+  $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 9);
+  return $Applied;
+end;
+/
+
+/**
+ * Steps one answer change backwards.
+ *
+ * @param $Game The game being played
+ * @returns True when a move was undone
+ */
+create or replace microflow Sudoku.ACT_Undo (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Undone
+folder 'History'
+begin
+  log info node 'Sudoku' 'ACT_Undo';
+
+  declare $Undone boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+  if $Game/"MoveSeq" <= 0 then
+    return false;
+  end if;
+
+  retrieve $Move from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game and "Seq" = $Game/"MoveSeq"]
+    limit 1;
+  if $Move = empty then
+    return false;
+  end if;
+
+  retrieve $Cell from $Move/Sudoku."Move_Cell";
+  if $Cell != empty then
+    change $Cell ("Value" = $Move/"OldValue", "IsInvalid" = false) refresh;
+    commit $Cell refresh;
+  end if;
+
+  change $Game ("MoveSeq" = $Game/"MoveSeq" - 1, "CanRedo" = true) refresh;
+  change $Game ("CanUndo" = $Game/"MoveSeq" > 0) refresh;
+  commit $Game refresh;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Undone = true;
+  return $Undone;
+end;
+/
+
+/**
+ * Steps one answer change forwards again.
+ *
+ * @param $Game The game being played
+ * @returns True when a move was redone
+ */
+create or replace microflow Sudoku.ACT_Redo (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Redone
+folder 'History'
+begin
+  log info node 'Sudoku' 'ACT_Redo';
+
+  declare $Redone boolean = false;
+  declare $target integer = 0;
+
+  if $Game = empty then
+    return false;
+  end if;
+  if $Game/"MoveSeq" >= $Game/"MaxSeq" then
+    return false;
+  end if;
+
+  set $target = $Game/"MoveSeq" + 1;
+  retrieve $Move from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game and "Seq" = $target]
+    limit 1;
+  if $Move = empty then
+    return false;
+  end if;
+
+  retrieve $Cell from $Move/Sudoku."Move_Cell";
+  if $Cell != empty then
+    change $Cell ("Value" = $Move/"NewValue", "IsInvalid" = false) refresh;
+    commit $Cell refresh;
+  end if;
+
+  change $Game ("MoveSeq" = $Game/"MoveSeq" + 1, "CanUndo" = true) refresh;
+  change $Game ("CanRedo" = $Game/"MoveSeq" < $Game/"MaxSeq") refresh;
+  commit $Game refresh;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Redone = true;
+  return $Redone;
+end;
+/

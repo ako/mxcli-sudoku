@@ -1,0 +1,31 @@
+# Mendix project
+/**/node_modules/
+!/javascriptsource/**/node_modules/
+/*.launch
+/.classpath
+/.mendix-cache/
+/.project
+/deployment/
+/javasource/*/proxies/
+/javasource/system/
+/modeler-merge-marker
+/nativemobile/builds/
+/packages/
+/project-settings.user.json
+/releases/
+*.mpr.lock
+*.mpr.bak
+/vendorlib/temp/
+/.svn/
+
+# MPR v2 journal files
+/mprcontents/mprjournal*
+
+# OS
+.DS_Store
+
+# mxcli
+.claude/settings.local.json
+mxcli
+mxcli.exe
+.mxcli/

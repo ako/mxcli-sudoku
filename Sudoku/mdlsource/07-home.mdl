@@ -1,0 +1,155 @@
+-- =====================================================================
+-- Sudoku — new-game actions, landing page, board navigation
+-- =====================================================================
+-- Order matters: the ACT_New* microflows open Sudoku.Game_Play (already
+-- created), the Home page calls those microflows, and the final ALTER
+-- adds the "New game" link back to Home — so nothing forward-references.
+-- =====================================================================
+
+/**
+ * Deals an easy board and opens it.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewEasy ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewEasy';
+
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50);
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+/**
+ * Deals a medium board and opens it.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewMedium ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewMedium';
+
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42);
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+/**
+ * Deals a hard board and opens it.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewHard ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewHard';
+
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30);
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+-- =====================================================================
+-- Landing page
+-- =====================================================================
+
+create or replace page Sudoku.Home
+(
+  title: 'Sudoku',
+  layout: Atlas_Core.Atlas_Default,
+  class: 'sd-page'
+)
+{
+  container sdHomeShell (class: 'sd-shell sd-home') {
+
+    container sdHero (class: 'sd-hero') {
+      dynamictext sdHeroTitle (content: 'Sudoku', rendermode: H1, class: 'sd-hero-title')
+      dynamictext sdHeroSub (
+        content: 'A freshly generated board every time. Pick a difficulty to begin.',
+        rendermode: Paragraph,
+        class: 'sd-hero-sub'
+      )
+    }
+
+    container sdCards (class: 'sd-cards') {
+
+      container sdCardEasy (class: 'sd-card sd-card-easy') {
+        dynamictext sdEasyDot (content: 'Relaxed', class: 'sd-card-kicker')
+        dynamictext sdEasyName (content: 'Easy', rendermode: H2, class: 'sd-card-name')
+        dynamictext sdEasyDesc (
+          content: 'Around 45 of the 81 squares revealed.',
+          rendermode: Paragraph,
+          class: 'sd-card-desc'
+        )
+        actionbutton bEasy (
+          caption: 'Start easy game',
+          action: microflow Sudoku.ACT_NewEasy,
+          buttonstyle: primary,
+          class: 'sd-cta'
+        )
+      }
+
+      container sdCardMedium (class: 'sd-card sd-card-medium') {
+        dynamictext sdMedDot (content: 'Balanced', class: 'sd-card-kicker')
+        dynamictext sdMedName (content: 'Medium', rendermode: H2, class: 'sd-card-name')
+        dynamictext sdMedDesc (
+          content: 'Around 35 squares to start you off.',
+          rendermode: Paragraph,
+          class: 'sd-card-desc'
+        )
+        actionbutton bMedium (
+          caption: 'Start medium game',
+          action: microflow Sudoku.ACT_NewMedium,
+          buttonstyle: primary,
+          class: 'sd-cta'
+        )
+      }
+
+      container sdCardHard (class: 'sd-card sd-card-hard') {
+        dynamictext sdHardDot (content: 'Demanding', class: 'sd-card-kicker')
+        dynamictext sdHardName (content: 'Hard', rendermode: H2, class: 'sd-card-name')
+        dynamictext sdHardDesc (
+          content: 'Around 28 squares. Bring patience.',
+          rendermode: Paragraph,
+          class: 'sd-card-desc'
+        )
+        actionbutton bHard (
+          caption: 'Start hard game',
+          action: microflow Sudoku.ACT_NewHard,
+          buttonstyle: primary,
+          class: 'sd-cta'
+        )
+      }
+    }
+
+    container sdHomeFoot (class: 'sd-home-foot') {
+      dynamictext sdFootText (
+        content: 'Select a square on the board, then tap a number to fill it in.',
+        rendermode: Paragraph,
+        class: 'sd-foot-text'
+      )
+    }
+  }
+}
+/
+
+-- The completion page cannot reference Sudoku.Home at creation time (it is
+-- built before the landing page), so its actions are appended here.
+alter page Sudoku.Game_Done {
+  insert after sdDoneChartWrap {
+    container sdDoneActions (class: 'sd-done-actions') {
+      container doneNew (class: 'sd-tool sd-tool-on', OnClick: show_page Sudoku.Home) {
+        dynamictext doneNewT (content: 'NEW PUZZLE', class: 'sd-tool-text')
+      }
+    }
+  }
+};
+/

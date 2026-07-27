@@ -1,0 +1,952 @@
+-- =====================================================================
+-- Sudoku — board engine
+-- =====================================================================
+-- Order inside this pipeline matters and is dependency-driven:
+--   ACT_Refresh has no callees, so it comes first; ACT_ResetBoard and
+--   ACT_Hint call it. Nothing here calls the move layer (04), the pages,
+--   or anything defined later, so the whole file applies cleanly on a
+--   fresh project.
+--
+-- A board must be valid, solvable, and *fully determined* (exactly one
+-- solution). The first is free from the seed pattern; the last two need
+-- ACT_SolveGrid.
+--
+-- Representation. Mendix microflows have no arrays, and holding the working
+-- grid as 81 Cell objects would put thousands of database operations inside
+-- the solver. So the grid travels as an 81-character string ('0' = empty),
+-- indexed i = row*9 + col, read with substring() and written by splicing.
+-- Cell objects are created once, at the end.
+--
+-- No integer division anywhere: Mendix `div` returns a Decimal (CE0117).
+-- =====================================================================
+
+/**
+ * Lights up every square holding the same digit as the selected one.
+ *
+ * Selecting a filled square marks its whole group so the digit's placement
+ * can be read at a glance; selecting a blank square clears the marks. Runs
+ * after every move as well as on selection, since a move changes which
+ * squares belong to the group.
+ *
+ * @param $Game The game being played
+ * @returns True when the marks were recomputed
+ */
+create or replace microflow Sudoku.ACT_MarkPeers (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Marked
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_MarkPeers';
+
+  declare $Marked boolean = false;
+  declare $sel integer = 0;
+  declare $want boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Selected from $Game/Sudoku."Game_SelectedCell";
+  if $Selected != empty then
+    if $Selected/"Value" != empty then
+      set $sel = $Selected/"Value";
+    end if;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $C in $Cells
+  begin
+    set $want = false;
+    if $sel > 0 and $C/"Value" = $sel then
+      set $want = true;
+    end if;
+    -- Only touch squares whose flag actually moves, so the commit stays small
+    if $C/"IsPeer" != $want then
+      change $C ("IsPeer" = $want);
+      add $C to $Changed;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  set $Marked = true;
+  return $Marked;
+end;
+/
+
+/**
+ * Recomputes counters, per-digit remainders and per-cell error flags.
+ *
+ * Beyond the filled/error counts this now produces the data the Nocturne
+ * chrome needs: how many of each digit are still to place (the pad's
+ * "n LEFT" / "DONE" labels), the empty count, and a 0..20 progress bucket
+ * that the progress bar turns into a width via a CSS class.
+ *
+ * @param $Game The game to re-evaluate
+ * @returns True when the board is complete and correct
+ */
+create or replace microflow Sudoku.ACT_Refresh (
+  $Game: Sudoku."Game"
+)
+returns boolean as $IsSolved
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_Refresh';
+
+  declare $IsSolved boolean = false;
+  declare $filled integer = 0;
+  declare $errors integer = 0;
+  declare $correct integer = 0;
+  declare $v integer = 0;
+  declare $r1 integer = 0;
+  declare $r2 integer = 0;
+  declare $r3 integer = 0;
+  declare $r4 integer = 0;
+  declare $r5 integer = 0;
+  declare $r6 integer = 0;
+  declare $r7 integer = 0;
+  declare $r8 integer = 0;
+  declare $r9 integer = 0;
+  declare $bucket integer = 0;
+  declare $secs integer = 0;
+  declare $bar integer = 0;
+  declare $t integer = 0;
+  declare $mins integer = 0;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $Cell in $Cells
+  begin
+    if $Cell/"Value" != empty then
+      set $filled = $filled + 1;
+      set $v = $Cell/"Value";
+
+      -- Tally placed digits so the pad can show what is left
+      if $v = 1 then
+        set $r1 = $r1 + 1;
+      end if;
+      if $v = 2 then
+        set $r2 = $r2 + 1;
+      end if;
+      if $v = 3 then
+        set $r3 = $r3 + 1;
+      end if;
+      if $v = 4 then
+        set $r4 = $r4 + 1;
+      end if;
+      if $v = 5 then
+        set $r5 = $r5 + 1;
+      end if;
+      if $v = 6 then
+        set $r6 = $r6 + 1;
+      end if;
+      if $v = 7 then
+        set $r7 = $r7 + 1;
+      end if;
+      if $v = 8 then
+        set $r8 = $r8 + 1;
+      end if;
+      if $v = 9 then
+        set $r9 = $r9 + 1;
+      end if;
+
+      if $Cell/"Value" = $Cell/"SolutionValue" then
+        set $correct = $correct + 1;
+        if $Cell/"IsInvalid" then
+          change $Cell ("IsInvalid" = false);
+          add $Cell to $Changed;
+        end if;
+      else
+        set $errors = $errors + 1;
+        if $Cell/"IsInvalid" = false then
+          change $Cell ("IsInvalid" = true);
+          add $Cell to $Changed;
+        end if;
+      end if;
+    else
+      if $Cell/"IsInvalid" then
+        change $Cell ("IsInvalid" = false);
+        add $Cell to $Changed;
+      end if;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  -- Progress in twentieths, so one CSS class per 5% can set the bar width
+  set $bucket = 0;
+  while $bucket < 20 and ($bucket + 1) * 81 <= $filled * 20
+  begin
+    set $bucket = $bucket + 1;
+  end while;
+
+  change $Game (
+    "FilledCount" = $filled,
+    "ErrorCount" = $errors,
+    "EmptyCount" = 81 - $filled,
+    "ProgressBucket" = $bucket,
+    "Remaining1" = 9 - $r1,
+    "Remaining2" = 9 - $r2,
+    "Remaining3" = 9 - $r3,
+    "Remaining4" = 9 - $r4,
+    "Remaining5" = 9 - $r5,
+    "Remaining6" = 9 - $r6,
+    "Remaining7" = 9 - $r7,
+    "Remaining8" = 9 - $r8,
+    "Remaining9" = 9 - $r9);
+
+  if $correct = 81 then
+    set $IsSolved = true;
+    -- Stamp the finish once, so re-running Refresh on a solved board does
+    -- not keep resetting the clock.
+    if $Game/"SolvedAt" = empty then
+      -- secondsBetween() yields a Decimal; an integer target needs rounding (CE0117)
+      set $secs = round(secondsBetween($Game/"DealtAt", [%CurrentDateTime%]));
+      set $mins = 0;
+      while $secs >= 60
+      begin
+        set $secs = $secs - 60;
+        set $mins = $mins + 1;
+      end while;
+      change $Game (
+        "SolvedAt" = [%CurrentDateTime%],
+        "ElapsedSeconds" = $mins * 60 + $secs,
+        "ElapsedLabel" = toString($mins) + ' minutes ' + toString($secs) + ' seconds');
+      -- Height bucket for the recent-solves strip: one step per 15s, so a
+      -- five-minute solve fills the strip and a ten-minute one caps it.
+      set $bar = 1;
+      set $t = $mins * 60 + $secs;
+      while $bar < 20 and $t >= 15
+      begin
+        set $t = $t - 15;
+        set $bar = $bar + 1;
+      end while;
+      change $Game ("BarBucket" = $bar);
+    end if;
+    change $Game (
+      "Status" = Sudoku."GameStatus".Solved,
+      "Message" = 'Solved — every square checks out.');
+  else
+    if $errors > 0 then
+      change $Game (
+        "Status" = Sudoku."GameStatus".Playing,
+        "Message" = toString($errors) + ' square(s) conflict with the solution.');
+    else
+      change $Game (
+        "Status" = Sudoku."GameStatus".Playing,
+        "Message" = toString(81 - $filled) + ' squares to go.');
+    end if;
+  end if;
+
+  commit $Game refresh;
+
+  -- A move changes which squares share the selected digit
+  call microflow Sudoku.ACT_MarkPeers(Game = $Game);
+
+  return $IsSolved;
+end;
+/
+
+/**
+ * Solves as far as pure logic allows.
+ *
+ * Two rules, in cost order:
+ *   naked single  — a square with only one candidate left
+ *   hidden single — a digit that fits only one square in a unit
+ *
+ * Naked singles run to exhaustion first because they are cheap (one scan
+ * of 81 squares). Hidden singles are an order of magnitude dearer, so
+ * they only run when naked singles have stalled — which is exactly when
+ * they are needed. Naked singles alone stall below roughly 40 givens,
+ * far too weak to carve a real Hard board.
+ *
+ * Any square left '0' in the result is one logic could not determine.
+ *
+ * @param $Grid 81-character grid, '0' for empty
+ * @returns The same grid with every deducible square filled
+ */
+create or replace microflow Sudoku.ACT_SolveGrid (
+  $Grid: string
+)
+returns string as $Result
+folder 'Engine'
+begin
+  log info node 'Sudoku' 'ACT_SolveGrid';
+
+  declare $Result string = '';
+  declare $g string = '';
+  declare $progress boolean = true;
+  declare $guard integer = 0;
+  declare $i integer = 0;
+  declare $t integer = 0;
+  declare $r integer = 0;
+  declare $c integer = 0;
+  declare $br integer = 0;
+  declare $bc integer = 0;
+  declare $j integer = 0;
+  declare $j2 integer = 0;
+  declare $dr integer = 0;
+  declare $dc integer = 0;
+  declare $d integer = 0;
+  declare $cnt integer = 0;
+  declare $only integer = 0;
+  declare $used string = '';
+  -- hidden-single working set
+  declare $u integer = 0;
+  declare $idx integer = 0;
+  declare $unitStr string = '';
+  declare $empties integer = 0;
+  declare $hidCount integer = 0;
+  declare $hidPos integer = 0;
+  declare $bu integer = 0;
+  declare $t2 integer = 0;
+  declare $br2 integer = 0;
+  declare $bc2 integer = 0;
+  declare $dr2 integer = 0;
+  declare $dc2 integer = 0;
+
+  set $g = $Grid;
+
+  @annotation 'Propagate until neither rule can place another digit'
+  while $progress and $guard < 60
+  begin
+    set $progress = false;
+    set $guard = $guard + 1;
+
+    -- ================= naked singles =================
+    set $i = 0;
+    while $i < 81
+    begin
+      if substring($g, $i, 1) = '0' then
+        set $r = 0;
+        set $t = $i;
+        while $t >= 9
+        begin
+          set $t = $t - 9;
+          set $r = $r + 1;
+        end while;
+        set $c = $t;
+        set $br = 0;
+        if $r >= 3 then
+          set $br = 3;
+        end if;
+        if $r >= 6 then
+          set $br = 6;
+        end if;
+        set $bc = 0;
+        if $c >= 3 then
+          set $bc = 3;
+        end if;
+        if $c >= 6 then
+          set $bc = 6;
+        end if;
+
+        set $used = '';
+        set $j2 = 0;
+        while $j2 < 9
+        begin
+          set $used = $used + substring($g, $r * 9 + $j2, 1);
+          set $used = $used + substring($g, $j2 * 9 + $c, 1);
+          set $j2 = $j2 + 1;
+        end while;
+        set $dr = 0;
+        while $dr < 3
+        begin
+          set $dc = 0;
+          while $dc < 3
+          begin
+            set $used = $used + substring($g, ($br + $dr) * 9 + $bc + $dc, 1);
+            set $dc = $dc + 1;
+          end while;
+          set $dr = $dr + 1;
+        end while;
+
+        set $cnt = 0;
+        set $only = 0;
+        set $d = 1;
+        while $d <= 9
+        begin
+          if find($used, toString($d)) < 0 then
+            set $cnt = $cnt + 1;
+            set $only = $d;
+          end if;
+          set $d = $d + 1;
+        end while;
+
+        if $cnt = 1 then
+          set $g = substring($g, 0, $i) + toString($only) + substring($g, $i + 1, 80 - $i);
+          set $progress = true;
+        end if;
+      end if;
+      set $i = $i + 1;
+    end while;
+
+    -- ================= hidden singles =================
+    -- Only when naked singles found nothing this pass. Units 0-8 are
+    -- rows, 9-17 columns, 18-26 boxes.
+    if $progress = false then
+      set $u = 0;
+      while $u < 27
+      begin
+        -- Contents of this unit, and how many squares are still open
+        set $unitStr = '';
+        set $empties = 0;
+        set $j = 0;
+        while $j < 9
+        begin
+          if $u < 9 then
+            set $idx = $u * 9 + $j;
+          end if;
+          if $u >= 9 and $u < 18 then
+            set $idx = $j * 9 + $u - 9;
+          end if;
+          if $u >= 18 then
+            set $bu = $u - 18;
+            set $t2 = $bu;
+            set $br2 = 0;
+            while $t2 >= 3
+            begin
+              set $t2 = $t2 - 3;
+              set $br2 = $br2 + 3;
+            end while;
+            set $bc2 = $t2 * 3;
+            set $t2 = $j;
+            set $dr2 = 0;
+            while $t2 >= 3
+            begin
+              set $t2 = $t2 - 3;
+              set $dr2 = $dr2 + 1;
+            end while;
+            set $dc2 = $t2;
+            set $idx = ($br2 + $dr2) * 9 + $bc2 + $dc2;
+          end if;
+          set $unitStr = $unitStr + substring($g, $idx, 1);
+          if substring($g, $idx, 1) = '0' then
+            set $empties = $empties + 1;
+          end if;
+          set $j = $j + 1;
+        end while;
+
+        if $empties > 0 then
+          set $d = 1;
+          while $d <= 9
+          begin
+            if find($unitStr, toString($d)) < 0 then
+              set $hidCount = 0;
+              set $hidPos = 0;
+              set $j = 0;
+              while $j < 9
+              begin
+                if $u < 9 then
+                  set $idx = $u * 9 + $j;
+                end if;
+                if $u >= 9 and $u < 18 then
+                  set $idx = $j * 9 + $u - 9;
+                end if;
+                if $u >= 18 then
+                  set $bu = $u - 18;
+                  set $t2 = $bu;
+                  set $br2 = 0;
+                  while $t2 >= 3
+                  begin
+                    set $t2 = $t2 - 3;
+                    set $br2 = $br2 + 3;
+                  end while;
+                  set $bc2 = $t2 * 3;
+                  set $t2 = $j;
+                  set $dr2 = 0;
+                  while $t2 >= 3
+                  begin
+                    set $t2 = $t2 - 3;
+                    set $dr2 = $dr2 + 1;
+                  end while;
+                  set $dc2 = $t2;
+                  set $idx = ($br2 + $dr2) * 9 + $bc2 + $dc2;
+                end if;
+
+                if substring($g, $idx, 1) = '0' then
+                  set $r = 0;
+                  set $t = $idx;
+                  while $t >= 9
+                  begin
+                    set $t = $t - 9;
+                    set $r = $r + 1;
+                  end while;
+                  set $c = $t;
+                  set $br = 0;
+                  if $r >= 3 then
+                    set $br = 3;
+                  end if;
+                  if $r >= 6 then
+                    set $br = 6;
+                  end if;
+                  set $bc = 0;
+                  if $c >= 3 then
+                    set $bc = 3;
+                  end if;
+                  if $c >= 6 then
+                    set $bc = 6;
+                  end if;
+
+                  set $used = '';
+                  set $j2 = 0;
+                  while $j2 < 9
+                  begin
+                    set $used = $used + substring($g, $r * 9 + $j2, 1);
+                    set $used = $used + substring($g, $j2 * 9 + $c, 1);
+                    set $j2 = $j2 + 1;
+                  end while;
+                  set $dr = 0;
+                  while $dr < 3
+                  begin
+                    set $dc = 0;
+                    while $dc < 3
+                    begin
+                      set $used = $used + substring($g, ($br + $dr) * 9 + $bc + $dc, 1);
+                      set $dc = $dc + 1;
+                    end while;
+                    set $dr = $dr + 1;
+                  end while;
+
+                  if find($used, toString($d)) < 0 then
+                    set $hidCount = $hidCount + 1;
+                    set $hidPos = $idx;
+                  end if;
+                end if;
+                set $j = $j + 1;
+              end while;
+
+              if $hidCount = 1 then
+                set $g = substring($g, 0, $hidPos) + toString($d) + substring($g, $hidPos + 1, 80 - $hidPos);
+                set $progress = true;
+              end if;
+            end if;
+            set $d = $d + 1;
+          end while;
+        end if;
+        set $u = $u + 1;
+      end while;
+    end if;
+  end while;
+
+  set $Result = $g;
+  return $Result;
+end;
+/
+
+/**
+ * Deals a fresh board that is valid, solvable and fully determined.
+ *
+ * 1. Build a complete grid from the seed pattern
+ *      base(r,c) = ((3*(r mod 3) + (r div 3) + c) mod 9) + 1
+ *    and shuffle it with three transforms that preserve validity:
+ *    rotate the rows inside each band, the columns inside each stack,
+ *    and the digit alphabet. That is 9 * 3^3 * 3^3 = 6,561 grids.
+ * 2. Blank squares in a strided pseudo-random order down to $TargetGivens.
+ * 3. Restore any square the solver cannot deduce. This is what makes the
+ *    puzzle uniquely solvable: giving back every undetermined square
+ *    means the solver now completes the grid by forced steps alone, so
+ *    exactly one solution exists. The final given count is therefore
+ *    >= $TargetGivens.
+ *
+ * @param $Level Difficulty recorded on the game
+ * @param $TargetGivens Squares to aim to leave revealed
+ * @returns The dealt Game, with its 81 Cells committed
+ */
+create or replace microflow Sudoku.ACT_DealGame (
+  $Level: enum Sudoku."Difficulty",
+  $TargetGivens: integer
+)
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_DealGame givens=' + toString($TargetGivens);
+
+  -- Validity-preserving shuffles
+  declare $digitRot integer = round(random() * 8);
+  declare $bandOff0 integer = round(random() * 2);
+  declare $bandOff1 integer = round(random() * 2);
+  declare $bandOff2 integer = round(random() * 2);
+  declare $stackOff0 integer = round(random() * 2);
+  declare $stackOff1 integer = round(random() * 2);
+  declare $stackOff2 integer = round(random() * 2);
+
+  declare $band integer = 0;
+  declare $rib integer = 0;
+  declare $stack integer = 0;
+  declare $cib integer = 0;
+  declare $off integer = 0;
+  declare $ribp integer = 0;
+  declare $cibp integer = 0;
+  declare $rowOut integer = 0;
+  declare $colOut integer = 0;
+  declare $c integer = 0;
+  declare $v integer = 0;
+  declare $i integer = 0;
+  declare $t integer = 0;
+  declare $r integer = 0;
+  declare $givens integer = 81;
+  declare $stride integer = 7;
+  declare $n integer = 0;
+  declare $p integer = 0;
+  declare $k integer = 0;
+  declare $cls string = '';
+  declare $sol string = '';
+  declare $puz string = '';
+  declare $chSol string = '';
+  declare $isGiven boolean = false;
+
+  -- 1 ---------------------------------------------------------------
+  -- Lay the seed grid out as an 81-character string, already shuffled.
+  set $sol = '000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+
+  while $band < 3
+  begin
+    set $rib = 0;
+    while $rib < 3
+    begin
+      set $off = $bandOff0;
+      if $band = 1 then
+        set $off = $bandOff1;
+      end if;
+      if $band = 2 then
+        set $off = $bandOff2;
+      end if;
+      set $ribp = $rib + $off;
+      if $ribp >= 3 then
+        set $ribp = $ribp - 3;
+      end if;
+      set $rowOut = 3 * $band + $ribp;
+
+      set $stack = 0;
+      while $stack < 3
+      begin
+        set $cib = 0;
+        while $cib < 3
+        begin
+          set $off = $stackOff0;
+          if $stack = 1 then
+            set $off = $stackOff1;
+          end if;
+          if $stack = 2 then
+            set $off = $stackOff2;
+          end if;
+          set $cibp = $cib + $off;
+          if $cibp >= 3 then
+            set $cibp = $cibp - 3;
+          end if;
+          set $colOut = 3 * $stack + $cibp;
+
+          set $c = 3 * $stack + $cib;
+          set $v = 3 * $rib + $band + $c;
+          if $v >= 9 then
+            set $v = $v - 9;
+          end if;
+          set $v = $v + $digitRot;
+          if $v >= 9 then
+            set $v = $v - 9;
+          end if;
+          set $v = $v + 1;
+
+          set $i = $rowOut * 9 + $colOut;
+          set $sol = substring($sol, 0, $i) + toString($v) + substring($sol, $i + 1, 80 - $i);
+
+          set $cib = $cib + 1;
+        end while;
+        set $stack = $stack + 1;
+      end while;
+      set $rib = $rib + 1;
+    end while;
+    set $band = $band + 1;
+  end while;
+
+  -- 2 ---------------------------------------------------------------
+  -- Blank squares in a strided order. Any stride coprime with 81 walks
+  -- every square exactly once; 81 = 3^4, so any stride not divisible by
+  -- three qualifies.
+  set $puz = $sol;
+  set $stride = 7;
+  set $k = round(random() * 4);
+  if $k = 1 then
+    set $stride = 11;
+  end if;
+  if $k = 2 then
+    set $stride = 13;
+  end if;
+  if $k = 3 then
+    set $stride = 17;
+  end if;
+  if $k = 4 then
+    set $stride = 19;
+  end if;
+
+  set $p = round(random() * 80);
+  set $k = 0;
+  while $k < 81 and $givens > $TargetGivens
+  begin
+    if substring($puz, $p, 1) != '0' then
+      set $puz = substring($puz, 0, $p) + '0' + substring($puz, $p + 1, 80 - $p);
+      set $givens = $givens - 1;
+    end if;
+    set $p = $p + $stride;
+    if $p >= 81 then
+      set $p = $p - 81;
+    end if;
+    set $k = $k + 1;
+  end while;
+
+  -- 3 ---------------------------------------------------------------
+  -- Hand back every square logic cannot recover, so the puzzle becomes
+  -- fully determined.
+  -- Handing back every undetermined square at once massively over-restores:
+  -- giving back a few is usually enough to let the rest cascade. So repair in
+  -- three passes, returning a third, then a half, then whatever still resists.
+  -- Three solver calls buys a far sparser board than one blunt repair.
+  $solve0 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  set $i = 0;
+  set $n = 0;
+  while $i < 81
+  begin
+    if substring($solve0, $i, 1) = '0' then
+      set $n = $n + 1;
+      if $n >= 4 then
+        set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+        set $n = 0;
+      end if;
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  $solve1 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  set $i = 0;
+  set $n = 0;
+  while $i < 81
+  begin
+    if substring($solve1, $i, 1) = '0' then
+      set $n = $n + 1;
+      if $n >= 3 then
+        set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+        set $n = 0;
+      end if;
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  $solve2 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  set $i = 0;
+  set $n = 0;
+  while $i < 81
+  begin
+    if substring($solve2, $i, 1) = '0' then
+      set $n = $n + 1;
+      if $n >= 2 then
+        set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+        set $n = 0;
+      end if;
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  -- Final pass: anything still undetermined goes back, which is what
+  -- guarantees the finished puzzle is solvable by forced steps alone.
+  $solve3 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  set $i = 0;
+  while $i < 81
+  begin
+    if substring($solve3, $i, 1) = '0' then
+      set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  -- Final count of revealed squares
+  set $givens = 0;
+  set $i = 0;
+  while $i < 81
+  begin
+    if substring($puz, $i, 1) != '0' then
+      set $givens = $givens + 1;
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  -- The solver sets a floor on how sparse a logic-solvable board can be, so a
+  -- tier asking for more givens than that floor tops up with extra reveals.
+  -- Revealing a square never costs uniqueness — it only adds information.
+  set $p = round(random() * 80);
+  set $k = 0;
+  while $k < 81 and $givens < $TargetGivens
+  begin
+    if substring($puz, $p, 1) = '0' then
+      set $puz = substring($puz, 0, $p) + substring($sol, $p, 1) + substring($puz, $p + 1, 80 - $p);
+      set $givens = $givens + 1;
+    end if;
+    set $p = $p + $stride;
+    if $p >= 81 then
+      set $p = $p - 81;
+    end if;
+    set $k = $k + 1;
+  end while;
+
+  -- 4 ---------------------------------------------------------------
+  -- Materialise the board.
+  $Game = create Sudoku."Game" (
+    "Level" = $Level,
+    "Status" = Sudoku."GameStatus".Playing,
+    "GivenCount" = $givens,
+    "FilledCount" = $givens,
+    "ErrorCount" = 0,
+    "HintCount" = 0,
+    "DealtAt" = [%CurrentDateTime%],
+    "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEE dd MMM yyyy'),
+    "Message" = 'Pick a square, then tap a number.');
+  commit $Game;
+
+  $Cells = create list of Sudoku."Cell";
+
+  set $i = 0;
+  while $i < 81
+  begin
+    set $r = 0;
+    set $t = $i;
+    while $t >= 9
+    begin
+      set $t = $t - 9;
+      set $r = $r + 1;
+    end while;
+    set $c = $t;
+
+    set $chSol = substring($sol, $i, 1);
+    set $isGiven = substring($puz, $i, 1) != '0';
+
+    set $cls = 'sd-cell';
+    if $c = 2 or $c = 5 then
+      set $cls = $cls + ' sd-br';
+    end if;
+    if $r = 2 or $r = 5 then
+      set $cls = $cls + ' sd-bb';
+    end if;
+    if $isGiven then
+      set $cls = $cls + ' sd-given';
+    else
+      set $cls = $cls + ' sd-open';
+    end if;
+
+    $Cell = create Sudoku."Cell" (
+      "Row" = $r,
+      "Col" = $c,
+      "SolutionValue" = parseInteger($chSol),
+      "IsGiven" = false,
+      "IsEditable" = true,
+      "IsInvalid" = false,
+      "CellClass" = $cls,
+      Sudoku."Cell_Game" = $Game);
+
+    if $isGiven then
+      change $Cell ("Value" = parseInteger($chSol), "IsGiven" = true, "IsEditable" = false);
+    end if;
+
+    add $Cell to $Cells;
+    set $i = $i + 1;
+  end while;
+
+  commit $Cells;
+
+  -- Publish the derived counters (per-digit remainders, empty count,
+  -- progress bucket) so a freshly dealt board reads correctly before the
+  -- player's first move.
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  return $Game;
+end;
+/
+
+/**
+ * Clears every square the player filled in, keeping the dealt givens.
+ *
+ * @param $Game The game to reset
+ * @returns True when the board was reset
+ */
+create or replace microflow Sudoku.ACT_ResetBoard (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Reset
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_ResetBoard';
+
+  declare $Reset boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  $Changed = create list of Sudoku."Cell";
+
+  loop $Cell in $Cells
+  begin
+    if $Cell/"IsGiven" = false then
+      change $Cell ("Value" = empty, "IsInvalid" = false);
+      add $Cell to $Changed;
+    end if;
+  end loop;
+
+  commit $Changed refresh;
+
+  change $Game ("HintCount" = 0) refresh;
+  commit $Game refresh;
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Reset = true;
+  return $Reset;
+end;
+/
+
+/**
+ * Reveals the solution for one empty square.
+ *
+ * @param $Game The game to give a hint for
+ * @returns True when a square was revealed
+ */
+create or replace microflow Sudoku.ACT_Hint (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Revealed
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_Hint';
+
+  declare $Revealed boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  retrieve $Empty from Sudoku."Cell"
+    where [Sudoku."Cell_Game" = $Game and "Value" = empty]
+    limit 1;
+
+  if $Empty = empty then
+    return false;
+  end if;
+
+  change $Empty ("Value" = $Empty/"SolutionValue", "IsInvalid" = false) refresh;
+  commit $Empty refresh;
+
+  change $Game ("HintCount" = $Game/"HintCount" + 1) refresh;
+  commit $Game refresh;
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  set $Revealed = true;
+  return $Revealed;
+end;
+/

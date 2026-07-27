@@ -1,0 +1,43 @@
+-- =====================================================================
+-- Sudoku — client-side logic
+-- =====================================================================
+-- Nanoflows run in the browser. A microflow round trip for the Notes
+-- switch costs two /xas/ POSTs and ~37 KB, because committing the Game
+-- with `refresh` makes the gallery refetch all 81 squares — to flip one
+-- boolean. A nanoflow changes the object in client memory and the widget
+-- re-renders with no server involved.
+--
+-- The change is deliberately NOT committed. Mendix sends an object's
+-- uncommitted client state along when a later microflow takes it as a
+-- parameter, so ACT_ApplyValue still sees the mode the player picked.
+--
+-- Depends only on the domain model (01/02), and the board page in 06 wires
+-- a button to it, so it has to exist before 06 runs.
+-- =====================================================================
+
+/**
+ * Switches pencil-mark mode on or off, client-side.
+ *
+ * @param $Game The game being played
+ * @returns The new mode
+ */
+create or replace nanoflow Sudoku.NF_ToggleNotes (
+  $Game: Sudoku."Game"
+)
+returns boolean as $Mode
+folder 'Moves'
+begin
+  log info node 'Sudoku' 'NF_ToggleNotes';
+
+  declare $Mode boolean = false;
+
+  if $Game = empty then
+    return false;
+  end if;
+
+  set $Mode = $Game/"NotesMode" = false;
+  change $Game ("NotesMode" = $Mode);
+
+  return $Mode;
+end;
+/
