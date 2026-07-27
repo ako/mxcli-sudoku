@@ -1110,6 +1110,85 @@ on for timing; filters off only to see the *shape* of a small flow.
 
 ---
 
+## 30. The pieces for an "app warehouse" are all there, in four query languages
+
+**Opportunity.** By the end of this build, answering one question about the app
+meant four different tools:
+
+| what | where | how you query it |
+|---|---|---|
+| model metadata | the `.mpr` | `mxcli -c "SELECT … FROM CATALOG.MICROFLOWS"` |
+| app data | PostgreSQL | `psql`, or `mxcli oql` against the running app |
+| traces | OTLP spans | grep a JSONL file, or a trace UI |
+| metrics | `/prometheus` | curl and eyeball |
+| logs | `.mxcli/runtime.log` | grep |
+
+Each is fine alone. The useful questions cross them, and none of them can.
+
+**Tested: DuckDB reads all of it in place**, no ETL step — `pip install duckdb`,
+`ATTACH` the app's PostgreSQL read-only, and `read_json_auto` the rest.
+`scripts/warehouse.py` builds it; two cross-source joins that were previously
+impossible in one query:
+
+*Runtime cost (traces) against model shape (catalog)* —
+
+```
+microflow        calls   avg_ms   max_ms  activities  mccabe
+ACT_DealGame         2  2393.74  4325.62          76      42
+ACT_Refresh          3   742.56  2054.66          45      23
+ACT_Set1             1   148.91   148.91           2       1
+ACT_MarkPeers        6    29.09    52.59          14       7
+```
+
+Complexity does not predict cost: `ACT_Set1` is two activities and McCabe 1, and
+costs five times `ACT_MarkPeers` at fourteen activities — because it delegates.
+A lint rule flagging complexity cannot see that; this join can.
+
+*Query time (traces) x entity (catalog) x live rows (the app's own Postgres)* —
+
+```
+entity      tbl                  op       queries  total_ms
+(system)    system$queuedtask    SELECT      1103   4083.58
+Game        sudoku$game          INSERT         2    418.01
+Cell        sudoku$cell          INSERT         2    373.10
+Cell        sudoku$cell          SELECT        15     53.72
+```
+
+The task-queue poller is the single largest database consumer in this app by an
+order of magnitude, and it belongs to no microflow — invisible from any
+per-microflow view. Knowing `system$*` is not yours requires the catalog;
+knowing it costs 4s requires the traces.
+
+**The context argument holds, and is the strongest part.** The raw sources
+behind those two tables:
+
+```
+traces        2528.5 KB   ~647,000 tokens
+logs           108.3 KB    ~27,700
+metrics         20.4 KB     ~5,200
+catalog         19.5 KB     ~5,000
+                        ~685,000 tokens total
+```
+
+Both answers together are **under 3 KB**. That is the difference between a
+question being answerable and not.
+
+**One real gap: logs cannot be joined to traces.** Runtime log lines carry no
+trace id — `grep -cE '[0-9a-f]{32}'` over the whole log returns 0 — so
+logs↔traces is a timestamp join, which is fuzzy exactly when it matters (under
+concurrency). The agent *ships* the log-correlation instrumentation (97
+log4j/logback classes in the javaagent jar), so the trace id is available in MDC;
+Mendix's log pattern just does not print it. Adding `%X{trace_id}` to the runtime
+log format would close it — a one-line change with more leverage than anything
+on the mxcli side.
+
+**Caveats worth stating.** DuckDB adds a CGO-free but non-trivial dependency if
+this were to live inside mxcli; span volume is the real storage question (one
+unfiltered deal is ~110k spans / 10 MB); and attaching the app's production
+database read-only is a decision that deserves an explicit flag, not a default.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -1136,6 +1215,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 27 | unreachable hub aborts the whole run | **New** |
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
 | 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **Fixed** (#46) — `--metrics` / `--trace` / `--runtime-setting` |
+| 30 | model, data, traces, metrics and logs need four query languages | **New** — DuckDB joins them; logs lack a trace id |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is

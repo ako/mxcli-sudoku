@@ -298,6 +298,28 @@ measures: the same deal profiles at 358ms with the default span filters and
 the filters for timing, and turn them off only to inspect the *shape* of a small
 flow.
 
+### Querying it all together
+
+Model metadata, app data, traces, metrics and logs otherwise need four different
+query languages. DuckDB reads all of them in place — the app's PostgreSQL
+`ATTACH`ed read-only, everything else as JSON:
+
+```bash
+pip install duckdb
+scripts/warehouse.py build            # gather sources, create the views
+scripts/warehouse.py hot-microflows   # runtime cost x model complexity
+scripts/warehouse.py hot-tables       # query time x entity x live row counts
+scripts/warehouse.py sql "SELECT …"   # anything else
+```
+
+The point is the joins. `hot-microflows` shows that `ACT_Set1` — two activities,
+McCabe 1 — costs five times `ACT_MarkPeers` at fourteen activities, which no
+lint rule can see. `hot-tables` shows the task-queue poller is the largest
+database consumer in the app and belongs to no microflow at all.
+
+Logs are the one source that will not join cleanly: runtime log lines carry no
+trace id, so logs-to-traces is a timestamp join. See [FINDINGS.md](FINDINGS.md) #30.
+
 `scripts/otel.sh` reads the results back: `metrics` (the Mendix counters,
 aggregated), `spans` (volume by name), `trace` (one request as a tree). Details
 in [FINDINGS.md](FINDINGS.md) #29.
