@@ -235,6 +235,23 @@ The lines come from `Sudoku/.mxcli/runtime.log`, which `mxcli run --local` fills
 with the Mendix application log — see [FINDINGS.md](FINDINGS.md) #25 for how that
 plumbing came to exist.
 
+### Metrics and traces
+
+The runtime carries Micrometer and the OpenTelemetry Java agent; neither is on
+by default and `mxcli run` cannot switch them on. `scripts/otel.sh` does:
+
+```bash
+scripts/otel.sh configure     # register Prometheus + sane span filters (live, no restart)
+scripts/otel.sh metrics       # the Mendix counters — DB selects/updates, sessions, queues
+scripts/otel.sh agent-env     # the JAVA_TOOL_OPTIONS to export before launching, for traces
+scripts/otel.sh spans         # span volume by name
+```
+
+`configure` has to be re-run after every restart, since mxcli sends a fixed set
+of runtime settings. Traces need the agent, and **need the span filters** —
+without them one board deal emits ~110,000 spans and takes 5.8s instead of 0.3s.
+Details in [FINDINGS.md](FINDINGS.md) #29.
+
 ### Breakpoints
 
 The runtime also carries a real debugger. `scripts/mfdebug.sh` drives it:

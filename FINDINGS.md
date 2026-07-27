@@ -880,6 +880,138 @@ server-side `ACT_ApplyValue`.
 
 ---
 
+## 29. OpenTelemetry is all there, and `mxcli run --local` can reach none of it
+
+**Gap.** The runtime ships everything needed for metrics and traces. Neither is
+reachable through `mxcli run --local`, for two different reasons — and both are
+one small change away.
+
+### Metrics: present, registered, and switched off
+
+The admin port already mounts the servlet at boot:
+
+```
+INFO - M2EE: Added admin request handler '/prometheus' with servlet class
+       'com.mendix.metrics.prometheus.PrometheusServlet'
+```
+
+but it answers **`503 No PrometheusMeterRegistry available`**, because no
+registry is configured. The settings that configure one — `Metrics.Registries`
+and `Metrics.ApplicationTags`, found in `com.mendix.configuration.jar` and
+`com.mendix.metrics.jar` — take effect on a **live** `update_configuration`, no
+restart:
+
+```json
+{"action":"update_configuration","params":{
+  "…the settings mxcli already sent…",
+  "Metrics.Registries":[{"type":"prometheus","settings":{"step":"PT10S"}}]}}
+```
+
+and `/prometheus` immediately serves **71 metric families**. Registry types
+available from the bundled Micrometer: `prometheus`, `otlp`, `influx`, `statsd`,
+`jmx`.
+
+The Mendix-specific ones are the interesting part — a live instrument for
+exactly the optimisation work in #28:
+
+```
+connectionbus_selects_total, _inserts_total, _updates_total, _deletes_total,
+connectionbus_transactions_total, handler_requests_total,
+sessions_anonymous_sessions, taskqueue_*
+```
+
+One deal plus five square selections moved them by **+162 selects, +21 updates,
++7 inserts, +89 transactions** — the measurement that previously needed
+`pg_stat_user_tables`.
+
+**Why mxcli blocks it:** `runtimeConfigParams` in `localboot.go` builds a fixed
+map (BasePath, RuntimePath, DTAPMode, the DB fields, MicroflowConstants,
+ApplicationRootUrl) with no passthrough for anything else. And
+`update_configuration` **replaces** rather than merges, so setting metrics by
+hand means repeating every value mxcli sent or the runtime loses its database
+connection. There is no `get_configuration` action to read them back from.
+
+**Ask:** a `--runtime-setting Key=Value` (repeatable) on `mxcli run`, or simply
+`--metrics` to register Prometheus. Either removes the need to reconstruct the
+whole config.
+
+### Traces: the agent ships with the runtime, but nothing can load it
+
+The runtime bundles the OTel **API** only — `opentelemetry-api`, `-common`,
+`-context`, `-proto`. No SDK, no exporter. The implementation is a Java agent
+sitting unused in the runtime tree:
+
+```
+/root/.mxcli/runtime/<version>/runtime/agents/opentelemetry-javaagent.jar   (24 MB, v2.28.1)
+```
+
+`mxcli` spawns the JVM as `exec.Command(javaExe, "-jar", launcherJar, deployDir)`
+— **no JVM arguments, and no flag to add any**. The only way in is
+`JAVA_TOOL_OPTIONS` on the mxcli process, which the JVM inherits:
+
+```bash
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -javaagent:…/opentelemetry-javaagent.jar"
+export OTEL_SERVICE_NAME=sudoku OTEL_TRACES_EXPORTER=console \
+       OTEL_METRICS_EXPORTER=none OTEL_LOGS_EXPORTER=none
+```
+
+Append, never replace — this sandbox already uses `JAVA_TOOL_OPTIONS` for its
+TLS proxy. With `OTEL_TRACES_EXPORTER=console` the spans land in
+`.mxcli/runtime.log` via the tee from #25, so **no collector is needed** to see
+whether tracing works.
+
+It works, and Mendix instruments deeply — `tracer: com.mendix.runtime`, with
+`mx.microflow.name` and `mx.microflow.depth` attributes:
+
+```
+'Microflow Sudoku.ACT_SelectCell' : 5d2155108ea0fcd9… 1f8dfee0da6ac67f SERVER
+  [tracer: com.mendix.runtime:] AttributesMap{data={mx.microflow.depth=1,
+  mx.microflow.name=Sudoku.ACT_SelectCell, …}}
+```
+
+### The trap: default tracing is per-activity, and that is unusable
+
+Every microflow activity becomes a span. **One board deal produced ~110,000
+spans**:
+
+```
+62566  CreateOrChangeVariable activity
+22638  Loop iteration
+18260  Gateway activity
+ 5505  Loop activity
+    4  Microflow Sudoku.ACT_SolveGrid
+```
+
+The deal went from ~0.1-0.5 s to **5.8 s**. Any real collector would be buried.
+
+The fix is an undocumented runtime setting, `OpenTelemetry._RuntimeSpanFilters`
+(the leading underscore is real — from `OpenTelemetryConfig`), a list of span
+**name prefixes to suppress**:
+
+```json
+"OpenTelemetry._RuntimeSpanFilters": ["CreateOrChangeVariable","Loop","Gateway","RetrieveFromCache"]
+```
+
+Same deal, same agent: **404 spans instead of ~110,000**, and 0.27-0.59 s
+instead of 5.8 s. What survives is what you actually want — microflow spans,
+commits, JDBC statements, HTTP requests. It applies live, like the metrics.
+
+| | spans per deal | deal time |
+|---|---|---|
+| no agent | — | 0.09-0.54 s |
+| agent, default | ~110,000 | 5.77 s |
+| agent + filters | 404 | 0.27-0.59 s |
+
+**Ask:** ship those filters as the default, or at least document the setting
+next to the tracing docs — per-activity spans are a debugging mode, not a
+production default, and the only signal that something is wrong is the app
+becoming ten times slower.
+
+`scripts/otel.sh` in this repo wraps all of it: `configure`, `metrics`, `raw`,
+`agent-env`, `spans`, `trace`.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -905,6 +1037,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 26 | microflow debugger not exposed by mxcli | **New** — protocol mapped, driven end to end |
 | 27 | unreachable hub aborts the whole run | **New** |
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
+| 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **New** |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
