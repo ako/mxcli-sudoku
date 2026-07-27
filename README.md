@@ -16,6 +16,8 @@ The toolchain that builds and runs it is set up by committed automation; see
 | **Theme** | "Nocturne" — dark, mint accent, from a Claude design prototype |
 | **Module** | `Sudoku` (the scaffolded `MyFirstModule` is left untouched) |
 
+![The landing page](docs/screenshots/01-home.png)
+
 **Playing.** Choose a difficulty and a fresh board is dealt. Select a square,
 then tap a digit on the number pad. Entries that disagree with the solution turn
 red immediately and the conflict counter updates; dealt squares are read-only.
@@ -29,6 +31,20 @@ deliberately not reversible. `Result` opens the completion page.
 
 Selecting a square that already holds a digit highlights every other square with
 the same digit, which makes scanning for a number's placement much quicker.
+
+![The board, with a dealt 4 selected and its matches highlighted](docs/screenshots/02-board.png)
+
+In notes mode the pad writes pencil marks instead of answers, and the status
+line says so:
+
+![Notes mode, with pencil marks 1, 4 and 7 in the selected square](docs/screenshots/03-notes.png)
+
+A finished board turns the banner green, reads every key as DONE, and offers
+the completion page:
+
+![A solved board](docs/screenshots/04-solved.png)
+
+![The completion page](docs/screenshots/05-done.png)
 
 ### How boards are generated
 
