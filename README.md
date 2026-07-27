@@ -237,20 +237,24 @@ plumbing came to exist.
 
 ### Metrics and traces
 
-The runtime carries Micrometer and the OpenTelemetry Java agent; neither is on
-by default and `mxcli run` cannot switch them on. `scripts/otel.sh` does:
+The runtime carries Micrometer and the OpenTelemetry Java agent. Both are
+opt-in flags on `mxcli run`:
 
 ```bash
-scripts/otel.sh configure     # register Prometheus + sane span filters (live, no restart)
-scripts/otel.sh metrics       # the Mendix counters — DB selects/updates, sessions, queues
-scripts/otel.sh agent-env     # the JAVA_TOOL_OPTIONS to export before launching, for traces
-scripts/otel.sh spans         # span volume by name
+mxcli run --local --watch --metrics --trace -p "$PWD/Sudoku/Sudoku.mpr"
 ```
 
-`configure` has to be re-run after every restart, since mxcli sends a fixed set
-of runtime settings. Traces need the agent, and **need the span filters** —
-without them one board deal emits ~110,000 spans and takes 5.8s instead of 0.3s.
-Details in [FINDINGS.md](FINDINGS.md) #29.
+`--metrics` registers a Prometheus registry and serves it at
+`http://127.0.0.1:8090/prometheus` — 71 families, including the `connectionbus`
+counters that make DB churn per interaction measurable. `--trace` attaches the
+bundled agent and, importantly, applies default span filters: unfiltered
+per-activity tracing turns one board deal into ~110,000 spans and 5.8s instead
+of 433 spans and 0.9s. Your own `OTEL_*` environment wins over the defaults, so
+exporting to a real collector instead of the console still works.
+
+`scripts/otel.sh` reads the results back: `metrics` (the Mendix counters,
+aggregated), `spans` (volume by name), `trace` (one request as a tree). Details
+in [FINDINGS.md](FINDINGS.md) #29.
 
 ### Breakpoints
 

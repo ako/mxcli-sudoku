@@ -1010,6 +1010,38 @@ becoming ten times slower.
 `scripts/otel.sh` in this repo wraps all of it: `configure`, `metrics`, `raw`,
 `agent-env`, `spans`, `trace`.
 
+### FIXED, PR #46 (on `main` at `3e9a1027`) — verified end to end
+
+`run` gained `--metrics`, `--trace`, `--trace-service` and a repeatable
+`--runtime-setting Key=Value`. Both features are **opt-in**: a plain
+`mxcli run --local` still answers `No PrometheusMeterRegistry` and attaches no
+agent, which is right — tracing costs real time.
+
+| what was asked | what landed | verified |
+|---|---|---|
+| a way to pass runtime settings | `--runtime-setting Key=Value`, value JSON-parsed, repeatable | filter list below |
+| register Prometheus without hand-rebuilding the config | `--metrics` | `/prometheus` serves **71 families** at boot, and `run` prints `Metrics (Prometheus): http://127.0.0.1:8090/prometheus` |
+| load the bundled agent | `--trace` | `opentelemetry-javaagent 2.28.1` in the runtime log |
+| ship the span filters as the default | `--trace` applies them | **433 spans / 0.92 s** per deal, against ~110,000 / 5.77 s unfiltered |
+
+Three details the PR got right that are easy to get wrong:
+
+1. **`JAVA_TOOL_OPTIONS` is appended, not replaced.** The runtime's environment
+   still carries this sandbox's TLS proxy settings *and* the agent:
+   `trustStore=/root/.ccr/java-truststore.p12 … -javaagent:…/opentelemetry-javaagent.jar`.
+   Overwriting would have broken outbound TLS.
+2. **Your `OTEL_*` wins.** `OTEL_SERVICE_NAME` defaults to the `.mpr` name
+   (`Sudoku`), but exporting `OTEL_SERVICE_NAME=my-own-name` before launching
+   left it untouched — so pointing at a real OTLP collector instead of the
+   console exporter still works.
+3. **An explicit filter list overrides the default.** Adding
+   `--runtime-setting 'OpenTelemetry._RuntimeSpanFilters=[…,"Change","ChangeList","CreateAndChange"]'`
+   dropped those span families too: **221 spans** instead of 433.
+
+`go test ./cmd/mxcli/docker/...` passes. `scripts/otel.sh` is now mostly
+redundant — `configure` and `agent-env` are replaced by the flags; `metrics`,
+`spans` and `trace` are still handy as readers.
+
 ---
 
 ## Verification summary
@@ -1037,7 +1069,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 26 | microflow debugger not exposed by mxcli | **New** — protocol mapped, driven end to end |
 | 27 | unreachable hub aborts the whole run | **New** |
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
-| 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **New** |
+| 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **Fixed** (#46) — `--metrics` / `--trace` / `--runtime-setting` |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
