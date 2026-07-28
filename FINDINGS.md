@@ -1227,11 +1227,12 @@ database read-only is a decision that deserves an explicit flag, not a default.
 ## 31. Hub authentication (PR #50) — anonymous listing leaked every preview
 
 > **All four code-level concerns below were fixed before PR #50 merged**
-> (`e06015ed`), each with a test. Verified against the merged build: an anonymous
-> `GET /api/backends` on an auth-enabled hub now returns **401** where it
-> previously returned every user's previews, and a session cookie and an OAuth
-> state are no longer interchangeable (checked both directions). The remaining
-> item is operational and is corrected below.
+> (`e06015ed`), each with a test. Verified against the merged build: a session
+> cookie and an OAuth state are no longer interchangeable (checked both
+> directions), and — now confirmed **against the live hub**, not just a unit
+> test — an anonymous `GET /api/backends` returns `401 authentication required`
+> where it previously returned every user's previews. The remaining items are
+> operational and are corrected below.
 
 **Note on status.** Unlike every other entry here, this began as a **code review
 of an unmerged PR** rather than observed behaviour of a shipped build.
@@ -1304,10 +1305,8 @@ and a stale key both take the local run down with them.
 
 Two supporting details, minor on their own:
 
-- In a headless container the device flow **cannot be self-served**: it prints a
-  code and waits for a human at `github.com/login/device`. A SessionStart hook
-  therefore cannot recover on its own. This only matters because of the fatal
-  abort above.
+- In a headless container the device flow **cannot be run at all** — see the next
+  section. This only matters because of the fatal abort above.
 - The hub's `POST /api/keys` accepts a plain GitHub token as
   `Authorization: Bearer`, but `mxcli auth hub login` is device-flow only — there
   is no `--token` flag. Adding one would make automation self-serving from a PAT
@@ -1317,6 +1316,62 @@ Two supporting details, minor on their own:
 and nothing else; then keys dying on restart is the minor annoyance it should be,
 and persisting them becomes optional rather than a prerequisite for turning
 `--require-auth` on.
+
+### `auth hub login` cannot run in a Claude Code web container at all
+
+Tested against the live authenticated hub (`authEnabled: true`,
+`requireAuth: true`). `mxcli auth hub login` fails before it prints a code:
+
+```
+Error: device-code request returned HTTP 403
+```
+
+That 403 is **not from GitHub** — it is this container's egress gateway:
+
+```
+POST https://github.com/login/device/code
+{"message":"This GitHub API path is not available: sessions are bound to their
+ configured repositories. Use repository-scoped endpoints (repos/{owner}/{repo}/...)."}
+```
+
+A Claude Code web session may only reach *repository-scoped* GitHub API paths, so
+`login/device/code` and `login/oauth/access_token` are both barred. This is
+structural, not a missing human: no amount of authorizing in a browser helps,
+because the container cannot start the flow. `api.github.com` answers 200 through
+the same proxy, which is what makes the failure look like a GitHub problem at
+first glance.
+
+Consequences, in order of how much they hurt:
+
+1. **`MXCLI_HUB_KEY` is not a convenience for these containers — it is the only
+   route.** The key has to be minted somewhere with unrestricted GitHub egress
+   (a laptop, or `curl -H "Authorization: Bearer <PAT>" -X POST
+   https://hub.mxcli.org/api/keys`) and then set as an environment secret.
+2. **The error message advises something impossible here.** The 401 says
+   `run 'mxcli auth hub login'`, which in this environment can never succeed. It
+   would help to name `MXCLI_HUB_KEY` as the alternative.
+3. **A `--token` flag on `auth hub login` would fix it properly.** The hub already
+   accepts a GitHub token as `Authorization: Bearer` at `POST /api/keys`; only the
+   CLI insists on the device flow. `mxcli auth hub login --token $GH_TOKEN` would
+   let a restricted container mint its own key from a PAT.
+
+### Live confirmation of the fatal abort
+
+With no key, against a `--require-auth` hub:
+
+```
+Registering with hub https://hub.mxcli.org...
+Error: hub registration: hub registration failed (HTTP 401):
+       missing or invalid X-Hub-Key (run 'mxcli auth hub login')
+
+local app afterwards: HTTP 000   <- nothing running
+```
+
+The 401 itself is well worded. But the run is over: no local app, no warm loop,
+no `--watch`. Combined with the section above, a Claude Code web container
+pointed at an authenticated hub without a pre-set `MXCLI_HUB_KEY` gets **no app
+at all**, and is told to run a command it cannot run. That is #27's fix — degrade
+to local-only — doing double duty.
 
 ### Smaller
 
@@ -1368,7 +1423,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
 | 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **Fixed** (#46) — `--metrics` / `--trace` / `--runtime-setting` |
 | 30 | model, data, traces, metrics and logs need four query languages | **New** — DuckDB joins them; logs lack a trace id |
-| 31 | hub auth (PR #50): anonymous `/api/backends` listed every preview | **Fixed** before merge (`e06015ed`); one operational item folded into #27 |
+| 31 | hub auth (PR #50): anonymous `/api/backends` listed every preview | **Fixed** before merge (`e06015ed`), confirmed live; `auth hub login` is unusable in a web container (egress) |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
