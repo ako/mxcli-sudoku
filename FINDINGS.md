@@ -751,6 +751,11 @@ preview URL if it succeeds later.
 
 **Workaround:** drop `--hub` and run `mxcli run --local …`.
 
+> **FIXED, PR #51** (verified live). A failed registration — unreachable hub *or*
+> a rejected key — now warns and continues local-only instead of aborting:
+> `Warning: hub registration failed (…); continuing local-only — the app runs on
+> localhost but has no public preview URL.` See #31 for the test.
+
 ---
 
 ## 28. Nanoflow logging and debugging both work — with two traps
@@ -1224,8 +1229,15 @@ database read-only is a decision that deserves an explicit flag, not a default.
 
 ---
 
-## 31. Hub authentication (PR #50) — anonymous listing leaked every preview
+## 31. Hub authentication (PRs #50, #51) — all findings fixed, verified live
 
+> **RESOLVED.** PR #50 fixed the four code-level concerns before merging; **PR #51
+> then fixed every remaining item** — the shared-secret regression, the fatal
+> abort, the unusable device flow, and key durability — citing this finding by
+> name (`hub-auth: post-deploy fixes from sudoku finding #31`). Each was
+> re-tested against the updated live hub; the results table is at the end of this
+> entry. What follows is the original report, kept so the reasoning is auditable.
+>
 > **All four code-level concerns below were fixed before PR #50 merged**
 > (`e06015ed`), each with a test. Verified against the merged build: a session
 > cookie and an OAuth state are no longer interchangeable (checked both
@@ -1417,6 +1429,58 @@ stamps an owner, a valid secret registers owner-less, and no credential is
 refused. That keeps existing `--hub-secret` setups working through the migration
 and makes soft mode an actual gate rather than an open door.
 
+### FIXED by PR #51 — re-tested against the live hub
+
+Every remaining item closed. Verified against `hub.mxcli.org` after it was
+updated, not from the diff:
+
+| check | before | after |
+|---|---|---|
+| register with the shared secret | 401 | **200**, owner-less |
+| register with a key only | — | **200**, owner stamped |
+| key ⇒ owner ⇒ preview gated | — | **302 → GitHub login** |
+| secret ⇒ owner-less ⇒ preview open | — | no redirect, proxies through |
+| anonymous `/api/backends` | 200 + every preview | **401** (still) |
+| unauthenticated key mint | — | **401** |
+| `/cli` browser key page | did not exist | **302 → GitHub login** |
+| `auth hub status` reads `MXCLI_HUB_KEY` | — | `Source: env (MXCLI_HUB_KEY)` |
+| rejected key | **whole run aborted** | **app up local-only**, warning |
+
+The degradation is the #27 fix doing its job. With a deliberately bogus key:
+
+```
+Warning: hub registration failed (HTTP 401): missing or invalid X-Hub-Key …
+         continuing local-only — the app runs on localhost but has no public preview URL.
+```
+
+`authorizeRegister` now takes the shape suggested above — a key stamps an owner,
+a valid secret registers owner-less, and soft mode gates when a secret is
+configured instead of being open registration. The device flow is deleted in
+favour of browser issuance at `/cli` plus `--token` for headless use, which is
+what makes this usable from a container that cannot reach GitHub's OAuth
+endpoints. The key store is now file-backed, so keys survive a hub restart.
+
+**Two things I got wrong while testing, recorded because the corrections matter
+more than the findings did:**
+
+1. I reported a contradiction — our preview redirecting to login while a
+   secret-registered probe did not — and started hunting a bug. The cause was
+   that `MXCLI_HUB_KEY` had been set in the environment between my two checks, so
+   our app registered *with a key* and was correctly owner-gated. Both behaviours
+   were right. Check the process environment before calling behaviour inconsistent.
+2. A **302 on a preview is the feature, not a failure**: `curl` carries no
+   session, so the owner check bounces it to GitHub. Only a browser signed in as
+   the owner can confirm the other half, which is the one thing not verified here.
+
+**Not verified:** viewing a gated preview *as the owner* (needs a browser
+session); key durability across a hub restart (the key survived a deploy, but I
+cannot tell whether it predates the restart, so the claim is unproven);
+`auth hub login --token` (needs a PAT, and this container is barred from GitHub's
+OAuth endpoints regardless).
+
+**Still open, cosmetic:** `mxcli auth hub login --help` still reads "Mint and
+store a hub API key via GitHub device flow" although `deviceflow.go` is deleted.
+
 ### Smaller
 
 All four were fixed before merge; kept here for the record.
@@ -1463,11 +1527,11 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 24 | `CREATE OR MODIFY` deletes attributes | **New** |
 | 25 | runtime log unreachable from `run --local` | **Fixed** (#38, #39, #41) — verified end to end |
 | 26 | microflow debugger not exposed by mxcli | **New** — protocol mapped, driven end to end |
-| 27 | unreachable hub aborts the whole run | **New** |
+| 27 | unreachable hub aborts the whole run | **Fixed** (#51) — degrades to local-only |
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
 | 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **Fixed** (#46) — `--metrics` / `--trace` / `--runtime-setting` |
 | 30 | model, data, traces, metrics and logs need four query languages | **New** — DuckDB joins them; logs lack a trace id |
-| 31 | hub auth (PR #50): anonymous `/api/backends` listed every preview | **Fixed** before merge (`e06015ed`), confirmed live; `auth hub login` unusable in a web container (egress); shared secret stops working, soft mode is ungated |
+| 31 | hub auth: anonymous `/api/backends` listed every preview; secret retired; run aborted on a bad key | **All fixed** (#50 + #51), each re-tested against the live hub |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
