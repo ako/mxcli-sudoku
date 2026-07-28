@@ -1373,6 +1373,50 @@ pointed at an authenticated hub without a pre-set `MXCLI_HUB_KEY` gets **no app
 at all**, and is told to run a command it cannot run. That is #27's fix — degrade
 to local-only — doing double duty.
 
+### The shared secret stops working the moment auth is enabled
+
+Tested against the live hub: the legacy `X-Hub-Secret` is rejected outright.
+
+```
+POST /api/register  -H 'X-Hub-Secret: alice:s3cret'
+  HTTP 401 — missing or invalid X-Hub-Key (run 'mxcli auth hub login')
+```
+
+Not "overridden by a key" — **never consulted**. `authorizeRegister` reads the
+secret only inside `if !a.opts.Auth.enabled()`, so enabling GitHub auth makes that
+branch unreachable:
+
+```go
+if !a.opts.Auth.enabled() {
+    ... X-Hub-Secret gate ...        // open mode only
+    return "", true
+}
+key := r.Header.Get("X-Hub-Key")     // auth on: key or nothing
+```
+
+The client dutifully sends both headers ("Both are sent when present so the hub
+picks the one matching its own mode") — but the hub never looks at the secret.
+
+**The awkward part is the middle setting.** With auth enabled there are only two
+states, and neither is "secret still gates registration":
+
+| | registration | listing |
+|---|---|---|
+| open mode (no client id) | shared secret | everything |
+| auth + `--require-auth` | valid `X-Hub-Key` only | 401 without a session |
+| auth + soft mode | **ungated — no key *and* no secret** | 401 without a session |
+
+Soft mode reaches `return "", true` without checking anything, so it is not a
+gentler gate — it is *open registration*, on a hub whose operator has just turned
+authentication on. Anyone who can reach `/api/register` can claim a subdomain;
+previews are merely owner-less. That is very likely not what "soft mode" sounds
+like from the flag name.
+
+**Suggestion:** honour `RegisterSecret` as a fallback when auth is enabled — a key
+stamps an owner, a valid secret registers owner-less, and no credential is
+refused. That keeps existing `--hub-secret` setups working through the migration
+and makes soft mode an actual gate rather than an open door.
+
 ### Smaller
 
 All four were fixed before merge; kept here for the record.
@@ -1423,7 +1467,7 @@ Finding 25 was retested later against `main` at `6d3cde89` (PR #38),
 | 28 | nanoflow log node rewritten; paused nanoflows only in `poll_events` | **New** |
 | 29 | OTel metrics/traces unreachable from `run --local`; per-activity spans unusable | **Fixed** (#46) — `--metrics` / `--trace` / `--runtime-setting` |
 | 30 | model, data, traces, metrics and logs need four query languages | **New** — DuckDB joins them; logs lack a trace id |
-| 31 | hub auth (PR #50): anonymous `/api/backends` listed every preview | **Fixed** before merge (`e06015ed`), confirmed live; `auth hub login` is unusable in a web container (egress) |
+| 31 | hub auth (PR #50): anonymous `/api/backends` listed every preview | **Fixed** before merge (`e06015ed`), confirmed live; `auth hub login` unusable in a web container (egress); shared secret stops working, soft mode is ungated |
 
 The app's own pipeline (`03`–`08`) checks clean through the PR build, so nothing
 regressed for real-world scripts; `01`/`02` still report "already exists", which is
