@@ -1504,6 +1504,10 @@ All four were fixed before merge; kept here for the record.
 
 ## 32. Upgrading a widget package on MPR v2 costs you the v2 layout
 
+> Finding 37 records the gap underneath this one — that an installed marketplace
+> module cannot be updated at all. This entry is about what happens on MPR v2
+> once you update the payload by hand anyway.
+
 Build under test: `main` `09f24ce8`. Mendix 11.12.1, project on MPR v2 (409
 `mprcontents/*.mxunit`). Attempted upgrade: Data Widgets **3.5.0 → 3.11.3**
 (marketplace id 116540), which moves all nine widgets from 3.3.0/3.4.0 to 3.11.3.
@@ -1712,6 +1716,94 @@ with `ERROR - M2EE: Please specify node, subscriber or sort option in params` in
 the runtime log. The action evidently requires parameters that neither the error
 nor any documentation names, so there is no way to confirm a log level actually
 took effect — which matters when a level change is the experiment (finding 33).
+
+## 37. There is no way to update an installed marketplace module
+
+Finding 32 is the *consequence* of this one on an MPR v2 project. The gap
+underneath it is simpler and broader: **mxcli can install a marketplace module
+but cannot update one**, and nothing else in the container can either.
+
+Keeping marketplace modules current is routine maintenance, not an edge case. In
+this app, six of seven are behind — most by several minor versions:
+
+| module | installed | latest |
+|---|---|---|
+| Administration | 4.3.2 | 4.5.0 |
+| Atlas_Core | 4.1.3 | 4.3.7 |
+| Atlas_Web_Content | 4.1.0 | 4.3.0 |
+| DataWidgets | 3.5.0 | 3.11.3 |
+| NanoflowCommons | 6.0.0 | 7.2.1 |
+| WebActions | 2.11.0 | 2.11.2 |
+| FeedbackModule | 4.0.2 | — |
+
+`mxcli marketplace` covers discovery well — `search`, `info`, `versions`,
+`download` all work against a `MENDIX_PAT`, and `install` is genuinely useful for
+a module the project does not yet have. The moment the module is already present,
+every route closes:
+
+```
+$ mxcli marketplace install 116540 -p Sudoku.mpr
+Module "DataWidgets" is already installed (version 3.5.0). Target version: 3.11.3.
+In-place module updates are not applied automatically … Update via Studio Pro.
+
+$ mx module-import DataWidgets-3.11.3.mpk Sudoku.mpr
+error 3: Project already contains a module with the name of an importing module.
+```
+
+mxcli's caution is reasonable in general — an in-place update can discard local
+edits, and for a module with persistent entities it can change entity IDs and
+lose data. But it is unconditional, so it also blocks the cases where it is
+provably safe. `DataWidgets` has **0 entities**; its whole model contribution is
+one enumeration that is byte-identical between the installed and target versions.
+There is no way to tell mxcli that, and no `--force` to take responsibility for
+it.
+
+**The recorded version cannot even be corrected.** Having swapped the payload by
+hand (finding 32), the model still says 3.5.0, and the two tools disagree about
+what that field even is:
+
+```
+$ mxcli show modules            ->  DataWidgets   Marketplace v3.5.0
+$ mx show-module-version Sudoku.mpr DataWidgets
+Module 'DataWidgets' does not have a version.
+$ mx set-module-version Sudoku.mpr DataWidgets 3.11.3
+Module 'DataWidgets' does not have a version.        # no-op
+```
+
+So a hand-updated module is indistinguishable from a stale one, which makes the
+manual route unsafe to repeat: nothing records that it happened.
+
+**And the manual route only exists for widget-shaped modules at all.** Swapping
+`widgets/`, `themesource/` and `javascriptsource/` works for `DataWidgets`
+because those files *are* the module. For `Administration` (2 entities, 9 pages,
+8 microflows) or `NanoflowCommons` (2 entities, 3 enums) the model content *is*
+the module, and there is no file-level equivalent — the update has to be a model
+merge. Those are exactly the modules where the entity-ID risk mxcli cites is
+real, and exactly the ones with no path forward.
+
+### What would close it
+
+In rough order of value:
+
+1. **`mxcli marketplace update <id>`** that diffs the packaged module's model
+   against the installed one and reports what would change — added/removed
+   entities and attributes, changed microflows — before touching anything.
+   Read-only, it would already be useful: today there is no way to know what an
+   update contains without importing it into a scratch project.
+2. **An escape hatch for the safe cases** — a module with no persistent entities
+   and no local edits is a file replacement plus a version bump. `--force`, or a
+   check that proves the model contribution is unchanged.
+3. **A writable version field**, so a hand-updated module can be recorded as
+   such.
+
+### Why this matters more here than it looks
+
+The premise of this project is a Mendix app authored end to end through
+mxcli/MDL, never opening Studio Pro. That holds for everything we write. It stops
+holding for everything we *depend on*: the moment a marketplace module needs
+updating — for a fix, a security patch, or a runtime upgrade — the workflow
+requires the one tool it set out to avoid. An app that can be built but not
+maintained through the CLI is only half-automatable, and this is the boundary.
 
 ---
 
