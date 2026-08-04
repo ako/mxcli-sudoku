@@ -1502,6 +1502,217 @@ All four were fixed before merge; kept here for the record.
   valid GitHub token can mint unbounded map entries; there is still no way to list
   or rotate keys, only to revoke the one you hold.
 
+## 32. Upgrading a widget package on MPR v2 costs you the v2 layout
+
+Build under test: `main` `09f24ce8`. Mendix 11.12.1, project on MPR v2 (409
+`mprcontents/*.mxunit`). Attempted upgrade: Data Widgets **3.5.0 → 3.11.3**
+(marketplace id 116540), which moves all nine widgets from 3.3.0/3.4.0 to 3.11.3.
+
+Neither available tool performs the update, each for a stated reason:
+
+```
+$ mxcli marketplace install 116540 -p Sudoku.mpr
+Module "DataWidgets" is already installed (version 3.5.0).
+Target version: 3.11.3.
+In-place module updates are not applied automatically (they can discard local
+edits and change persistent-entity IDs, which loses data). Update via Studio Pro.
+
+$ mx module-import DataWidgets-3.11.3.mpk Sudoku.mpr
+error 3: Project already contains a module with the name of an importing module.
+```
+
+The guard mxcli cites does not apply to this module: `DataWidgets` holds **0
+entities** — its entire model contribution is the `Filter_Operators`
+enumeration, which is **identical in 3.5.0 and 3.11.3** (same name, same folder,
+12 values, compared by opening the package's own `project.mpr`). The JS action
+file set is identical, and `themesource/` only *adds* `_pagination-bar.scss`
+(which `main.scss` already `@import`s). So for this package the payload — nine
+`.mpk`s, `themesource/datawidgets`, `javascriptsource/datawidgets` — *is* the
+upgrade, and copying it in is safe.
+
+Doing that leaves the model stale, exactly as expected:
+
+```
+mx check  ->  31 errors, all CE0463 "The definition of this widget has changed"
+```
+
+Per mxcli's own `diagnose-ce0463` skill this is **Case A** (package upgraded
+after the widgets were authored) — not an mxcli bug, and what "Update all
+widgets" exists for. The problem is what it costs on MPR v2:
+
+| path | CE0463 | `mprcontents/` |
+|---|---|---|
+| payload swapped, nothing else | 31 | 409 units |
+| `mx update-widgets` | **0** | **0 units — collapsed to v1** |
+| `mxcli exec` re-authoring our pages | 29 | 409 units |
+
+`mx update-widgets` fixes everything and destroys the v2 layout (the skill warns
+about this; confirmed here). mxcli's own reconciliation preserves the layout but
+**only reaches instances it authors**: it cleared both of our galleries
+(`galBoard`, `galRecent`) and nothing else. The 29 that remain are Studio Pro's
+own template widgets in Administration / Atlas_Web_Content / FeedbackModule —
+`gallery1` ×7, `gallery2` ×4, `dataGrid2_*` ×11, `drop_downFilter1/2` ×7 — pages
+no MDL in this project touches. They were clean at 3.4.0, so the upgrade is what
+broke them.
+
+The collapse is **one-way with the tools in the container**. `mxcli exec` against
+a collapsed project does not rebuild `mprcontents/` (tested: 0 units before, 0
+after). `modelsdk/mpr/reader.go:149` points at a recovery command —
+
+> `restore mprcontents/ before opening for writing, or use mxcli mpr-pack to-v1
+> to convert to a self-contained file`
+
+— but `mpr-pack` is **not implemented**: `unknown command "mpr-pack" for
+"mxcli"`. That message names a command that does not exist, and in any case
+offers only v1, not the v2 direction that would help.
+
+**Net effect.** On MPR v2 you can have the widget upgrade or the reviewable
+multi-file layout, not both, unless you own Studio Pro. For a repo whose whole
+premise is that the model is authored and reviewed as text, that is a real cost:
+409 files become one binary blob. This is the gap
+`docs/…/PROPOSAL_widget_instance_reconciliation.md` appears aimed at, and this is
+a concrete case for it — the missing piece is reconciling instances mxcli did not
+author, generically, in place.
+
+**Left at 3.4.0** in this repo pending that, since nothing here needs 3.11.3.
+
+## 33. `Client: Script error.` on every interaction — server clean, cause unreachable
+
+Four games across two mxcli builds (`0580eadf`, `689e8ce4`) and two versions of
+the microflow. Every game produces one client-side error per interaction:
+
+```
+68 errors / 68 ACT_MarkPeers      73 / 72      81 / 118*      (*overlapped a benchmark;
+                                                               1:1 once isolated)
+```
+
+The relationship is exact and it is with `ACT_MarkPeers`, which runs at the end
+of both `ACT_SelectCell` and `ACT_Refresh` — hence "whatever I do, a pop-up".
+The interleaving is always the same:
+
+```
+03:14:12.836 ERROR - Client: Script error.
+03:14:12.859 INFO  - Sudoku: ACT_SelectCell row=8 col=7
+03:14:12.872 INFO  - Sudoku: ACT_MarkPeers
+```
+
+**The server side is clean.** Zero server errors in any session; every microflow
+completes and moves are saved. This is a browser-side exception on top of working
+logic.
+
+What has been ruled out: the app has no external scripts (only a Google Fonts
+`@import`); the play page has no custom JS (the only client logic is
+`NF_ToggleNotes`); it is not a stale tab or a restart artifact (it starts while
+the app is healthy); and it is not the cross-origin stylesheet (stubbing the
+fonts sheet in so it *loads*, then driving 13 `ACT_MarkPeers` cycles, produced
+zero errors).
+
+It has never reproduced from the container — 51 selections and 32 digit entries
+across driven sessions, no script error — only from a real browser against the
+hub URL.
+
+**Why it is stuck.** `Script error.` with no file or line is the browser
+withholding detail for a cross-origin exception, so the server learns nothing.
+Raising the `Client` log node to TRACE changes nothing (`set_log_level` returns
+`result: 0` and the message stays bare). And the hub now gates previews behind
+GitHub OAuth, whose endpoints the sandbox egress blocks, so a headless browser
+here cannot load the page at all. The exception exists only in a real player's
+DevTools console, which is the one place this agent cannot reach.
+
+Worth noting as an observability gap in its own right: **a client-side error that
+breaks the app for every user is, server-side, indistinguishable from noise.**
+
+## 34. The container suspends when the session idles, taking the app with it
+
+Not an mxcli bug, but it dominates how mxcli is used from Claude Code on the web,
+and it was misdiagnosed twice before being pinned down.
+
+The container is reclaimed when the agent session goes idle. Every process dies:
+the app, the tunnel, PostgreSQL, and the OTLP collector. Measured window ≈ 8
+minutes from the end of a turn. Observed timeline: app launched 03:08, turn ended
+≈ 03:12, player active 03:13–03:16, container reclaimed ≈ 03:20, `SessionStart`
+hook relaunched onto a *new* runtime. From the player's side the preview simply
+stops; from the agent's side the traces for the period of interest are gone.
+
+Consequences worth stating plainly:
+
+- **A hub preview is only reachable while the agent session is active.** Nothing
+  in a launch script can change this; the whole container freezes.
+- Recovery therefore runs constantly, which makes the recovery path the hot path.
+- A first diagnosis of "your tab is stale after a restart" was **wrong** — the
+  errors in finding 33 began while the app was healthy, eight minutes before any
+  restart. Timestamps settled it; the restart was a second, unrelated event.
+
+Two hook bugs this exposed in *this* repo (both now fixed here, `a604f83`):
+
+1. Two entries in one `SessionStart` `hooks` array run **concurrently, not
+   sequentially**. `run-app.sh` raced `setup-tools.sh` and repeatedly launched
+   the app on an mxcli binary being replaced underneath it — the process holds a
+   deleted inode and silently serves the previous build. Nothing in any log says
+   so; only `readlink /proc/<pid>/exe` reveals it (`... (deleted)`). Chain the
+   commands with `&&`.
+2. A relaunch that omits `--metrics`/`--trace-otlp` silently loses all
+   observability for the rest of the session, and the runtime discards spans
+   when nothing is listening on 4318 — so the collector must start *first*.
+
+## 35. What tracing is good for, and how it misled me
+
+Spans across four played games, `--metrics --trace-otlp`. The app is healthy:
+`ACT_SelectCell` p50 ≈ 29 ms, a digit entry ≈ 35–70 ms, game start 1.05 s warm
+(4.8 s cold — the cold/warm split is large enough to invalidate any measurement
+taken on a fresh boot).
+
+**A correction, recorded because the failure mode is general.** From the span
+list I reported that the 81-cell list was "retrieved twice per interaction,
+1.79 s over a game, the app's single largest cost". That was wrong. Attributing
+each `Retrieve //Sudoku.Cell[Sudoku.Cell_Game = $Game]` span to its *parent*
+shows the parent is `POST /*` — these are the **client's** board refetch after
+each interaction, and were never inside `ACT_MarkPeers` at all. Grouping spans by
+name reads like a profile and is not one; only the parent chain tells you who
+paid. The real duplicate was one `SELECT` per call.
+
+Fixing that (pass the list into `ACT_MarkPeers` instead of re-retrieving it,
+commit `5895a3c`) measured, on a real game before and after:
+
+```
+ACT_MarkPeers    p50 8.55ms / 3 queries -> 3.62ms / 2 queries
+ACT_Refresh      p50 15.41 / 5          -> 11.29 / 4
+ACT_ApplyValue   p50 27.28 / 11         -> 22.53 / 10      (a move)
+ACT_SelectCell   p50 18.98 / 8          -> 17.04 / 8       (flat, as predicted)
+ACT_LogMove      p50 8.07               -> 7.61            (untouched — control)
+```
+
+Real, and about a hundredth of what was projected. `ACT_LogMove` holding still is
+what makes the rest credible.
+
+Also visible, and not app code: the Mendix **queued-task poller issues 47–64% of
+all database queries** (e.g. 3843 of 5979 in one session, ≈ 2.7–3.4 q/s) with
+nothing queued. It is harmless on a dev box but it dominates any query profile
+taken there, so it has to be filtered out before the app's own numbers mean
+anything.
+
+## 36. `get_log_settings` throws instead of answering
+
+Minor, but it costs a debugging step. `set_log_level` works:
+
+```
+$ curl -d '{"action":"set_log_level","params":{"nodes":[{"name":"Client","level":"TRACE"}]}}' :8090
+{"feedback":{},"result":0}
+```
+
+Reading them back does not:
+
+```
+$ curl -d '{"action":"get_log_settings"}' :8090
+{"result":1,"message":"class com.mendix.m2ee.api.internal.AdminException occurred
+ while executing an admin action request."}
+```
+
+with `ERROR - M2EE: Please specify node, subscriber or sort option in params` in
+the runtime log. The action evidently requires parameters that neither the error
+nor any documentation names, so there is no way to confirm a log level actually
+took effect — which matters when a level change is the experiment (finding 33).
+
 ---
 
 ## Verification summary
