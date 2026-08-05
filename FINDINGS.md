@@ -1795,7 +1795,7 @@ fire. It works mechanically, and it is still not usable. Tested from the state i
 finding 38 (Data Widgets 3.11.3, sync + re-authoring applied, 22 CE0463 left, all
 in marketplace-module pages), on build `7d04b192`.
 
-**1. Theme modules cannot be imported at all.**
+**1. Theme modules cannot be imported *by the CLI*.**
 
 ```
 $ mxcli marketplace install 117183 -p Sudoku.mpr      # Atlas Web Content 4.3.0
@@ -1806,8 +1806,26 @@ Importing theme module is not supported
 
 `mx module-import` rejects theme modules outright (its documented error 2). So
 `Atlas_Web_Content` can be dropped but never restored from the CLI — and it owns
-**11 of the 22** remaining errors (`gallery1` ×7, `gallery2` ×4). This one is a
-hard stop, not a tradeoff.
+**11 of the 22** remaining errors (`gallery1` ×7, `gallery2` ×4).
+
+**This is a tooling limit, not a platform one.** Studio Pro downloads and imports
+a new version of a theme module without complaint — Atlas Core among them — and
+its Import Module dialog offers exactly the choice the CLI lacks:
+
+> **Action:** ( ) Add as a new module   (•) Replace existing module
+> **Module to replace:** `Atlas_Core`
+>
+> IMPORTANT: If you replace a module with a new version, existing user data will
+> be retained based on the names of entities, attributes, associations,
+> microflows, workflows and workflow activities. If you delete a module and then
+> add a newer version of it, all user data will be lost.
+
+That warning describes this entire section. "Replace existing module" is a
+first-class, data-preserving operation that reconciles **by name**; delete-then-add
+— the only thing the CLI can express — is the documented data-losing path. So the
+capability exists in the model layer and is simply not exposed by
+`mx module-import`, whose entire interface is `MPK_PATH MPR_PATH` with no flags:
+no replace mode, no override for error 2 or error 3.
 
 **2. `mx module-import` destroys `mprcontents/`, exactly like `mx update-widgets`.**
 
@@ -1850,24 +1868,40 @@ had to be dropped separately.
 **Conclusion.** For a widget-shaped module such as Data Widgets, the manual
 payload swap plus `mxcli widget sync` is a genuine, layout-preserving upgrade
 (finding 38). For a model-shaped module there is no CLI upgrade at all: the only
-mechanism is destructive, layout-collapsing, blocked entirely for theme modules,
-and cascades into further package upgrades. That is the gap this finding asks to
-be closed — and drop-and-reinstall is not a workaround for it.
+mechanism the CLI can express is delete-then-add — which Mendix's own Import
+Module dialog names as the path that loses all user data — and it collapses
+`mprcontents/`, is refused outright for theme modules, and cascades into further
+package upgrades. Studio Pro's "Replace existing module" does none of this. So
+the gap is not a missing capability in the platform; it is a capability the CLI
+does not expose, and drop-and-reinstall is not a workaround for it.
 
 ### What would close it
 
+The target is not a new design. Studio Pro already implements it as **"Replace
+existing module"**: match the incoming module against the installed one *by name*
+— entities, attributes, associations, microflows, workflows — and keep user data
+across the swap. Everything below is parity with that, not invention.
+
 In rough order of value:
 
-1. **`mxcli marketplace update <id>`** that diffs the packaged module's model
-   against the installed one and reports what would change — added/removed
-   entities and attributes, changed microflows — before touching anything.
-   Read-only, it would already be useful: today there is no way to know what an
-   update contains without importing it into a scratch project.
-2. **An escape hatch for the safe cases** — a module with no persistent entities
+1. **`mxcli marketplace update <id>`** with replace semantics — the operation
+   Studio Pro exposes, missing from the CLI. It needs a model merge keyed on
+   names, not the file-level replacement `mx module-import` performs, and it must
+   work for theme modules, which Studio Pro handles and `module-import` refuses
+   outright.
+2. **A dry-run diff of the packaged model against the installed one** — added and
+   removed entities and attributes, changed microflows — before anything is
+   written. Read-only, this is useful on its own: today there is no way to see
+   what an update contains without importing it into a scratch project.
+3. **An escape hatch for the safe cases** — a module with no persistent entities
    and no local edits is a file replacement plus a version bump. `--force`, or a
    check that proves the model contribution is unchanged.
-3. **A writable version field**, so a hand-updated module can be recorded as
-   such.
+4. **A writable version field**, so a hand-updated module can be recorded as such.
+
+Whether mxcli can reach this through `mx` at all is an open question: `mx
+module-import` has no replace mode and no flags, so parity likely means
+implementing the name-keyed merge in mxcli's own model layer — which is also the
+only way it would preserve `mprcontents/`, since `module-import` collapses it.
 
 ### Why this matters more here than it looks
 
