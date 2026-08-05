@@ -1729,6 +1729,20 @@ Finding 32 is the *consequence* of this one on an MPR v2 project. The gap
 underneath it is simpler and broader: **mxcli can install a marketplace module
 but cannot update one**, and nothing else in the container can either.
 
+**The gap is modules only — widget-type items update cleanly.** Worth stating
+up front, because the two go down different code paths and only one is broken.
+`mxcli marketplace install` on a Widget overwrites the `.mpk` in `widgets/`
+exactly as its `--help` promises, in place, with the v2 layout untouched:
+
+```
+$ mxcli marketplace install 219304 -p Sudoku.mpr        # Combo box 2.9.0
+before: units 409  Combobox 2.5.0
+Installed widget 2.9.0 into widgets/com.mendix.widget.web.Combobox.mpk
+after:  units 409  Combobox 2.9.0
+```
+
+No guard, no refusal, no collapse. Everything below concerns Module-type items.
+
 Keeping marketplace modules current is routine maintenance, not an edge case. In
 this app, six of seven are behind — most by several minor versions:
 
@@ -2029,6 +2043,45 @@ and with nothing warning you.
 other property of this command moot; (2) until then, have `widget sync` refuse or
 loudly warn that it is a one-way door; (3) then chase the residual 24, which the
 idempotency result shows are not a property-schema problem at all.
+
+### Follow-up: a minimal reproduction of the residue, and the engine caveat is gone
+
+Build `d15f0c58` (PR #91, `widget-sync-modelsdk-rawunits`). Two changes worth
+recording, from upgrading the **Combo box** widget — a standalone Widget-type
+marketplace item, and the package `Administration` 4.5.0 turned out to need.
+
+**`MXCLI_ENGINE=legacy` is no longer required.** `widget sync` now applies on the
+default modelsdk engine, which retires the caveat in this finding's original
+`--help` quote. The duplicate-GUID fix holds on that path too: after syncing,
+`mx update-widgets` saves cleanly, 0 duplicate-GUID errors, 0 errors overall.
+
+**And this is the residue, reduced to its simplest form.** One widget package,
+one version step, on an otherwise clean project:
+
+```
+real project, untouched                     ->  mx check: 0 errors
+mxcli marketplace install 219304 (2.5.0 -> 2.9.0, in place, 409 units kept)
+                                            ->  mx check: 9 CE0463, on 4 Combo box instances
+mxcli widget sync                           ->  "Applied: 16 property change(s) on 4 widget(s)"
+                                            ->  mx check: STILL 9 CE0463
+mxcli widget sync (second pass)             ->  "Every stored widget instance already
+                                                matches its installed package. Nothing to do."
+mx update-widgets                           ->  0 errors  (409 units -> 0, as always)
+```
+
+So sync changed 16 properties on exactly the four failing widgets, then declared
+parity — while Mendix still rejects all four. This is a far cleaner test case than
+the Data Widgets upgrade that produced this finding: a single package, four
+instances, no module surgery, and a definitive oracle (`update-widgets` clears it,
+so the instances *are* repairable). Whatever CE0463 keys on for Combo box is
+something `widget sync` neither compares nor reports.
+
+**A note on the practical advice this changes.** Upgrading Combo box on its own
+makes this project *worse*, not better: it goes from 0 errors to 9, and only the
+layout-destroying path can bring it back. The four instances live in
+`Administration`'s pages, not ours. So "upgrade the widget package the module
+needs" is only a step forward in combination with the module upgrade — and that
+combination is blocked for the reasons in finding 37.
 
 **Not applied to this repo.** Left at Data Widgets 3.4.0, as in finding 32.
 
