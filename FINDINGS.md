@@ -1787,6 +1787,73 @@ the module, and there is no file-level equivalent — the update has to be a mod
 merge. Those are exactly the modules where the entity-ID risk mxcli cites is
 real, and exactly the ones with no path forward.
 
+### Drop-and-reinstall: the one CLI route, blocked three ways
+
+`DROP MODULE` + `marketplace install` looks like the way around "install refuses
+an existing module" — the module is absent at install time, so the guard does not
+fire. It works mechanically, and it is still not usable. Tested from the state in
+finding 38 (Data Widgets 3.11.3, sync + re-authoring applied, 22 CE0463 left, all
+in marketplace-module pages), on build `7d04b192`.
+
+**1. Theme modules cannot be imported at all.**
+
+```
+$ mxcli marketplace install 117183 -p Sudoku.mpr      # Atlas Web Content 4.3.0
+Dropped module: Atlas_Web_Content (1 entities, 2 nanoflows, 46 pages)
+mx module-import failed: exit status 112
+Importing theme module is not supported
+```
+
+`mx module-import` rejects theme modules outright (its documented error 2). So
+`Atlas_Web_Content` can be dropped but never restored from the CLI — and it owns
+**11 of the 22** remaining errors (`gallery1` ×7, `gallery2` ×4). This one is a
+hard stop, not a tradeoff.
+
+**2. `mx module-import` destroys `mprcontents/`, exactly like `mx update-widgets`.**
+
+Isolated to the import step, on an untouched copy:
+
+```
+start:        409 units
+after DROP:   381 units      <- DROP MODULE preserves the v2 layout
+after IMPORT:   0 units      <- module-import collapses it
+```
+
+So even where reinstalling is permitted, it costs the multi-file layout — the
+same price finding 32 documents for `update-widgets`. There is no MPR v2-safe
+module import.
+
+**3. Upgrading one module cascades into other widget packages.**
+
+`Administration` did import (4.3.2 → 4.5.0), and brought new errors with it:
+
+```
+before: 4x dataGrid21
+after:  4x dataGrid21 + 3x comboBox3 + 2x comboBox2 + 1x comboBox4 + 1x comboBox1
+```
+
+Administration 4.5.0's pages are authored against a newer **Combobox** than the
+`2.5.0` installed here — and Combobox is a *separate* marketplace item, not part
+of Data Widgets. Updating one module therefore demands updating the widget
+packages its pages depend on, each of which is its own upgrade with its own
+CE0463 wave. `mxcli widget sync` absorbed part of it (11 → 7 errors), which is
+the fix from finding 38 doing real work on a module mxcli never authored, but it
+does not close the loop.
+
+**And the guard's own warning applies.** Drop-and-reinstall is not an update: it
+discards local edits and, for a module with persistent entities, replaces them
+wholesale — new entity IDs, and data loss on a real deployment. Dropping
+`Administration` here also invalidated the project's demo users
+(`CE1613 "The selected entity 'Administration.Account' no longer exists"`), which
+had to be dropped separately.
+
+**Conclusion.** For a widget-shaped module such as Data Widgets, the manual
+payload swap plus `mxcli widget sync` is a genuine, layout-preserving upgrade
+(finding 38). For a model-shaped module there is no CLI upgrade at all: the only
+mechanism is destructive, layout-collapsing, blocked entirely for theme modules,
+and cascades into further package upgrades. That is the gap this finding asks to
+be closed — and drop-and-reinstall is not a workaround for it.
+
 ### What would close it
 
 In rough order of value:
