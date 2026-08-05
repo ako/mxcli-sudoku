@@ -1504,9 +1504,11 @@ All four were fixed before merge; kept here for the record.
 
 ## 32. Upgrading a widget package on MPR v2 costs you the v2 layout
 
-> **Partly addressed in `4fda072f` by `mxcli widget sync` — see finding 38**,
-> which reaches instances mxcli did not author and preserves `mprcontents/`,
-> but currently writes duplicate GUIDs that leave the project unsavable.
+> **Partly addressed by `mxcli widget sync` — see finding 38**, which reaches
+> instances mxcli did not author and preserves `mprcontents/`. It cleared 31
+> CE0463 to 24 here; the duplicate-GUID corruption it originally introduced
+> was fixed in `3d253189` and re-verified. The tradeoff below is unchanged:
+> the complete fix still costs the v2 layout.
 >
 > Finding 37 records the gap underneath this one — that an installed marketplace
 > module cannot be updated at all. This entry is about what happens on MPR v2
@@ -1810,6 +1812,37 @@ requires the one tool it set out to avoid. An app that can be built but not
 maintained through the CLI is only half-automatable, and this is the boundary.
 
 ## 38. `mxcli widget sync` — the right idea, and it currently corrupts the project
+
+> **RESOLVED.** Fixed by `3d253189` on PR #89 (`fix(widget): sync wrote duplicate
+> GUIDs and corrupted the project`), which cites this finding by name and
+> diagnoses it exactly: `AugmentTemplate` gives every entry of an object-list
+> property a copy of the same constructed node, and the placeholder→UUID remap
+> was keyed **by value**, so all N copies received one fresh UUID. The template
+> pipeline never hit it because a template has exactly one list entry.
+>
+> Verified on a build of `3d253189`, same fixture and same Data Widgets 3.11.3
+> payload as the original report:
+>
+> | | old `4fda072f` | fixed `3d253189` |
+> |---|---|---|
+> | GUIDs on `Administration.Account_Overview` (2223 objects both) | 2160 distinct — **9 duplicated, 63 excess** | **2223 distinct, 0 duplicated** |
+> | `mx update-widgets` afterwards | `Duplicate Guid …` → flattened **and** unloadable (`Root unit not found`) | **saves cleanly, 0 errors** |
+> | sync result | 31 → 24 CE0463, 409 units | unchanged: 31 → 24, 409 units |
+> | second pass | idempotent | idempotent |
+>
+> The 9 duplicated GUIDs match the commit's own arithmetic (3 added properties ×
+> 3 nodes each). **The one-way door is closed**: sync is now a safe partial step,
+> and `mx update-widgets` remains available afterwards as the complete fix.
+>
+> **Still open:** sync clears 7 of 31 and leaves 24, while reporting "Every
+> stored widget instance already matches its installed package" — so the residue
+> is still not a property-schema problem, and finding 32's underlying tradeoff
+> (complete fix *or* the v2 layout) is unchanged. Finding 37 is also untouched.
+>
+> Process note: `refs/pull/89/head` served a stale tip for some time — it still
+> pointed at `ba3e894d`, whose tree is byte-identical to main, hours after the
+> fix landed. `git fetch origin refs/heads/<branch>` or the commit SHA gets the
+> real head; a `--force` refetch of the PR ref does not.
 
 Build under test: `main` `4fda072f` (PR #89, `claude/widget-sync-inventory`). This
 is the direct answer to finding 32: `mdl/executor/widget_sync.go` says so in its
