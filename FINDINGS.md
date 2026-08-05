@@ -1504,6 +1504,10 @@ All four were fixed before merge; kept here for the record.
 
 ## 32. Upgrading a widget package on MPR v2 costs you the v2 layout
 
+> **Partly addressed in `4fda072f` by `mxcli widget sync` — see finding 38**,
+> which reaches instances mxcli did not author and preserves `mprcontents/`,
+> but currently writes duplicate GUIDs that leave the project unsavable.
+>
 > Finding 37 records the gap underneath this one — that an installed marketplace
 > module cannot be updated at all. This entry is about what happens on MPR v2
 > once you update the payload by hand anyway.
@@ -1804,6 +1808,95 @@ holding for everything we *depend on*: the moment a marketplace module needs
 updating — for a fix, a security patch, or a runtime upgrade — the workflow
 requires the one tool it set out to avoid. An app that can be built but not
 maintained through the CLI is only half-automatable, and this is the boundary.
+
+## 38. `mxcli widget sync` — the right idea, and it currently corrupts the project
+
+Build under test: `main` `4fda072f` (PR #89, `claude/widget-sync-inventory`). This
+is the direct answer to finding 32: `mdl/executor/widget_sync.go` says so in its
+own header —
+
+> Studio Pro has "Update all widgets"; mxbuild has `mx update-widgets`, which on
+> MPR v2 destroys `mprcontents/`. This is the mxcli equivalent that does not.
+
+The command is also honest about being incomplete: `--help` says "PARTIAL … On
+the reference fixture it clears 7 of 40 CE0463 errors", and recommends `--dry-run`
+plus `mx check` before relying on it. Both are accurate.
+
+### What it gets right
+
+Re-run of the Data Widgets 3.5.0 → 3.11.3 upgrade from finding 32, same project,
+same payload:
+
+| path | CE0463 | `mprcontents/` |
+|---|---|---|
+| payload swapped, nothing else | 31 | 409 |
+| `mx update-widgets` | 0 | **0 — collapsed to v1** |
+| `mxcli exec` re-authoring our pages (build `09f24ce8`) | 29 | 409 |
+| **`mxcli widget sync`** | **24** | **409 preserved** |
+
+The important part is not the count but the reach: `--dry-run` planned 622
+property changes across 58 instances in 27 containers, and the plan covers
+widgets **mxcli never authored** — `dataGrid21` on `Administration.Account_Overview`,
+`gallery1` on Atlas page templates — which is exactly what finding 32 said was
+missing. The 7 it clears are the drop-down filters (`drop_downFilter1` ×4,
+`drop_downFilter2` ×3), consistent with PR #85's focus.
+
+The plan output is good: per container, per widget, each property with the
+declaring package and version (`+ autoSelect  declared by Gallery 3.11.3, default
+"false"`), split across 574 additions, 18 drops, 30 redefinitions.
+
+It is also idempotent — a second pass reports "Every stored widget instance
+already matches its installed package. Nothing to do." **while `mx check` still
+reports 24 CE0463.** So the residual cause is something other than property
+schema, and sync currently has no way to see it.
+
+### The bug: it writes duplicate GUIDs, and that is a one-way door
+
+Applying requires `MXCLI_ENGINE=legacy` (documented in `--help`; `--dry-run`
+works on both engines). The result loads and validates — `mx check` reports its
+24 errors happily — but it **cannot be saved** by Mendix tooling:
+
+```
+$ mx update-widgets t5/Sudoku/Sudoku.mpr
+ERROR: System.InvalidOperationException: An error occurred while saving the project:
+Duplicate Guid in unit page template 'Atlas_Web_Content.Detail_Timeline'.
+  Object types: …CustomWidgets.WidgetProperty, …CustomWidgets.WidgetProperty
+                …CustomWidgets.WidgetValue,    …CustomWidgets.WidgetValue
+                …Forms.Actions.DoNothingClientAction, …DoNothingClientAction
+```
+
+Worse, `mx update-widgets` collapses `mprcontents/` *before* it fails to save. So
+the project is left both flattened **and** unloadable:
+
+```
+$ mx check t4/Sudoku/Sudoku.mpr
+ERROR: Mendix.Modeler.Storage.StorageFormatException: Root unit not found.
+```
+
+Reproduced twice, on independently built copies (`t4`, `t5`). The control
+isolates it to sync: the **same payload without sync**, then `mx update-widgets`,
+saves fine and yields 0 errors (finding 32's table, row 2). The differentiator is
+`mxcli widget sync`.
+
+Note the duplication is *not* uniform — `Sudoku.Game_Play`, which sync also
+touched, is clean afterwards (900 → 978 objects, 978 distinct GUIDs, 0
+duplicated). It shows up on Atlas page templates, so it is likely tied to a
+container shape mxcli's authoring path does not otherwise produce.
+
+**Consequence.** In its current state `widget sync` is a trap: it looks like it
+worked (the project loads, errors drop, the layout survives), but it silently
+forfeits the only complete fix. After running it you can no longer fall back to
+`mx update-widgets`, and a Studio Pro save would presumably hit the same
+duplicate-GUID rejection. Since sync clears 7 of 31 and `update-widgets` clears
+31 of 31, running sync trades the complete fix for a partial one — irreversibly,
+and with nothing warning you.
+
+**Recommended, in order:** (1) fix the duplicate-GUID generation — it makes every
+other property of this command moot; (2) until then, have `widget sync` refuse or
+loudly warn that it is a one-way door; (3) then chase the residual 24, which the
+idempotency result shows are not a property-schema problem at all.
+
+**Not applied to this repo.** Left at Data Widgets 3.4.0, as in finding 32.
 
 ---
 
