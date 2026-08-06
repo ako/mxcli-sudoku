@@ -1502,6 +1502,589 @@ All four were fixed before merge; kept here for the record.
   valid GitHub token can mint unbounded map entries; there is still no way to list
   or rotate keys, only to revoke the one you hold.
 
+## 32. Upgrading a widget package on MPR v2 costs you the v2 layout
+
+> **Partly addressed by `mxcli widget sync` — see finding 38**, which reaches
+> instances mxcli did not author and preserves `mprcontents/`. It cleared 31
+> CE0463 to 24 here; the duplicate-GUID corruption it originally introduced
+> was fixed in `3d253189` and re-verified. The tradeoff below is unchanged:
+> the complete fix still costs the v2 layout.
+>
+> Finding 37 records the gap underneath this one — that an installed marketplace
+> module cannot be updated at all. This entry is about what happens on MPR v2
+> once you update the payload by hand anyway.
+
+Build under test: `main` `09f24ce8`. Mendix 11.12.1, project on MPR v2 (409
+`mprcontents/*.mxunit`). Attempted upgrade: Data Widgets **3.5.0 → 3.11.3**
+(marketplace id 116540), which moves all nine widgets from 3.3.0/3.4.0 to 3.11.3.
+
+Neither available tool performs the update, each for a stated reason:
+
+```
+$ mxcli marketplace install 116540 -p Sudoku.mpr
+Module "DataWidgets" is already installed (version 3.5.0).
+Target version: 3.11.3.
+In-place module updates are not applied automatically (they can discard local
+edits and change persistent-entity IDs, which loses data). Update via Studio Pro.
+
+$ mx module-import DataWidgets-3.11.3.mpk Sudoku.mpr
+error 3: Project already contains a module with the name of an importing module.
+```
+
+The guard mxcli cites does not apply to this module: `DataWidgets` holds **0
+entities** — its entire model contribution is the `Filter_Operators`
+enumeration, which is **identical in 3.5.0 and 3.11.3** (same name, same folder,
+12 values, compared by opening the package's own `project.mpr`). The JS action
+file set is identical, and `themesource/` only *adds* `_pagination-bar.scss`
+(which `main.scss` already `@import`s). So for this package the payload — nine
+`.mpk`s, `themesource/datawidgets`, `javascriptsource/datawidgets` — *is* the
+upgrade, and copying it in is safe.
+
+Doing that leaves the model stale, exactly as expected:
+
+```
+mx check  ->  31 errors, all CE0463 "The definition of this widget has changed"
+```
+
+Per mxcli's own `diagnose-ce0463` skill this is **Case A** (package upgraded
+after the widgets were authored) — not an mxcli bug, and what "Update all
+widgets" exists for. The problem is what it costs on MPR v2:
+
+| path | CE0463 | `mprcontents/` |
+|---|---|---|
+| payload swapped, nothing else | 31 | 409 units |
+| `mx update-widgets` | **0** | **0 units — collapsed to v1** |
+| `mxcli exec` re-authoring our pages | 29 | 409 units |
+
+`mx update-widgets` fixes everything and destroys the v2 layout (the skill warns
+about this; confirmed here). mxcli's own reconciliation preserves the layout but
+**only reaches instances it authors**: it cleared both of our galleries
+(`galBoard`, `galRecent`) and nothing else. The 29 that remain are Studio Pro's
+own template widgets in Administration / Atlas_Web_Content / FeedbackModule —
+`gallery1` ×7, `gallery2` ×4, `dataGrid2_*` ×11, `drop_downFilter1/2` ×7 — pages
+no MDL in this project touches. They were clean at 3.4.0, so the upgrade is what
+broke them.
+
+The collapse is **one-way with the tools in the container**. `mxcli exec` against
+a collapsed project does not rebuild `mprcontents/` (tested: 0 units before, 0
+after). `modelsdk/mpr/reader.go:149` points at a recovery command —
+
+> `restore mprcontents/ before opening for writing, or use mxcli mpr-pack to-v1
+> to convert to a self-contained file`
+
+— but `mpr-pack` is **not implemented**: `unknown command "mpr-pack" for
+"mxcli"`. That message names a command that does not exist, and in any case
+offers only v1, not the v2 direction that would help.
+
+**Net effect.** On MPR v2 you can have the widget upgrade or the reviewable
+multi-file layout, not both, unless you own Studio Pro. For a repo whose whole
+premise is that the model is authored and reviewed as text, that is a real cost:
+409 files become one binary blob. This is the gap
+`docs/…/PROPOSAL_widget_instance_reconciliation.md` appears aimed at, and this is
+a concrete case for it — the missing piece is reconciling instances mxcli did not
+author, generically, in place.
+
+**Left at 3.4.0** in this repo pending that, since nothing here needs 3.11.3.
+
+## 33. `Client: Script error.` on every interaction — server clean, cause unreachable
+
+Four games across two mxcli builds (`0580eadf`, `689e8ce4`) and two versions of
+the microflow. Every game produces one client-side error per interaction:
+
+```
+68 errors / 68 ACT_MarkPeers      73 / 72      81 / 118*      (*overlapped a benchmark;
+                                                               1:1 once isolated)
+```
+
+The relationship is exact and it is with `ACT_MarkPeers`, which runs at the end
+of both `ACT_SelectCell` and `ACT_Refresh` — hence "whatever I do, a pop-up".
+The interleaving is always the same:
+
+```
+03:14:12.836 ERROR - Client: Script error.
+03:14:12.859 INFO  - Sudoku: ACT_SelectCell row=8 col=7
+03:14:12.872 INFO  - Sudoku: ACT_MarkPeers
+```
+
+**The server side is clean.** Zero server errors in any session; every microflow
+completes and moves are saved. This is a browser-side exception on top of working
+logic.
+
+What has been ruled out: the app has no external scripts (only a Google Fonts
+`@import`); the play page has no custom JS (the only client logic is
+`NF_ToggleNotes`); it is not a stale tab or a restart artifact (it starts while
+the app is healthy); and it is not the cross-origin stylesheet (stubbing the
+fonts sheet in so it *loads*, then driving 13 `ACT_MarkPeers` cycles, produced
+zero errors).
+
+It has never reproduced from the container — 51 selections and 32 digit entries
+across driven sessions, no script error — only from a real browser against the
+hub URL.
+
+**Why it is stuck.** `Script error.` with no file or line is the browser
+withholding detail for a cross-origin exception, so the server learns nothing.
+Raising the `Client` log node to TRACE changes nothing (`set_log_level` returns
+`result: 0` and the message stays bare). And the hub now gates previews behind
+GitHub OAuth, whose endpoints the sandbox egress blocks, so a headless browser
+here cannot load the page at all. The exception exists only in a real player's
+DevTools console, which is the one place this agent cannot reach.
+
+Worth noting as an observability gap in its own right: **a client-side error that
+breaks the app for every user is, server-side, indistinguishable from noise.**
+
+## 34. The container suspends when the session idles, taking the app with it
+
+Not an mxcli bug, but it dominates how mxcli is used from Claude Code on the web,
+and it was misdiagnosed twice before being pinned down.
+
+The container is reclaimed when the agent session goes idle. Every process dies:
+the app, the tunnel, PostgreSQL, and the OTLP collector. Measured window ≈ 8
+minutes from the end of a turn. Observed timeline: app launched 03:08, turn ended
+≈ 03:12, player active 03:13–03:16, container reclaimed ≈ 03:20, `SessionStart`
+hook relaunched onto a *new* runtime. From the player's side the preview simply
+stops; from the agent's side the traces for the period of interest are gone.
+
+Consequences worth stating plainly:
+
+- **A hub preview is only reachable while the agent session is active.** Nothing
+  in a launch script can change this; the whole container freezes.
+- Recovery therefore runs constantly, which makes the recovery path the hot path.
+- A first diagnosis of "your tab is stale after a restart" was **wrong** — the
+  errors in finding 33 began while the app was healthy, eight minutes before any
+  restart. Timestamps settled it; the restart was a second, unrelated event.
+
+Two hook bugs this exposed in *this* repo (both now fixed here, `a604f83`):
+
+1. Two entries in one `SessionStart` `hooks` array run **concurrently, not
+   sequentially**. `run-app.sh` raced `setup-tools.sh` and repeatedly launched
+   the app on an mxcli binary being replaced underneath it — the process holds a
+   deleted inode and silently serves the previous build. Nothing in any log says
+   so; only `readlink /proc/<pid>/exe` reveals it (`... (deleted)`). Chain the
+   commands with `&&`.
+2. A relaunch that omits `--metrics`/`--trace-otlp` silently loses all
+   observability for the rest of the session, and the runtime discards spans
+   when nothing is listening on 4318 — so the collector must start *first*.
+
+## 35. What tracing is good for, and how it misled me
+
+Spans across four played games, `--metrics --trace-otlp`. The app is healthy:
+`ACT_SelectCell` p50 ≈ 29 ms, a digit entry ≈ 35–70 ms, game start 1.05 s warm
+(4.8 s cold — the cold/warm split is large enough to invalidate any measurement
+taken on a fresh boot).
+
+**A correction, recorded because the failure mode is general.** From the span
+list I reported that the 81-cell list was "retrieved twice per interaction,
+1.79 s over a game, the app's single largest cost". That was wrong. Attributing
+each `Retrieve //Sudoku.Cell[Sudoku.Cell_Game = $Game]` span to its *parent*
+shows the parent is `POST /*` — these are the **client's** board refetch after
+each interaction, and were never inside `ACT_MarkPeers` at all. Grouping spans by
+name reads like a profile and is not one; only the parent chain tells you who
+paid. The real duplicate was one `SELECT` per call.
+
+Fixing that (pass the list into `ACT_MarkPeers` instead of re-retrieving it,
+commit `5895a3c`) measured, on a real game before and after:
+
+```
+ACT_MarkPeers    p50 8.55ms / 3 queries -> 3.62ms / 2 queries
+ACT_Refresh      p50 15.41 / 5          -> 11.29 / 4
+ACT_ApplyValue   p50 27.28 / 11         -> 22.53 / 10      (a move)
+ACT_SelectCell   p50 18.98 / 8          -> 17.04 / 8       (flat, as predicted)
+ACT_LogMove      p50 8.07               -> 7.61            (untouched — control)
+```
+
+Real, and about a hundredth of what was projected. `ACT_LogMove` holding still is
+what makes the rest credible.
+
+Also visible, and not app code: the Mendix **queued-task poller issues 47–64% of
+all database queries** (e.g. 3843 of 5979 in one session, ≈ 2.7–3.4 q/s) with
+nothing queued. It is harmless on a dev box but it dominates any query profile
+taken there, so it has to be filtered out before the app's own numbers mean
+anything.
+
+## 36. `get_log_settings` throws instead of answering
+
+Minor, but it costs a debugging step. `set_log_level` works:
+
+```
+$ curl -d '{"action":"set_log_level","params":{"nodes":[{"name":"Client","level":"TRACE"}]}}' :8090
+{"feedback":{},"result":0}
+```
+
+Reading them back does not:
+
+```
+$ curl -d '{"action":"get_log_settings"}' :8090
+{"result":1,"message":"class com.mendix.m2ee.api.internal.AdminException occurred
+ while executing an admin action request."}
+```
+
+with `ERROR - M2EE: Please specify node, subscriber or sort option in params` in
+the runtime log. The action evidently requires parameters that neither the error
+nor any documentation names, so there is no way to confirm a log level actually
+took effect — which matters when a level change is the experiment (finding 33).
+
+## 37. There is no way to update an installed marketplace module
+
+Finding 32 is the *consequence* of this one on an MPR v2 project. The gap
+underneath it is simpler and broader: **mxcli can install a marketplace module
+but cannot update one**, and nothing else in the container can either.
+
+**The gap is modules only — widget-type items update cleanly.** Worth stating
+up front, because the two go down different code paths and only one is broken.
+`mxcli marketplace install` on a Widget overwrites the `.mpk` in `widgets/`
+exactly as its `--help` promises, in place, with the v2 layout untouched:
+
+```
+$ mxcli marketplace install 219304 -p Sudoku.mpr        # Combo box 2.9.0
+before: units 409  Combobox 2.5.0
+Installed widget 2.9.0 into widgets/com.mendix.widget.web.Combobox.mpk
+after:  units 409  Combobox 2.9.0
+```
+
+No guard, no refusal, no collapse. Everything below concerns Module-type items.
+
+Keeping marketplace modules current is routine maintenance, not an edge case. In
+this app, six of seven are behind — most by several minor versions:
+
+| module | installed | latest |
+|---|---|---|
+| Administration | 4.3.2 | 4.5.0 |
+| Atlas_Core | 4.1.3 | 4.3.7 |
+| Atlas_Web_Content | 4.1.0 | 4.3.0 |
+| DataWidgets | 3.5.0 | 3.11.3 |
+| NanoflowCommons | 6.0.0 | 7.2.1 |
+| WebActions | 2.11.0 | 2.11.2 |
+| FeedbackModule | 4.0.2 | — |
+
+`mxcli marketplace` covers discovery well — `search`, `info`, `versions`,
+`download` all work against a `MENDIX_PAT`, and `install` is genuinely useful for
+a module the project does not yet have. The moment the module is already present,
+every route closes:
+
+```
+$ mxcli marketplace install 116540 -p Sudoku.mpr
+Module "DataWidgets" is already installed (version 3.5.0). Target version: 3.11.3.
+In-place module updates are not applied automatically … Update via Studio Pro.
+
+$ mx module-import DataWidgets-3.11.3.mpk Sudoku.mpr
+error 3: Project already contains a module with the name of an importing module.
+```
+
+mxcli's caution is reasonable in general — an in-place update can discard local
+edits, and for a module with persistent entities it can change entity IDs and
+lose data. But it is unconditional, so it also blocks the cases where it is
+provably safe. `DataWidgets` has **0 entities**; its whole model contribution is
+one enumeration that is byte-identical between the installed and target versions.
+There is no way to tell mxcli that, and no `--force` to take responsibility for
+it.
+
+**The recorded version cannot even be corrected.** Having swapped the payload by
+hand (finding 32), the model still says 3.5.0, and the two tools disagree about
+what that field even is:
+
+```
+$ mxcli show modules            ->  DataWidgets   Marketplace v3.5.0
+$ mx show-module-version Sudoku.mpr DataWidgets
+Module 'DataWidgets' does not have a version.
+$ mx set-module-version Sudoku.mpr DataWidgets 3.11.3
+Module 'DataWidgets' does not have a version.        # no-op
+```
+
+So a hand-updated module is indistinguishable from a stale one, which makes the
+manual route unsafe to repeat: nothing records that it happened.
+
+**And the manual route only exists for widget-shaped modules at all.** Swapping
+`widgets/`, `themesource/` and `javascriptsource/` works for `DataWidgets`
+because those files *are* the module. For `Administration` (2 entities, 9 pages,
+8 microflows) or `NanoflowCommons` (2 entities, 3 enums) the model content *is*
+the module, and there is no file-level equivalent — the update has to be a model
+merge. Those are exactly the modules where the entity-ID risk mxcli cites is
+real, and exactly the ones with no path forward.
+
+### Drop-and-reinstall: the one CLI route, blocked three ways
+
+`DROP MODULE` + `marketplace install` looks like the way around "install refuses
+an existing module" — the module is absent at install time, so the guard does not
+fire. It works mechanically, and it is still not usable. Tested from the state in
+finding 38 (Data Widgets 3.11.3, sync + re-authoring applied, 22 CE0463 left, all
+in marketplace-module pages), on build `7d04b192`.
+
+**1. Theme modules cannot be imported *by the CLI*.**
+
+```
+$ mxcli marketplace install 117183 -p Sudoku.mpr      # Atlas Web Content 4.3.0
+Dropped module: Atlas_Web_Content (1 entities, 2 nanoflows, 46 pages)
+mx module-import failed: exit status 112
+Importing theme module is not supported
+```
+
+`mx module-import` rejects theme modules outright (its documented error 2). So
+`Atlas_Web_Content` can be dropped but never restored from the CLI — and it owns
+**11 of the 22** remaining errors (`gallery1` ×7, `gallery2` ×4).
+
+**This is a tooling limit, not a platform one.** Studio Pro downloads and imports
+a new version of a theme module without complaint — Atlas Core among them — and
+its Import Module dialog offers exactly the choice the CLI lacks:
+
+> **Action:** ( ) Add as a new module   (•) Replace existing module
+> **Module to replace:** `Atlas_Core`
+>
+> IMPORTANT: If you replace a module with a new version, existing user data will
+> be retained based on the names of entities, attributes, associations,
+> microflows, workflows and workflow activities. If you delete a module and then
+> add a newer version of it, all user data will be lost.
+
+That warning describes this entire section. "Replace existing module" is a
+first-class, data-preserving operation that reconciles **by name**; delete-then-add
+— the only thing the CLI can express — is the documented data-losing path. So the
+capability exists in the model layer and is simply not exposed by
+`mx module-import`, whose entire interface is `MPK_PATH MPR_PATH` with no flags:
+no replace mode, no override for error 2 or error 3.
+
+**2. `mx module-import` destroys `mprcontents/`, exactly like `mx update-widgets`.**
+
+Isolated to the import step, on an untouched copy:
+
+```
+start:        409 units
+after DROP:   381 units      <- DROP MODULE preserves the v2 layout
+after IMPORT:   0 units      <- module-import collapses it
+```
+
+So even where reinstalling is permitted, it costs the multi-file layout — the
+same price finding 32 documents for `update-widgets`. There is no MPR v2-safe
+module import.
+
+**3. Upgrading one module cascades into other widget packages.**
+
+`Administration` did import (4.3.2 → 4.5.0), and brought new errors with it:
+
+```
+before: 4x dataGrid21
+after:  4x dataGrid21 + 3x comboBox3 + 2x comboBox2 + 1x comboBox4 + 1x comboBox1
+```
+
+Administration 4.5.0's pages are authored against a newer **Combobox** than the
+`2.5.0` installed here — and Combobox is a *separate* marketplace item, not part
+of Data Widgets. Updating one module therefore demands updating the widget
+packages its pages depend on, each of which is its own upgrade with its own
+CE0463 wave. `mxcli widget sync` absorbed part of it (11 → 7 errors), which is
+the fix from finding 38 doing real work on a module mxcli never authored, but it
+does not close the loop.
+
+**And the guard's own warning applies.** Drop-and-reinstall is not an update: it
+discards local edits and, for a module with persistent entities, replaces them
+wholesale — new entity IDs, and data loss on a real deployment. Dropping
+`Administration` here also invalidated the project's demo users
+(`CE1613 "The selected entity 'Administration.Account' no longer exists"`), which
+had to be dropped separately.
+
+**Conclusion.** For a widget-shaped module such as Data Widgets, the manual
+payload swap plus `mxcli widget sync` is a genuine, layout-preserving upgrade
+(finding 38). For a model-shaped module there is no CLI upgrade at all: the only
+mechanism the CLI can express is delete-then-add — which Mendix's own Import
+Module dialog names as the path that loses all user data — and it collapses
+`mprcontents/`, is refused outright for theme modules, and cascades into further
+package upgrades. Studio Pro's "Replace existing module" does none of this. So
+the gap is not a missing capability in the platform; it is a capability the CLI
+does not expose, and drop-and-reinstall is not a workaround for it.
+
+### What would close it
+
+The target is not a new design. Studio Pro already implements it as **"Replace
+existing module"**: match the incoming module against the installed one *by name*
+— entities, attributes, associations, microflows, workflows — and keep user data
+across the swap. Everything below is parity with that, not invention.
+
+In rough order of value:
+
+1. **`mxcli marketplace update <id>`** with replace semantics — the operation
+   Studio Pro exposes, missing from the CLI. It needs a model merge keyed on
+   names, not the file-level replacement `mx module-import` performs, and it must
+   work for theme modules, which Studio Pro handles and `module-import` refuses
+   outright.
+2. **A dry-run diff of the packaged model against the installed one** — added and
+   removed entities and attributes, changed microflows — before anything is
+   written. Read-only, this is useful on its own: today there is no way to see
+   what an update contains without importing it into a scratch project.
+3. **An escape hatch for the safe cases** — a module with no persistent entities
+   and no local edits is a file replacement plus a version bump. `--force`, or a
+   check that proves the model contribution is unchanged.
+4. **A writable version field**, so a hand-updated module can be recorded as such.
+
+Whether mxcli can reach this through `mx` at all is an open question: `mx
+module-import` has no replace mode and no flags, so parity likely means
+implementing the name-keyed merge in mxcli's own model layer — which is also the
+only way it would preserve `mprcontents/`, since `module-import` collapses it.
+
+### Why this matters more here than it looks
+
+The premise of this project is a Mendix app authored end to end through
+mxcli/MDL, never opening Studio Pro. That holds for everything we write. It stops
+holding for everything we *depend on*: the moment a marketplace module needs
+updating — for a fix, a security patch, or a runtime upgrade — the workflow
+requires the one tool it set out to avoid. An app that can be built but not
+maintained through the CLI is only half-automatable, and this is the boundary.
+
+## 38. `mxcli widget sync` — the right idea, and it currently corrupts the project
+
+> **RESOLVED.** Fixed by `3d253189` on PR #89 (`fix(widget): sync wrote duplicate
+> GUIDs and corrupted the project`), which cites this finding by name and
+> diagnoses it exactly: `AugmentTemplate` gives every entry of an object-list
+> property a copy of the same constructed node, and the placeholder→UUID remap
+> was keyed **by value**, so all N copies received one fresh UUID. The template
+> pipeline never hit it because a template has exactly one list entry.
+>
+> Verified on a build of `3d253189`, same fixture and same Data Widgets 3.11.3
+> payload as the original report:
+>
+> | | old `4fda072f` | fixed `3d253189` |
+> |---|---|---|
+> | GUIDs on `Administration.Account_Overview` (2223 objects both) | 2160 distinct — **9 duplicated, 63 excess** | **2223 distinct, 0 duplicated** |
+> | `mx update-widgets` afterwards | `Duplicate Guid …` → flattened **and** unloadable (`Root unit not found`) | **saves cleanly, 0 errors** |
+> | sync result | 31 → 24 CE0463, 409 units | unchanged: 31 → 24, 409 units |
+> | second pass | idempotent | idempotent |
+>
+> The 9 duplicated GUIDs match the commit's own arithmetic (3 added properties ×
+> 3 nodes each). **The one-way door is closed**: sync is now a safe partial step,
+> and `mx update-widgets` remains available afterwards as the complete fix.
+>
+> **Still open:** sync clears 7 of 31 and leaves 24, while reporting "Every
+> stored widget instance already matches its installed package" — so the residue
+> is still not a property-schema problem, and finding 32's underlying tradeoff
+> (complete fix *or* the v2 layout) is unchanged. Finding 37 is also untouched.
+>
+> Process note: `refs/pull/89/head` served a stale tip for some time — it still
+> pointed at `ba3e894d`, whose tree is byte-identical to main, hours after the
+> fix landed. `git fetch origin refs/heads/<branch>` or the commit SHA gets the
+> real head; a `--force` refetch of the PR ref does not.
+
+Build under test: `main` `4fda072f` (PR #89, `claude/widget-sync-inventory`). This
+is the direct answer to finding 32: `mdl/executor/widget_sync.go` says so in its
+own header —
+
+> Studio Pro has "Update all widgets"; mxbuild has `mx update-widgets`, which on
+> MPR v2 destroys `mprcontents/`. This is the mxcli equivalent that does not.
+
+The command is also honest about being incomplete: `--help` says "PARTIAL … On
+the reference fixture it clears 7 of 40 CE0463 errors", and recommends `--dry-run`
+plus `mx check` before relying on it. Both are accurate.
+
+### What it gets right
+
+Re-run of the Data Widgets 3.5.0 → 3.11.3 upgrade from finding 32, same project,
+same payload:
+
+| path | CE0463 | `mprcontents/` |
+|---|---|---|
+| payload swapped, nothing else | 31 | 409 |
+| `mx update-widgets` | 0 | **0 — collapsed to v1** |
+| `mxcli exec` re-authoring our pages (build `09f24ce8`) | 29 | 409 |
+| **`mxcli widget sync`** | **24** | **409 preserved** |
+
+The important part is not the count but the reach: `--dry-run` planned 622
+property changes across 58 instances in 27 containers, and the plan covers
+widgets **mxcli never authored** — `dataGrid21` on `Administration.Account_Overview`,
+`gallery1` on Atlas page templates — which is exactly what finding 32 said was
+missing. The 7 it clears are the drop-down filters (`drop_downFilter1` ×4,
+`drop_downFilter2` ×3), consistent with PR #85's focus.
+
+The plan output is good: per container, per widget, each property with the
+declaring package and version (`+ autoSelect  declared by Gallery 3.11.3, default
+"false"`), split across 574 additions, 18 drops, 30 redefinitions.
+
+It is also idempotent — a second pass reports "Every stored widget instance
+already matches its installed package. Nothing to do." **while `mx check` still
+reports 24 CE0463.** So the residual cause is something other than property
+schema, and sync currently has no way to see it.
+
+### The bug: it writes duplicate GUIDs, and that is a one-way door
+
+Applying requires `MXCLI_ENGINE=legacy` (documented in `--help`; `--dry-run`
+works on both engines). The result loads and validates — `mx check` reports its
+24 errors happily — but it **cannot be saved** by Mendix tooling:
+
+```
+$ mx update-widgets t5/Sudoku/Sudoku.mpr
+ERROR: System.InvalidOperationException: An error occurred while saving the project:
+Duplicate Guid in unit page template 'Atlas_Web_Content.Detail_Timeline'.
+  Object types: …CustomWidgets.WidgetProperty, …CustomWidgets.WidgetProperty
+                …CustomWidgets.WidgetValue,    …CustomWidgets.WidgetValue
+                …Forms.Actions.DoNothingClientAction, …DoNothingClientAction
+```
+
+Worse, `mx update-widgets` collapses `mprcontents/` *before* it fails to save. So
+the project is left both flattened **and** unloadable:
+
+```
+$ mx check t4/Sudoku/Sudoku.mpr
+ERROR: Mendix.Modeler.Storage.StorageFormatException: Root unit not found.
+```
+
+Reproduced twice, on independently built copies (`t4`, `t5`). The control
+isolates it to sync: the **same payload without sync**, then `mx update-widgets`,
+saves fine and yields 0 errors (finding 32's table, row 2). The differentiator is
+`mxcli widget sync`.
+
+Note the duplication is *not* uniform — `Sudoku.Game_Play`, which sync also
+touched, is clean afterwards (900 → 978 objects, 978 distinct GUIDs, 0
+duplicated). It shows up on Atlas page templates, so it is likely tied to a
+container shape mxcli's authoring path does not otherwise produce.
+
+**Consequence.** In its current state `widget sync` is a trap: it looks like it
+worked (the project loads, errors drop, the layout survives), but it silently
+forfeits the only complete fix. After running it you can no longer fall back to
+`mx update-widgets`, and a Studio Pro save would presumably hit the same
+duplicate-GUID rejection. Since sync clears 7 of 31 and `update-widgets` clears
+31 of 31, running sync trades the complete fix for a partial one — irreversibly,
+and with nothing warning you.
+
+**Recommended, in order:** (1) fix the duplicate-GUID generation — it makes every
+other property of this command moot; (2) until then, have `widget sync` refuse or
+loudly warn that it is a one-way door; (3) then chase the residual 24, which the
+idempotency result shows are not a property-schema problem at all.
+
+### Follow-up: a minimal reproduction of the residue, and the engine caveat is gone
+
+Build `d15f0c58` (PR #91, `widget-sync-modelsdk-rawunits`). Two changes worth
+recording, from upgrading the **Combo box** widget — a standalone Widget-type
+marketplace item, and the package `Administration` 4.5.0 turned out to need.
+
+**`MXCLI_ENGINE=legacy` is no longer required.** `widget sync` now applies on the
+default modelsdk engine, which retires the caveat in this finding's original
+`--help` quote. The duplicate-GUID fix holds on that path too: after syncing,
+`mx update-widgets` saves cleanly, 0 duplicate-GUID errors, 0 errors overall.
+
+**And this is the residue, reduced to its simplest form.** One widget package,
+one version step, on an otherwise clean project:
+
+```
+real project, untouched                     ->  mx check: 0 errors
+mxcli marketplace install 219304 (2.5.0 -> 2.9.0, in place, 409 units kept)
+                                            ->  mx check: 9 CE0463, on 4 Combo box instances
+mxcli widget sync                           ->  "Applied: 16 property change(s) on 4 widget(s)"
+                                            ->  mx check: STILL 9 CE0463
+mxcli widget sync (second pass)             ->  "Every stored widget instance already
+                                                matches its installed package. Nothing to do."
+mx update-widgets                           ->  0 errors  (409 units -> 0, as always)
+```
+
+So sync changed 16 properties on exactly the four failing widgets, then declared
+parity — while Mendix still rejects all four. This is a far cleaner test case than
+the Data Widgets upgrade that produced this finding: a single package, four
+instances, no module surgery, and a definitive oracle (`update-widgets` clears it,
+so the instances *are* repairable). Whatever CE0463 keys on for Combo box is
+something `widget sync` neither compares nor reports.
+
+**A note on the practical advice this changes.** Upgrading Combo box on its own
+makes this project *worse*, not better: it goes from 0 errors to 9, and only the
+layout-destroying path can bring it back. The four instances live in
+`Administration`'s pages, not ours. So "upgrade the widget package the module
+needs" is only a step forward in combination with the module upgrade — and that
+combination is blocked for the reasons in finding 37.
+
+**Not applied to this repo.** Left at Data Widgets 3.4.0, as in finding 32.
+
 ---
 
 ## Verification summary

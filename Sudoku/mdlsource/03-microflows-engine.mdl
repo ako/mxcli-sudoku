@@ -28,11 +28,18 @@
  * after every move as well as on selection, since a move changes which
  * squares belong to the group.
  *
+ * The square list is passed in rather than retrieved here. Both callers are
+ * mid-flow and already hold it, and retrieving it again cost a second round
+ * trip for all 81 rows on every selection and every move — measured at ~15ms
+ * a call, the largest single cost in the app.
+ *
  * @param $Game The game being played
+ * @param $Cells Every square of that game
  * @returns True when the marks were recomputed
  */
 create or replace microflow Sudoku.ACT_MarkPeers (
-  $Game: Sudoku."Game"
+  $Game: Sudoku."Game",
+  $Cells: list of Sudoku."Cell"
 )
 returns boolean as $Marked
 folder 'Game'
@@ -54,7 +61,6 @@ begin
     end if;
   end if;
 
-  retrieve $Cells from $Game/Sudoku."Cell_Game";
   $Changed = create list of Sudoku."Cell";
 
   loop $C in $Cells
@@ -248,8 +254,9 @@ begin
 
   commit $Game refresh;
 
-  -- A move changes which squares share the selected digit
-  call microflow Sudoku.ACT_MarkPeers(Game = $Game);
+  -- A move changes which squares share the selected digit. $Cells is the list
+  -- retrieved at the top of this flow and committed above, so it is current.
+  call microflow Sudoku.ACT_MarkPeers(Game = $Game, Cells = $Cells);
 
   return $IsSolved;
 end;

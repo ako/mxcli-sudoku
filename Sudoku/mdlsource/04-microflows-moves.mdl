@@ -220,7 +220,11 @@ begin
   set $Game/Sudoku."Game_SelectedCell" = $Cell;
   commit $Game refresh;
 
-  call microflow Sudoku.ACT_MarkPeers(Game = $Game);
+  -- Selection has no square list of its own, so it retrieves one here. That is
+  -- the same single retrieve ACT_MarkPeers used to do internally, moved out so
+  -- the flow that already holds the list (ACT_Refresh) can skip it entirely.
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  call microflow Sudoku.ACT_MarkPeers(Game = $Game, Cells = $Cells);
 
   set $Selected = true;
   return $Selected;

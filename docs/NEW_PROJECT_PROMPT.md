@@ -40,7 +40,7 @@ verify it, commit the setup, then STOP and report.
    need it to know whether a later rebuild is required.
 
 4. Pre-cache the Mendix build engine and runtime for the version you will target
-   (11.12.1 unless told otherwise) so the first build isn't a cold download.
+   (11.13.0 unless told otherwise) so the first build isn't a cold download.
 
 5. Verify, and fail loudly if anything is missing: mxcli runs, antlr4 shim +
    jar present, mx validator present, mxbuild engine present, Mendix runtime
@@ -103,11 +103,12 @@ Now do phase 1, then stop and report the versions plus the mxcli HEAD SHA.
 Two points are drawn from mistakes made in this repo rather than from how the
 setup reads in hindsight:
 
-- **The hook race is real.** This repo's
-  [`.claude/settings.json`](../.claude/settings.json) lists the setup and launch
-  scripts as two entries in one `SessionStart` array, and they fire in parallel.
+- **The hook race is real.** This repo originally listed the setup and launch
+  scripts as two entries in one `SessionStart` array, and they fired in parallel.
   The app came up on a deleted `/usr/local/bin/mxcli` inode while the rebuild was
-  still running, and nothing in the logs said so. Chain them with `&&`.
+  still running, and nothing in the logs said so — only
+  `readlink /proc/<pid>/exe` showed it. Chain them with `&&`;
+  [`.claude/settings.json`](../.claude/settings.json) now does.
 - **`auth hub login` cannot complete in the container.** The egress gateway
   blocks GitHub's OAuth device-flow endpoints, so the API key has to be minted in
   a browser and handed in through the environment.

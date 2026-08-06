@@ -29,6 +29,8 @@
 
   // ---- board geometry ----
   --sd-cell: 54px;
+  // Width of the right-hand rail. Definite on purpose — see .sd-rail.
+  --sd-rail-w: 264px;
   --sd-grid: #191F2B;       // thin rule between squares
   --sd-rule: #46556C;       // heavy rule around each 3x3 box
 
@@ -288,8 +290,16 @@
 .sd-status-right { color: var(--sd-muted); }
 
 // ==================================================================== rail
+// The rail needs a definite width. `.sd-app` resolves its own width from its
+// content (it is a flex item under Atlas's placeholder, so the 1180px max-width
+// never binds), which means a `flex: 1` rail is sized by whichever child has the
+// widest max-content. The lock note is one long sentence, so selecting a dealt
+// square stretched the rail from 264px to 525px and moved the whole page with
+// it — the layout jumped depending on which square you clicked. A fixed width
+// makes long copy wrap instead.
 .sd-rail {
-  flex: 1;
+  flex: none;
+  width: var(--sd-rail-w);
   min-width: 0;
   display: flex;
   flex-direction: column;

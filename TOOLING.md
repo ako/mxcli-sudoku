@@ -75,7 +75,7 @@ Note: `mxcli run`/MxBuild require an **absolute** `-p` project path.
 | Component | Version | Notes |
 |-----------|---------|-------|
 | **mxcli** | `main` @ `2a4494a` | Built from source; see pinned SHA below. |
-| **Mendix (MxBuild + runtime)** | `11.12.1` | Pre-cached under `~/.mxcli/`. Engine = `modelsdk` (default). |
+| **Mendix (MxBuild + runtime)** | `11.13.0` | Pre-cached under `~/.mxcli/`. Engine = `modelsdk` (default). |
 | **ANTLR** | `4.13.1` (**pinned**) | Jar at `/opt/antlr/antlr-4.13.1-complete.jar`; `antlr4` shim first on PATH. Must match the `antlr4-go/antlr v4.13.1` Go runtime. |
 | **Go** | `go1.24.7` present; toolchain **`go1.26.5`** auto-fetched | `go.mod` pins `go 1.26.0` / `toolchain go1.26.5`; `GOTOOLCHAIN=auto` lets `go build` fetch it. |
 | **JDK** | `21.0.10` | Needed by ANTLR and the Mendix runtime. |
@@ -103,8 +103,8 @@ above in `/opt/mxcli-src` before running `make build`.
 | `/usr/local/bin/mxcli` | Installed mxcli binary. |
 | `/opt/antlr/antlr-4.13.1-complete.jar` | Pinned ANTLR jar. |
 | `/usr/local/bin/antlr4` | Shim → `java -jar` the pinned jar. |
-| `~/.mxcli/mxbuild/11.12.1/modeler/{mx,mxbuild}` | Mendix validator + build engine. |
-| `~/.mxcli/runtime/11.12.1` | Mendix runtime (for `mxcli run --local`). |
+| `~/.mxcli/mxbuild/11.13.0/modeler/{mx,mxbuild}` | Mendix validator + build engine. |
+| `~/.mxcli/runtime/11.13.0` | Mendix runtime (for `mxcli run --local`). |
 
 All of the above are `.gitignore`d and rebuilt by the setup script.
 
@@ -114,7 +114,7 @@ This session installed the toolchain **only**. A follow-up session will scaffold
 the actual Mendix app. The single command to bootstrap the project:
 
 ```bash
-mxcli new <app-name> --version 11.12.1
+mxcli new <app-name> --version 11.13.0
 ```
 
 `mxcli new` downloads MxBuild for the version (already cached), creates a blank
