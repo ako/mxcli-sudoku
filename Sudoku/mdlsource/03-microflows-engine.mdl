@@ -568,15 +568,20 @@ end;
  * @param $TargetGivens Squares to aim to leave revealed
  * @returns The dealt Game, with its 81 Cells committed
  */
-create or replace microflow Sudoku.ACT_DealGame (
-  $Level: enum Sudoku."Difficulty",
-  $TargetGivens: integer
-)
-returns Sudoku."Game" as $Game
+/**
+ * Builds a complete, valid solution grid as an 81-character string.
+ *
+ * Starts from the canonical seed pattern and applies only shuffles that
+ * preserve validity: rotating the digits, permuting rows within each band and
+ * columns within each stack. Every result is a different puzzle and every one
+ * is still a legal Sudoku.
+ *
+ * @returns The solved grid, 81 characters, row-major
+ */
+create or replace microflow Sudoku.SUB_ShuffleSolution ()
+returns string as $sol
 folder 'Game'
 begin
-  log info node 'Sudoku' 'ACT_DealGame givens=' + toString($TargetGivens);
-
   -- Validity-preserving shuffles
   declare $digitRot integer = round(random() * 8);
   declare $bandOff0 integer = round(random() * 2);
@@ -598,18 +603,7 @@ begin
   declare $c integer = 0;
   declare $v integer = 0;
   declare $i integer = 0;
-  declare $t integer = 0;
-  declare $r integer = 0;
-  declare $givens integer = 81;
-  declare $stride integer = 7;
-  declare $n integer = 0;
-  declare $p integer = 0;
-  declare $k integer = 0;
-  declare $cls string = '';
   declare $sol string = '';
-  declare $puz string = '';
-  declare $chSol string = '';
-  declare $isGiven boolean = false;
 
   -- 1 ---------------------------------------------------------------
   -- Lay the seed grid out as an 81-character string, already shuffled.
@@ -675,11 +669,40 @@ begin
     set $band = $band + 1;
   end while;
 
+
+  return $sol;
+end;
+/
+
+/**
+ * Blanks squares until the board is down to the requested number of givens.
+ *
+ * Walks the board in a strided order rather than at random so the blanks are
+ * spread evenly. Any stride coprime with 81 visits every square exactly once;
+ * 81 = 3^4, so any stride not divisible by three qualifies.
+ *
+ * @param $Solution The solved grid to blank out
+ * @param $TargetGivens How many squares should remain revealed
+ * @returns The blanked grid, 81 characters
+ */
+create or replace microflow Sudoku.SUB_BlankSquares (
+  $Solution: string,
+  $TargetGivens: integer
+)
+returns string as $puz
+folder 'Game'
+begin
+  declare $puz string = '';
+  declare $givens integer = 81;
+  declare $stride integer = 7;
+  declare $p integer = 0;
+  declare $k integer = 0;
+
   -- 2 ---------------------------------------------------------------
   -- Blank squares in a strided order. Any stride coprime with 81 walks
   -- every square exactly once; 81 = 3^4, so any stride not divisible by
   -- three qualifies.
-  set $puz = $sol;
+  set $puz = $Solution;
   set $stride = 7;
   set $k = round(random() * 4);
   if $k = 1 then
@@ -710,6 +733,57 @@ begin
     set $k = $k + 1;
   end while;
 
+
+  return $puz;
+end;
+/
+
+/**
+ * Hands squares back until the puzzle is solvable by forced logic alone, then
+ * tops it up to the requested number of givens.
+ *
+ * Restoring every undetermined square at once massively over-restores, so this
+ * repairs in three graded passes — a third, then a half, then whatever still
+ * resists — before a final pass that guarantees the result is reachable by
+ * forced steps. Revealing a square never costs uniqueness, so the closing
+ * top-up is always safe.
+ *
+ * @param $Solution The solved grid squares are handed back from
+ * @param $Puzzle The blanked grid to repair
+ * @param $TargetGivens The number of givens the tier asks for
+ * @returns The repaired grid, 81 characters
+ */
+create or replace microflow Sudoku.SUB_RepairToSolvable (
+  $Solution: string,
+  $Puzzle: string,
+  $TargetGivens: integer
+)
+returns string as $puz
+folder 'Game'
+begin
+  declare $puz string = $Puzzle;
+  declare $givens integer = 0;
+  declare $i integer = 0;
+  declare $n integer = 0;
+  declare $p integer = 0;
+  declare $k integer = 0;
+  -- Same family of strides as the blanking pass; any one of them walks every
+  -- square, so the top-up does not need the exact stride blanking happened to use.
+  declare $stride integer = 7;
+  set $k = round(random() * 4);
+  if $k = 1 then
+    set $stride = 11;
+  end if;
+  if $k = 2 then
+    set $stride = 13;
+  end if;
+  if $k = 3 then
+    set $stride = 17;
+  end if;
+  if $k = 4 then
+    set $stride = 19;
+  end if;
+
   -- 3 ---------------------------------------------------------------
   -- Hand back every square logic cannot recover, so the puzzle becomes
   -- fully determined.
@@ -725,7 +799,7 @@ begin
     if substring($solve0, $i, 1) = '0' then
       set $n = $n + 1;
       if $n >= 4 then
-        set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+        set $puz = substring($puz, 0, $i) + substring($Solution, $i, 1) + substring($puz, $i + 1, 80 - $i);
         set $n = 0;
       end if;
     end if;
@@ -740,7 +814,7 @@ begin
     if substring($solve1, $i, 1) = '0' then
       set $n = $n + 1;
       if $n >= 3 then
-        set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+        set $puz = substring($puz, 0, $i) + substring($Solution, $i, 1) + substring($puz, $i + 1, 80 - $i);
         set $n = 0;
       end if;
     end if;
@@ -755,7 +829,7 @@ begin
     if substring($solve2, $i, 1) = '0' then
       set $n = $n + 1;
       if $n >= 2 then
-        set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+        set $puz = substring($puz, 0, $i) + substring($Solution, $i, 1) + substring($puz, $i + 1, 80 - $i);
         set $n = 0;
       end if;
     end if;
@@ -769,7 +843,7 @@ begin
   while $i < 81
   begin
     if substring($solve3, $i, 1) = '0' then
-      set $puz = substring($puz, 0, $i) + substring($sol, $i, 1) + substring($puz, $i + 1, 80 - $i);
+      set $puz = substring($puz, 0, $i) + substring($Solution, $i, 1) + substring($puz, $i + 1, 80 - $i);
     end if;
     set $i = $i + 1;
   end while;
@@ -793,7 +867,7 @@ begin
   while $k < 81 and $givens < $TargetGivens
   begin
     if substring($puz, $p, 1) = '0' then
-      set $puz = substring($puz, 0, $p) + substring($sol, $p, 1) + substring($puz, $p + 1, 80 - $p);
+      set $puz = substring($puz, 0, $p) + substring($Solution, $p, 1) + substring($puz, $p + 1, 80 - $p);
       set $givens = $givens + 1;
     end if;
     set $p = $p + $stride;
@@ -801,6 +875,57 @@ begin
       set $p = $p - 81;
     end if;
     set $k = $k + 1;
+  end while;
+
+
+  return $puz;
+end;
+/
+
+/**
+ * Deals a fresh game: a shuffled solution, blanked to the tier's difficulty,
+ * repaired until forced logic can finish it, then materialised as a Game with
+ * its 81 Cells.
+ *
+ * The three grid phases are sub-microflows; what remains here is the sequence
+ * and the board itself.
+ *
+ * @param $Level The difficulty tier being dealt
+ * @param $TargetGivens How many squares the tier reveals
+ * @returns The new game
+ */
+create or replace microflow Sudoku.ACT_DealGame (
+  $Level: enum Sudoku."Difficulty",
+  $TargetGivens: integer
+)
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_DealGame givens=' + toString($TargetGivens);
+
+  declare $givens integer = 0;
+  declare $i integer = 0;
+  declare $r integer = 0;
+  declare $c integer = 0;
+  declare $t integer = 0;
+  declare $cls string = '';
+  declare $chSol string = '';
+  declare $isGiven boolean = false;
+
+  -- `call microflow` binds its result with `=`; the variable is created by the
+  -- call, so these must not also be declared above.
+  $sol = call microflow Sudoku.SUB_ShuffleSolution();
+  $blanked = call microflow Sudoku.SUB_BlankSquares(Solution = $sol, TargetGivens = $TargetGivens);
+  $puz = call microflow Sudoku.SUB_RepairToSolvable(Solution = $sol, Puzzle = $blanked, TargetGivens = $TargetGivens);
+
+  -- Count what actually survived the repair; it is what the board reports.
+  set $i = 0;
+  while $i < 81
+  begin
+    if substring($puz, $i, 1) != '0' then
+      set $givens = $givens + 1;
+    end if;
+    set $i = $i + 1;
   end while;
 
   -- 4 ---------------------------------------------------------------
