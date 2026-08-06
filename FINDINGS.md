@@ -2087,6 +2087,19 @@ combination is blocked for the reasons in finding 37.
 
 ## 39. `mxcli oql` returns silently wrong answers in two ways
 
+> **PARTLY RESOLVED** in `main` `2deb20de` ("Sudoku findings: OQL column union,
+> Docker-free `mxcli test --local`, loop-scope check").
+>
+> **The dropped column is fixed.** The exact reproduction below — 2000 unfiltered
+> `Sudoku.Cell` rows whose first row has a null `Value` — now returns the column
+> on every row that has one: **1254 of 1254 given cells carry `Value`, was 0.**
+>
+> **`ORDER BY` on a DateTime is still ignored.** Re-tested on the same build:
+> `ORDER BY DealtAt DESC` still returns `…6060841, …6087449, …6061035` while
+> `ORDER BY Id DESC` returns `…6713606, …6700814, …6689618`. "Give me the most
+> recent N" still silently returns an arbitrary N, so ordering by `Id` remains
+> the workaround.
+
 Build under test: `main` `085680ff`–`b90a04a2`. Both bugs were found while building a
 verification harness for the `ACT_DealGame` split (`15a9a25`), and both produced *confident
 wrong conclusions* before being noticed — nothing errors, nothing warns, the
@@ -2175,6 +2188,43 @@ pass degenerates to when the solver cracks nothing at all.
 Untouched so far: it wants its own change, not a refactor riding along.
 
 ## 41. `mxcli test` needs Docker, though everything but the last step already runs locally
+
+> **RESOLVED** by `c9639021` ("feat(test): run microflow tests without Docker
+> (`mxcli test --local`)"), in `main` `2deb20de`. The commit takes the option
+> this entry called the straightforward win: `--local` boots the same standalone
+> runtime `mxcli run --local` uses and reads the runner's output from the
+> runtime log, on its own ports (8081/8091) and its own `<project>_test`
+> database.
+>
+> Verified here — the first microflow tests this project has ever been able to
+> run, against the sub-microflows from `15a9a25`:
+>
+> ```
+> PASS  SUB_ShuffleSolution returns a complete 81-character grid
+> PASS  A solved grid needs no work from the solver
+> PASS  SUB_BlankSquares leaves the grid 81 characters long
+> Total: 3  Passed: 3  Failed: 0
+> ```
+>
+> Isolation holds: the injected `MxTest` module is gone afterwards, the test
+> runtime is shut down, `sudoku_test` is not the dev database, and the app
+> serving on :8080 was unaffected for the whole run.
+>
+> **One bug in the new path.** `--local` passes `-p` to mxbuild unmodified, so a
+> *relative* project path fails — and fails confusingly, dumping mxbuild's
+> Windows-flavoured usage JSON:
+>
+> ```
+> $ mxcli test sudoku.test.mdl -p Sudoku.mpr --local
+> Error: local runtime: build failed: the project file path should be an absolute path.
+>   "projectFilePath": "C:\\Users\\user_name\\Documents\\Mendix\\Project\\MyApp.mpr"
+> ```
+>
+> The same relative path works everywhere else in mxcli, including `run --local`.
+> Absolutising `-p` before handing it to mxbuild would fix it.
+>
+> The second option this entry raised — testing against an **already-running**
+> app — remains open, and still needs a way to invoke a microflow on demand.
 
 Build under test: `main` `b90a04a2`. Microflow tests are the one part of the
 toolchain that cannot run in this container, and the gap is narrower than it
