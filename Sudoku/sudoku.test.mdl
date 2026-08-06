@@ -1,0 +1,102 @@
+-- =====================================================================
+-- Sudoku — microflow tests
+-- =====================================================================
+-- Run with the Docker-free local runner:
+--
+--   mxcli test sudoku.test.mdl -p "$PWD/Sudoku.mpr" --local
+--
+-- The path must be ABSOLUTE — a relative -p is handed to mxbuild unchanged
+-- and fails with "the project file path should be an absolute path"
+-- (FINDINGS #41). --local boots mxcli's own runtime on ports 8081/8091 with
+-- its own 'sudoku_test' database, so a warm 'run --local' loop can keep
+-- serving on 8080 while these run.
+--
+-- These cover the grid engine, which is the part with no UI to check it and
+-- the part that carries the real algorithmic risk. The board is generated
+-- randomly and unseeded, so the assertions are properties that must hold for
+-- every deal rather than fixed expected output.
+-- =====================================================================
+
+/**
+ * The seed grid is shuffled but must stay a complete, valid solution — every
+ * square filled, so no '0' survives anywhere in it.
+ *
+ * @test SUB_ShuffleSolution returns a complete 81-character grid
+ * @expect length($result) = 81
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolution();
+/
+
+/**
+ * find() returns -1 when the needle is absent, so this asserts the shuffled
+ * solution has no empty square left in it.
+ *
+ * @test SUB_ShuffleSolution leaves no empty square
+ * @expect find($result, '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolution();
+/
+
+/**
+ * The solver is idempotent on a finished board: nothing is forced because
+ * nothing is missing, so it must hand the grid back untouched. This is the
+ * one case with a fixed expected value, which makes it a useful canary for
+ * the string-splicing arithmetic.
+ *
+ * @test ACT_SolveGrid returns a solved grid unchanged
+ * @expect $result = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+);
+/
+
+/**
+ * A single blank square has exactly one candidate, so forced logic alone must
+ * fill it — the weakest possible demand on the solver, and the one that would
+ * break first if the peer scan regressed.
+ *
+ * @test ACT_SolveGrid fills a single forced square
+ * @expect $result = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+);
+/
+
+/**
+ * Blanking must actually blank: the result stays 81 characters and now
+ * contains empty squares.
+ *
+ * @test SUB_BlankSquares keeps the grid 81 characters long
+ * @expect length($result) = 81
+ */
+$result = CALL MICROFLOW Sudoku.SUB_BlankSquares(
+  Solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  TargetGivens = 40
+);
+/
+
+/**
+ * @test SUB_BlankSquares actually removes squares
+ * @expect find($result, '0') >= 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_BlankSquares(
+  Solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  TargetGivens = 40
+);
+/
+
+/**
+ * Repair hands squares back until forced logic can finish the board, so its
+ * output must still be a well-formed 81-character grid.
+ *
+ * @test SUB_RepairToSolvable returns an 81-character grid
+ * @expect length($result) = 81
+ */
+$result = CALL MICROFLOW Sudoku.SUB_RepairToSolvable(
+  Solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Puzzle = '000678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  TargetGivens = 40
+);
+/

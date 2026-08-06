@@ -1,0 +1,42 @@
+// =====================================================================
+// Sudoku — self-hosted webfonts
+// =====================================================================
+// These used to come from fonts.googleapis.com. Serving them from the app
+// removes a third-party request from first paint, and makes the app render
+// correctly in environments with no route to Google — including the container
+// this project is developed in, where the blocked request was also masking
+// real console errors during testing.
+//
+// The .woff2 files are the ones mxcli vendors for its built-in themes
+// (`mxcli theme apply console`), SIL OFL 1.1 — see fonts/OFL.txt. Only the
+// latin subset is shipped; the UI is English-only.
+//
+// Weights are the ones the stylesheet actually uses. JetBrains Mono stops at
+// 600 because that is the heaviest weight vendored; nothing here asks for a
+// mono 700 (see .sd-cta).
+//
+// url() is relative to the compiled stylesheet, which Mendix emits at the web
+// root alongside this folder — the same convention mxcli's own themes use.
+// =====================================================================
+
+@each $weight in (400, 500, 600, 700) {
+  @font-face {
+    font-family: 'Space Grotesk';
+    src: url('./fonts/space-grotesk-latin-#{$weight}-normal.woff2') format('woff2');
+    font-weight: $weight;
+    font-style: normal;
+    // swap: show the fallback immediately rather than blocking the board on a
+    // font load. The grid is legible in the fallback metric.
+    font-display: swap;
+  }
+}
+
+@each $weight in (400, 500, 600) {
+  @font-face {
+    font-family: 'JetBrains Mono';
+    src: url('./fonts/jetbrains-mono-latin-#{$weight}-normal.woff2') format('woff2');
+    font-weight: $weight;
+    font-style: normal;
+    font-display: swap;
+  }
+}

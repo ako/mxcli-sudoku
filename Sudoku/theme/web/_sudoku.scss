@@ -7,8 +7,9 @@
 // reads worse than a consistent one. That is affordable here because the board
 // uses no Atlas input widgets — every control is a container or a button.
 //
-// The webfont @import lives at the top of main.scss, not here: a CSS @import
-// emitted after any rule is silently dropped by the browser.
+// The webfonts are self-hosted and declared in _fonts.scss, which main.scss
+// imports before this file — see that file for why they are not fetched from
+// a CDN.
 // =============================================================================
 
 .sd-page {
@@ -543,7 +544,7 @@
   color: #06151A;
   font-family: var(--sd-mono);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;   // heaviest JetBrains Mono weight self-hosted; 700 would be synthesised
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
