@@ -4,6 +4,7 @@
 /*.launch
 /.classpath
 /.mendix-cache/
+/theme-cache/
 /.project
 /deployment/
 /javasource/*/proxies/
