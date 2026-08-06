@@ -29724,6 +29724,7 @@ Do not change this file because it is core styling. Customizing core files will 
   --sd-accent-deep: #2C6F86;
   --sd-bad: #FF6B6B;
   --sd-cell: 54px;
+  --sd-rail-w: 264px;
   --sd-grid: #191F2B;
   --sd-rule: #46556C;
   --sd-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -30100,7 +30101,8 @@ Do not change this file because it is core styling. Customizing core files will 
 }
 
 .sd-rail {
-  flex: 1;
+  flex: none;
+  width: var(--sd-rail-w);
   min-width: 0;
   display: flex;
   flex-direction: column;
