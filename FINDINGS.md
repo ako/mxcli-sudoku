@@ -2085,6 +2085,159 @@ combination is blocked for the reasons in finding 37.
 
 **Not applied to this repo.** Left at Data Widgets 3.4.0, as in finding 32.
 
+## 39. `mxcli oql` returns silently wrong answers in two ways
+
+Build under test: `main` `085680ff`–`b90a04a2`. Both bugs were found while building a
+verification harness for the `ACT_DealGame` split (`15a9a25`), and both produced *confident
+wrong conclusions* before being noticed — nothing errors, nothing warns, the
+query just answers differently than it should.
+
+### A nullable column disappears when the first row is null
+
+`--json` infers its column set from the **first row**. When that row's value is
+null, the attribute is omitted from **every** row in the result, including the
+ones that have a value:
+
+```
+SELECT … Row, Col, SolutionValue, Value, IsGiven FROM Sudoku.Cell
+  -> 13932 rows, 8386 with IsGiven=true, of which carrying "Value": 0
+
+SELECT … Row, Col, Value, IsGiven FROM Sudoku.Cell WHERE IsGiven = true
+  -> "Value": "2"                     (first row non-null, so the column survives)
+```
+
+Ordering makes it deterministic, which is what proves the mechanism:
+
+| query | first row | rows with a value | carrying `Value` |
+|---|---|---|---|
+| `ORDER BY IsGiven DESC LIMIT 300` | non-null | 300 | **300** |
+| `ORDER BY IsGiven ASC LIMIT 9000` | null | 3454 | **0** |
+
+Aliasing (`Value AS CellValue`) does not help. It is not a reserved-word clash —
+`Value` alongside `SolutionValue` is fine, and the association path in the SELECT
+is irrelevant; only the first row's nullness matters.
+
+**Why this is worse than an error.** The result is well-formed JSON that reads as
+"every square is empty". A harness built on it reported 40 of 40 games failing
+their invariants, with plausible-looking messages, and the model was fine.
+
+**Workaround.** Split the query so any nullable attribute is fetched under a
+predicate that guarantees a non-null first row (`WHERE IsGiven = true`), and keep
+never-null attributes in a separate query.
+
+### `ORDER BY` on a DateTime attribute is ignored
+
+`ORDER BY DealtAt DESC` does not order. Same table, same moment, two orderings:
+
+```
+ORDER BY DealtAt DESC LIMIT 5 -> 17451448556061069, …6060841, …6087449, …
+ORDER BY Id     DESC LIMIT 5 -> 17451448556689513, …6689295, …6689186, …
+```
+
+The `Id` ordering returns the genuinely newest rows; the `DealtAt` ordering
+returns old ones and is stable across runs, so it is not a tie-break artifact.
+`DealtAt` is also silently dropped from the projection when selected (the bug
+above — every game has a `DealtAt`, but it is the first *column* rather than the
+first row that matters there, so the two may share a cause).
+
+**Impact.** "Give me the most recent N" silently returns an arbitrary N. The
+before/after comparison for the `ACT_DealGame` split was invalidated by exactly this: both runs
+sampled the same arbitrary 12 old rows, so the "after" numbers came back
+byte-identical to the "before" numbers — which is what made it noticeable.
+A less lucky refactor would have been declared verified on evidence that never
+looked at it.
+
+**Workaround.** Order by `Id` for recency; Mendix ids increase monotonically.
+
+## 40. Roughly one dealt board in twenty is not solvable by forced logic
+
+**Not an mxcli bug — an app bug**, recorded because this project's harness
+surfaced it and it contradicts a guarantee the code claims for itself.
+
+`ACT_DealGame` ends its repair phase with a pass documented as:
+
+> Final pass: anything still undetermined goes back, which is what guarantees the
+> finished puzzle is solvable by forced steps alone.
+
+Checked against a mirror of `ACT_SolveGrid`'s own rule (place a square only when
+it has exactly one candidate, guard 60 iterations), that guarantee does not hold:
+**1 of 12** freshly dealt boards on the current build, and **1 of 24** on the
+previous one, cannot be finished by forced logic. Present identically before and
+after the `ACT_DealGame` split (`15a9a25`), so it predates it.
+
+The likely mechanism is visible in the code: the repair loop hands squares back
+only where `ACT_SolveGrid` reports a `'0'`, and `ACT_SolveGrid` gives up after 60
+guard iterations. A board the solver abandons early therefore looks "determined"
+to the repair pass. The same weakness has a louder failure mode also seen here —
+boards dealt with **81 givens**, every square revealed, which is what the final
+pass degenerates to when the solver cracks nothing at all.
+
+Untouched so far: it wants its own change, not a refactor riding along.
+
+## 41. `mxcli test` needs Docker, though everything but the last step already runs locally
+
+Build under test: `main` `b90a04a2`. Microflow tests are the one part of the
+toolchain that cannot run in this container, and the gap is narrower than it
+looks — it is the *runtime start*, not the test machinery.
+
+`mxcli test` gets impressively far with no Docker at all. On a throwaway copy,
+with a one-test `.test.mdl` calling `ACT_SolveGrid`:
+
+```
+Parsing test files...                     ok
+  Found 1 test(s) in 1 file(s)
+Generating test runner microflow...       ok
+Injecting test runner into project...     ok
+  Created module: MxTest
+  Created microflow: MxTest.TestRunner
+  After-startup set to MxTest.TestRunner
+  Created .docker/docker-compose.yml
+Build complete.                           ok   <- full mxbuild, no container
+Restarting runtime...
+failed to connect to the docker API at unix:///var/run/docker.sock …
+Error: docker up: exit status 1
+```
+
+Parsing, runner generation, model injection, the after-startup wiring **and the
+entire build** all complete natively. Only "start the runtime and read its log"
+is containerised. Cleanup is honest, too — the injected `MxTest` module is gone
+from the project afterwards, despite the run aborting.
+
+**Why this bites here specifically.** Docker is installed in this image
+(`/usr/bin/docker`) but has no daemon, which is normal for sandboxed agent
+containers — including the Claude Code web containers mxcli is being built to
+work in. So microflow tests are unavailable in exactly the environment the rest
+of the tool targets. The `test-microflows` skill is listed as required reading
+for testing work, and none of it can be exercised.
+
+**The pieces for a local mode already exist in mxcli.** `mxcli run --local`
+starts the same Mendix runtime out of `~/.mxcli/runtime/<version>` with no
+container, already tees the runtime log to `.mxcli/runtime.log` (finding 25), and
+already speaks the M2EE admin API on :8090. The three things the test runner
+needs from a runtime — start it, capture structured log output, restore settings
+— are things `run --local` does today. A `--local` flag on `mxcli test` looks
+like a wiring change rather than a new subsystem.
+
+**One design point worth deciding deliberately.** "Support the live runtime" can
+mean two different things:
+
+1. **Use the local runtime instead of Docker** — inject the runner, start
+   `run --local`, read the log, restore. Behaviourally identical to today, minus
+   the container. This is the straightforward win.
+2. **Run tests against an app that is already up** — much more useful in this
+   workspace, where an instrumented app with the hub tunnel is already serving,
+   and a restart costs ~90s and every browser session. But the current design
+   hangs the runner off the **after-startup microflow**, which by definition has
+   already fired. That mode needs a way to invoke a microflow on demand against a
+   live runtime. The admin API does not expose one; the debugger endpoint
+   (finding 26) can pause and inspect flows but not call them.
+
+(2) is the one that would change how this workspace tests, and it needs a
+mechanism that does not exist yet. (1) is available now and would already have
+made this session's `ACT_DealGame` verification a set of assertions rather than
+a hand-built harness reading the database — which is how finding 39's two bugs
+came to matter at all.
+
 ---
 
 ## Verification summary
