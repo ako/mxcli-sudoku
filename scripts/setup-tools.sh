@@ -35,7 +35,24 @@ MXCLI_BRANCH="main"
 MXCLI_SRC="/opt/mxcli-src"
 MXCLI_BIN="/usr/local/bin/mxcli"
 
-MENDIX_VERSION="11.12.1"
+# Read the Mendix version out of the project itself rather than pinning it here:
+# an `mx convert` upgrade changes the .mpr and a constant silently goes stale,
+# leaving the hook pre-caching a version nothing uses. The .mpr is a SQLite file
+# whose _MetaData row carries the product version. Falls back to the last known
+# version when there is no project yet (phase 1) or the read fails.
+MENDIX_VERSION="$(
+  python3 - "$(dirname "${BASH_SOURCE[0]}")/../Sudoku/Sudoku.mpr" <<'PY' 2>/dev/null || true
+import sqlite3, sys
+try:
+    con = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
+    v = con.execute("SELECT _ProductVersion FROM _MetaData LIMIT 1").fetchone()
+    if v and v[0]:
+        print(v[0])
+except Exception:
+    pass
+PY
+)"
+MENDIX_VERSION="${MENDIX_VERSION:-11.13.0}"
 MXCLI_HOME="${HOME}/.mxcli"
 
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }

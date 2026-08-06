@@ -1,6 +1,6 @@
 # mxcli-sudoku
 
-A playable Sudoku app built in **Mendix 11.12.1**, authored entirely through
+A playable Sudoku app built in **Mendix 11.13.0**, authored entirely through
 [`mxcli`](https://github.com/ako/mxcli) / MDL — no Studio Pro.
 
 The toolchain that builds and runs it is set up by committed automation; see
@@ -169,7 +169,7 @@ Atlas-first, per the four-layer model:
 ## Opening it in Studio Pro
 
 The complete Mendix project is committed, so mxcli is not required to open it —
-clone the repo and open `Sudoku/Sudoku.mpr` in **Studio Pro 11.12.1**. The model
+clone the repo and open `Sudoku/Sudoku.mpr` in **Studio Pro 11.13.0**. The model
 (`Sudoku.mpr` + `mprcontents/`), the theme (`theme/`, `themesource/`), the
 marketplace widgets (`widgets/`) and `javascriptsource/` are all in the tree.
 
