@@ -2225,6 +2225,46 @@ Untouched so far: it wants its own change, not a refactor riding along.
 >
 > The second option this entry raised — testing against an **already-running**
 > app — remains open, and still needs a way to invoke a microflow on demand.
+>
+> **Follow-up, `1bdd46a9`: the runner was rebuilt around an HTTP endpoint, and
+> the edit-test loop is now 14x faster.** Instead of one after-startup microflow
+> whose results are recovered from the runtime log, `--local` now generates one
+> microflow per test plus a Java action registering a token-guarded loopback
+> endpoint, boots the app once, and invokes each test by name over HTTP.
+>
+> Measured on this project's seven tests:
+>
+> | | wall time | test time |
+> |---|---|---|
+> | cold run (`--local`) | 86s | 444ms |
+> | warm re-run (`--local --watch`) | **6.1s** | 165ms |
+>
+> The warm run is a 3.7s incremental rebuild-and-reload plus the tests; the cold
+> 86s is all build and boot. Per-test timings are also real now (161ms, 41ms,
+> 77ms…) where every test previously reported `0s`, because a verdict comes back
+> in the response rather than being parsed out of a log.
+>
+> **Failure isolation works as claimed**, which the old design could not do.
+> Adding two deliberately bad tests — one wrong expectation, one that throws
+> (`substring` past the end of a short grid) — fails exactly those two and still
+> runs the other seven:
+>
+> ```
+> FAIL  DELIBERATE FAILURE — wrong expected value (3ms)
+>        expected $result = 'not-a-grid'
+> FAIL  DELIBERATE ERROR — substring out of range (36ms)
+>        exception during execution
+> Total: 9  Passed: 7  Failed: 2
+> ```
+>
+> A throw is reported distinctly rather than ending the run. Cleanup still holds
+> after `--watch` is interrupted: `MxTest` is gone, the test runtime is down, and
+> the app on :8080 was untouched throughout.
+>
+> This does not close the second option — the tests still run against a separate
+> runtime on 8081, not the app you are browsing — but `--watch` removes most of
+> what made that attractive, since the restart cost is now paid once per session
+> rather than once per run.
 
 Build under test: `main` `b90a04a2`. Microflow tests are the one part of the
 toolchain that cannot run in this container, and the gap is narrower than it
