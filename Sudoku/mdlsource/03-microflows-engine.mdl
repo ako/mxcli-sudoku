@@ -1004,6 +1004,12 @@ end;
 /**
  * Clears every square the player filled in, keeping the dealt givens.
  *
+ * Resetting also drops the undo history. The recorded moves describe squares
+ * as they were before the board was emptied, so replaying one would write a
+ * digit back onto a square the player had just asked to be cleared — UNDO
+ * after RESET used to resurrect an erased value. Reset is a fresh start, not
+ * a step that can be walked back past.
+ *
  * @param $Game The game to reset
  * @returns True when the board was reset
  */
@@ -1034,7 +1040,16 @@ begin
 
   commit $Changed refresh;
 
-  change $Game ("HintCount" = 0) refresh;
+  retrieve $Moves from Sudoku."Move"
+    where [Sudoku."Move_Game" = $Game];
+  delete $Moves;
+
+  change $Game (
+    "HintCount" = 0,
+    "MoveSeq" = 0,
+    "MaxSeq" = 0,
+    "CanUndo" = false,
+    "CanRedo" = false) refresh;
   commit $Game refresh;
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 

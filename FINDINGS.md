@@ -2328,6 +2328,108 @@ made this session's `ACT_DealGame` verification a set of assertions rather than
 a hand-built harness reading the database — which is how finding 39's two bugs
 came to matter at all.
 
+## 42. Restarting the app breaks an open tab only on the *next page it opens*
+
+**Not an mxcli bug in itself** — a consequence of finding 34's container
+suspend, recorded because the failure it produces looks nothing like a
+restart and cost two rounds of investigation to place.
+
+The player reported an error popup on pressing RESULT after finishing a game.
+The board itself had worked fine all the way to the last digit. The runtime log
+named it exactly:
+
+```
+22:23:18.667 ERROR - Client: An error occurred while loading page 'Sudoku.Game_Done'.
+                     This likely means that the page includes a broken widget...
+22:23:18.667 ERROR - Client: An error occurred while executing an action of
+                     Sudoku.Game_Play.toolResult: Importing a module script failed.
+```
+
+The first line is Mendix guessing, and the guess is wrong — no widget is
+broken. The second line is the real cause: Mendix ships **each page as its own
+lazily-loaded JavaScript module**, fetched the first time that page is opened.
+`deployment/web/dist` had been rewritten 23 seconds earlier by the restart that
+this session's `SessionStart` hook fires on resume; the click landed eleven
+seconds into the runtime boot.
+
+Reproduced by 404-ing chunk requests once a game was under way, which names the
+file:
+
+```
+POPUP: "Error — An error occurred, please contact your system administrator."
+chunks the tab asked for: [ 'Sudoku.Game_Done.js' ]
+[Client] ... toolResult: Failed to fetch dynamically imported module:
+         http://127.0.0.1:8080/dist/pages/Sudoku.Game_Done.js
+```
+
+Same first line as the log; the second differs only in browser wording
+(Chromium says "Failed to fetch dynamically imported module", Firefox and
+Safari say "Importing a module script failed").
+
+What makes this worth writing down is the **shape of the failure**. Everything
+already loaded keeps working — selecting cells, entering digits, undo, reset all
+run from code the tab holds in memory, so the app feels healthy right through a
+restart. The break lands on the first navigation to a page not yet visited. In
+this app that is exactly one moment: finishing a game and pressing RESULT. The
+symptom therefore points at the feature, not at the restart that caused it.
+
+The same suspend produces a second, unrelated-looking symptom when the tab
+needs the *server* rather than a module — `A connection error occurred, please
+try again later.`, logged as `Client: Failed to fetch`. Both were reported as
+game bugs; neither was.
+
+No app-side fix exists — a tab cannot recover a module the server is not
+serving. The workaround is to reload the page after the preview has been idle.
+What would help from the tooling side is for a rebuild to keep the previous
+build's page modules addressable, or for the client to surface "the app was
+updated, reload" rather than a broken-widget message that sends you reading
+page definitions.
+
+## 43. RESET left the undo history in place, so UNDO resurrected erased digits
+
+**Not an mxcli bug — an app bug**, found while investigating a popup that
+turned out to be finding 42. Fixed in this session.
+
+`ACT_ResetBoard` cleared every non-given square and nothing else. `MoveSeq`,
+`MaxSeq`, `CanUndo`/`CanRedo` and every `Move` row survived, so undo afterwards
+replayed a move recorded against the board as it stood *before* the reset.
+
+Invisible unless the undone move had a non-empty `OldValue` — the first attempt
+to reproduce it missed for that reason, because typing into an empty square
+gives `OldValue = empty` and undo then restores empty. It needs an erase:
+
+```
+type 5 into an empty square : 51 filled
+ERASE it                    : 50 filled
+RESET                       : 50 filled   cell = ""
+UNDO                        : 51 filled   cell = "5"   <- resurrected
+```
+
+Fixed by having reset drop the history it invalidates: delete the game's
+`Move` rows, zero `MoveSeq`/`MaxSeq`, clear both `CanUndo` and `CanRedo`. Reset
+becomes a fresh start rather than a step that can be walked back past. The
+alternative — logging the whole clear as one undoable move — was considered and
+rejected as more machinery than the behaviour is worth.
+
+After the fix:
+
+```
+RESET     : 50 | UNDO off? true | REDO off? true
+UNDO clickable after RESET: false -> filled: 50
+>>> resurrected: false
+>>> undo still works for new moves: 50 -> 51 -> undo -> 50 => true
+```
+
+A process note that cost real time here: the first verification run reported
+the bug still present *after* the fix was applied and `mx check` passed. The
+model on disk was correct and the runtime had logged `Model update detected`;
+the running app was nonetheless serving the pre-fix build, because the `exec`
+landed while `--watch`'s initial build was still in flight (the same race noted
+during the nanoflow probe). The database gave the unambiguous answer — a game
+showing `MoveSeq=1` after reset+undo proves the new code never ran. **After
+`mxcli exec`, confirm a `build #N applied` line before trusting any behavioural
+test**; "model updated" in the runtime log is not that confirmation.
+
 ---
 
 ## Verification summary
