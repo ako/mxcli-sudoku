@@ -17,7 +17,11 @@
 -- indexed i = row*9 + col, read with substring() and written by splicing.
 -- Cell objects are created once, at the end.
 --
--- No integer division anywhere: Mendix `div` returns a Decimal (CE0117).
+-- Integer division needs care: Mendix `div` returns a Decimal, so assigning it
+-- straight to an integer fails CE0117. `round(floor($a div $b))` is the integer
+-- quotient, and `$a - $q * $b` the remainder. ACT_SolveGrid uses this in its hot
+-- loops; it used to derive row/column by repeated subtraction, which cost up to
+-- nine iterations per square per pass.
 -- =====================================================================
 
 /**
@@ -293,7 +297,6 @@ begin
   declare $progress boolean = true;
   declare $guard integer = 0;
   declare $i integer = 0;
-  declare $t integer = 0;
   declare $r integer = 0;
   declare $c integer = 0;
   declare $br integer = 0;
@@ -314,7 +317,6 @@ begin
   declare $hidCount integer = 0;
   declare $hidPos integer = 0;
   declare $bu integer = 0;
-  declare $t2 integer = 0;
   declare $br2 integer = 0;
   declare $bc2 integer = 0;
   declare $dr2 integer = 0;
@@ -333,14 +335,8 @@ begin
     while $i < 81
     begin
       if substring($g, $i, 1) = '0' then
-        set $r = 0;
-        set $t = $i;
-        while $t >= 9
-        begin
-          set $t = $t - 9;
-          set $r = $r + 1;
-        end while;
-        set $c = $t;
+        set $r = round(floor($i div 9));
+        set $c = $i - $r * 9;
         set $br = 0;
         if $r >= 3 then
           set $br = 3;
@@ -417,22 +413,10 @@ begin
           end if;
           if $u >= 18 then
             set $bu = $u - 18;
-            set $t2 = $bu;
-            set $br2 = 0;
-            while $t2 >= 3
-            begin
-              set $t2 = $t2 - 3;
-              set $br2 = $br2 + 3;
-            end while;
-            set $bc2 = $t2 * 3;
-            set $t2 = $j;
-            set $dr2 = 0;
-            while $t2 >= 3
-            begin
-              set $t2 = $t2 - 3;
-              set $dr2 = $dr2 + 1;
-            end while;
-            set $dc2 = $t2;
+            set $br2 = round(floor($bu div 3)) * 3;
+            set $bc2 = ($bu - $br2) * 3;
+            set $dr2 = round(floor($j div 3));
+            set $dc2 = $j - $dr2 * 3;
             set $idx = ($br2 + $dr2) * 9 + $bc2 + $dc2;
           end if;
           set $unitStr = $unitStr + substring($g, $idx, 1);
@@ -460,34 +444,16 @@ begin
                 end if;
                 if $u >= 18 then
                   set $bu = $u - 18;
-                  set $t2 = $bu;
-                  set $br2 = 0;
-                  while $t2 >= 3
-                  begin
-                    set $t2 = $t2 - 3;
-                    set $br2 = $br2 + 3;
-                  end while;
-                  set $bc2 = $t2 * 3;
-                  set $t2 = $j;
-                  set $dr2 = 0;
-                  while $t2 >= 3
-                  begin
-                    set $t2 = $t2 - 3;
-                    set $dr2 = $dr2 + 1;
-                  end while;
-                  set $dc2 = $t2;
+                  set $br2 = round(floor($bu div 3)) * 3;
+                  set $bc2 = ($bu - $br2) * 3;
+                  set $dr2 = round(floor($j div 3));
+                  set $dc2 = $j - $dr2 * 3;
                   set $idx = ($br2 + $dr2) * 9 + $bc2 + $dc2;
                 end if;
 
                 if substring($g, $idx, 1) = '0' then
-                  set $r = 0;
-                  set $t = $idx;
-                  while $t >= 9
-                  begin
-                    set $t = $t - 9;
-                    set $r = $r + 1;
-                  end while;
-                  set $c = $t;
+                  set $r = round(floor($idx div 9));
+                  set $c = $idx - $r * 9;
                   set $br = 0;
                   if $r >= 3 then
                     set $br = 3;
