@@ -2430,6 +2430,76 @@ showing `MoveSeq=1` after reset+undo proves the new code never ran. **After
 `mxcli exec`, confirm a `build #N applied` line before trusting any behavioural
 test**; "model updated" in the runtime log is not that confirmation.
 
+## 44. The observability tooling exists and is not reachable from where you need it
+
+**Not an mxcli bug — a discoverability finding**, and the evidence is that its
+own author failed the test twice in one session.
+
+Finding 30 established that DuckDB reads the model catalog, the app's
+PostgreSQL, the OTLP spans, the metrics scrape and the runtime log in place, and
+that a question crossing two of them is one SQL query. That was tested, written
+up, and turned into working tooling in this repo:
+
+```
+scripts/warehouse.py   171 lines   build | sql | hot-microflows | hot-tables | slow-activities
+scripts/flame.py       267 lines
+scripts/trace.sh        28 lines
+scripts/otel.sh        119 lines
+```
+
+Then, asked "what are the most expensive SQL statements", I hand-wrote a Python
+JSONL parse loop — five times, once per refinement — computing medians and
+percentiles by hand over a 108 MB file. `warehouse.py hot-microflows` is a canned
+query for almost exactly that. Earlier in the same session, asked for a flame
+chart, I wrote a generator from scratch while `scripts/flame.py` sat unopened in
+the same directory.
+
+So the failure is not that the capability is missing or that it is
+under-documented. It is documented at length — in a 2,400-line findings file
+nobody reads at the moment of need, and in scripts nothing points to.
+
+**Three concrete gaps, in increasing order of how much they cost:**
+
+1. **Nothing at the point of need mentions it.** `run-app.sh` prints
+   `Tracing enabled … spans -> OTLP http://127.0.0.1:4318` and stops there. It
+   names the endpoint the app writes to and never names the file that results,
+   let alone how to query it. One extra line — `Query it: scripts/warehouse.py
+   sql "…"` — would have closed the whole gap.
+
+2. **It silently answered from stale data.** `MXCLI_SPANS` defaulted to
+   `warehouse/spans.jsonl`, a snapshot from an earlier run, while the collector
+   had since been pointed at `.mxcli/spans.jsonl`. `warehouse.py build`
+   cheerfully reported `spans 2476` next to a live file holding **105,613**. No
+   warning, no error — the kind of wrongness that is worse than a crash, because
+   the answer looks fine. Fixed here: the default now prefers the live file and
+   falls back to the snapshot only if it is absent.
+
+3. **Nothing in the project's own AI context mentions it.** `CLAUDE.md` lists
+   every MDL command and 40-odd skills; none covers querying telemetry. The
+   `.ai-context/skills/` set has `verify-with-oql` and `runtime-admin-api` but
+   nothing for traces.
+
+**Worth being accurate about the payoff, because it is not "DuckDB is faster".**
+Measured on this 108 MB / 104k-span file:
+
+| | DuckDB | hand-rolled Python |
+|---|---|---|
+| flat SQL aggregation | 0.46 s | 0.65 s |
+| recursive caller attribution | 8.85 s | **1.23 s** |
+| …same, after `CREATE INDEX` | 1.61 s | 1.23 s |
+| **load once, then query** | **2–25 ms** | 0.65–1.23 s *every time* |
+
+A recursive CTE re-joins the whole span table at each depth and is *worse* than
+dict-chasing until indexed. The win is not raw speed on one query; it is
+(a) persisting once — 108 MB of JSONL becomes a 10.2 MB DuckDB file and queries
+drop to milliseconds — and (b) joins Python cannot do at all, like runtime cost
+from spans against activity counts from the catalog in 157 ms.
+
+**The generalisable lesson:** a technique that lives only in a findings document
+is not available; it is merely recorded. What makes it available is a pointer
+emitted at the moment the data is produced. This entry exists because the gap
+was wide enough to swallow the person who wrote the tooling.
+
 ---
 
 ## Verification summary
