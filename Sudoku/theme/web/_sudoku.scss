@@ -248,6 +248,12 @@
 .sd-board [class*="gallery-items"] > *:nth-child(9n) .sd-cell { border-right: none !important; }
 .sd-board [class*="gallery-items"] > *:nth-child(n + 73) .sd-cell { border-bottom: none !important; }
 
+// Jigsaw: the heavy rule falls on region edges rather than every third column,
+// so ACT_DealGame emits sd-br / sd-bb per square by comparing region ids with
+// the neighbour. The classes are the same ones the 3x3 boxes use — only where
+// they land changes — which is why the board needed no new styling to draw an
+// irregular shape.
+
 .sd-num {
   font-size: 23px;
   font-weight: 500;
@@ -529,6 +535,14 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
+
+// The variants change the rules rather than the number of givens, so they sit
+// in their own row below the three difficulty tiers instead of extending them.
+.sd-cards-x {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 14px;
+}
+.sd-cards-x .sd-card-kicker { color: #8A7AFF; }
 
 .sd-card {
   background: var(--sd-panel);

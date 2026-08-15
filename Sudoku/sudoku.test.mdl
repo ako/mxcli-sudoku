@@ -48,7 +48,8 @@ $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolution();
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
   Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
-  Diagonal = false
+  Diagonal = false,
+  Regions = ''
 );
 /
 
@@ -62,7 +63,8 @@ $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
   Grid = '034678912672195348198342567859761423426853791713924856961537284287419635345286179',
-  Diagonal = false
+  Diagonal = false,
+  Regions = ''
 );
 /
 
@@ -100,7 +102,8 @@ $result = CALL MICROFLOW Sudoku.SUB_RepairToSolvable(
   Solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
   Puzzle = '000678912672195348198342567859761423426853791713924856961537284287419635345286179',
   TargetGivens = 40,
-  Diagonal = false
+  Diagonal = false,
+  Regions = ''
 );
 /
 
@@ -121,7 +124,8 @@ $result = CALL MICROFLOW Sudoku.SUB_RepairToSolvable(
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
   Grid = '345721698869300271721986453416872539578693124932100867283469715157238946694517382',
-  Diagonal = false
+  Diagonal = false,
+  Regions = ''
 );
 /
 
@@ -131,7 +135,8 @@ $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
   Grid = '345721698869300271721986453416872539578693124932100867283469715157238946694517382',
-  Diagonal = true
+  Diagonal = true,
+  Regions = ''
 );
 /
 
@@ -162,6 +167,68 @@ $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionX();
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
   Grid = '345721698869354271721986453416872539578693124932145867283469715157238946694517382',
-  Diagonal = true
+  Diagonal = true,
+  Regions = ''
 );
+/
+
+-- =====================================================================
+-- Jigsaw — irregular regions instead of 3x3 boxes
+-- =====================================================================
+-- The fixture blanks one entire region (nine squares). The classic box rule
+-- knows nothing about that shape, so it stalls; the region rule rebuilds the
+-- board exactly. Same construction as the Sudoku X pair — two runs of the same
+-- solver over the same grid, differing only in the rule set.
+
+/**
+ * @test the box solver cannot finish a board whose regions are irregular
+ * @expect find($result, '0') >= 0
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '495173826132986745856724931729865314567419203683547102341258009274390068918600057',
+  Diagonal = false,
+  Regions = ''
+);
+/
+
+/**
+ * @test the region solver finishes the same board
+ * @expect $result = '495173826132986745856724931729865314567419283683547192341258679274391568918632457'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '495173826132986745856724931729865314567419203683547102341258009274390068918600057',
+  Diagonal = false,
+  Regions = '881111333881111333888221333886222277566222407566644407566644007555440077555400077'
+);
+/
+
+/**
+ * A finished jigsaw has nothing left to force, so the region solver must hand
+ * it back untouched — the canary for the region index being built correctly.
+ *
+ * @test the region solver returns a solved jigsaw unchanged
+ * @expect $result = '495173826132986745856724931729865314567419283683547192341258679274391568918632457'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '495173826132986745856724931729865314567419283683547192341258679274391568918632457',
+  Diagonal = false,
+  Regions = '881111333881111333888221333886222277566222407566644407566644007555440077555400077'
+);
+/
+
+/**
+ * The generator returns the solution and its layout in one string, because the
+ * two must come from the same random transform.
+ *
+ * @test SUB_ShuffleSolutionJ returns 162 characters
+ * @expect length($result) = 162
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionJ();
+/
+
+/**
+ * @test SUB_ShuffleSolutionJ leaves no empty square in the solution half
+ * @expect find(substring($result, 0, 81), '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionJ();
 /

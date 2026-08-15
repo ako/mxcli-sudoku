@@ -17,11 +17,13 @@ create module Sudoku;
  *
  * Classic is rows + columns + boxes. Diagonal adds both main diagonals
  * (a "Sudoku X"), which constrains the board hard enough that it stays
- * forced-solvable on noticeably fewer givens.
+ * forced-solvable on noticeably fewer givens. Jigsaw keeps rows and columns
+ * and replaces the nine boxes with nine irregular connected regions.
  */
 create enumeration Sudoku."Variant" (
   Classic 'Classic',
-  Diagonal 'Diagonal X'
+  Diagonal 'Diagonal X',
+  Jigsaw 'Jigsaw'
 );
 /
 

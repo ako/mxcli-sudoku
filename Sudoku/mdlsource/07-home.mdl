@@ -130,6 +130,40 @@ create or replace page Sudoku.Home
       }
     }
 
+  container sdCardsX (class: 'sd-cards sd-cards-x') {
+    container sdCardDiag (class: 'sd-card sd-card-diag') {
+      dynamictext sdDiagDot (content: 'Variant', class: 'sd-card-kicker')
+      dynamictext sdDiagName (content: 'Diagonal X', rendermode: H2, class: 'sd-card-name')
+      dynamictext sdDiagDesc (
+        content: 'Both marked diagonals must also hold 1 to 9 once. Fewer givens, same difficulty.',
+        rendermode: Paragraph,
+        class: 'sd-card-desc'
+      )
+      actionbutton bDiagonal (
+        caption: 'Start diagonal game',
+        action: microflow Sudoku.ACT_NewDiagonal,
+        buttonstyle: primary,
+        class: 'sd-cta'
+      )
+    }
+
+    container sdCardJig (class: 'sd-card sd-card-jig') {
+      dynamictext sdJigDot (content: 'Variant', class: 'sd-card-kicker')
+      dynamictext sdJigName (content: 'Jigsaw', rendermode: H2, class: 'sd-card-name')
+      dynamictext sdJigDesc (
+        content: 'The nine boxes become nine irregular shapes. Rows and columns are unchanged.',
+        rendermode: Paragraph,
+        class: 'sd-card-desc'
+      )
+      actionbutton bJigsaw (
+        caption: 'Start jigsaw game',
+        action: microflow Sudoku.ACT_NewJigsaw,
+        buttonstyle: primary,
+        class: 'sd-cta'
+      )
+    }
+  }
+
     container sdHomeFoot (class: 'sd-home-foot') {
       dynamictext sdFootText (
         content: 'Select a square on the board, then tap a number to fill it in.',
@@ -139,6 +173,35 @@ create or replace page Sudoku.Home
     }
   }
 }
+/
+
+/**
+ * Deals a jigsaw ("vorm") sudoku: rows and columns as usual, but the nine
+ * 3x3 boxes are replaced by nine irregular connected regions.
+ *
+ * Dealt at 40 givens. A jigsaw's regions are less regular than boxes, which
+ * makes forced logic reach further in some places and stall sooner in others,
+ * so it sits between Easy and the Sudoku X rather than following either.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewJigsaw ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewJigsaw';
+
+  $Game = call microflow Sudoku.ACT_DealGame(
+    Level = Sudoku."Difficulty".Medium,
+    TargetGivens = 40,
+    Variant = Sudoku."Variant".Jigsaw);
+
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_NewJigsaw to Sudoku.User;
 /
 
 -- The completion page cannot reference Sudoku.Home at creation time (it is
@@ -184,25 +247,3 @@ grant execute on microflow Sudoku.ACT_NewDiagonal to Sudoku.User;
 
 -- A fourth card, set apart from the three difficulty tiers because it changes
 -- the rules rather than the number of givens.
-alter page Sudoku.Home {
-  insert after sdCards {
-    container sdCardsX (class: 'sd-cards sd-cards-x') {
-      container sdCardDiag (class: 'sd-card sd-card-diag') {
-        dynamictext sdDiagDot (content: 'Variant', class: 'sd-card-kicker')
-        dynamictext sdDiagName (content: 'Diagonal X', rendermode: H2, class: 'sd-card-name')
-        dynamictext sdDiagDesc (
-          content: 'Both marked diagonals must also hold 1 to 9 once. Fewer givens, same difficulty.',
-          rendermode: Paragraph,
-          class: 'sd-card-desc'
-        )
-        actionbutton bDiagonal (
-          caption: 'Start diagonal game',
-          action: microflow Sudoku.ACT_NewDiagonal,
-          buttonstyle: primary,
-          class: 'sd-cta'
-        )
-      }
-    }
-  }
-};
-/
