@@ -14,15 +14,15 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.datagriddatefilter.DatagridDateFilter' wi
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `attrChoice` | enumeration |  | auto |  |
-| `linkedDs` | datasource |  |  |  |
+| `attrChoice` | enumeration | Yes | auto |  |
+| `linkedDs` | datasource | Yes |  |  |
 | `attributes` | object |  |  | Select the attributes that the end-user may use for filtering. |
 | `defaultValue` | expression |  |  |  |
 | `defaultStartDate` | expression |  |  |  |
 | `defaultEndDate` | expression |  |  |  |
-| `defaultFilter` | enumeration |  | equal |  |
+| `defaultFilter` | enumeration | Yes | equal |  |
 | `placeholder` | textTemplate |  |  |  |
-| `adjustable` | boolean |  | true |  |
+| `adjustable` | boolean | Yes | true |  |
 | `valueAttribute` | attribute |  |  | Attribute used to store the last value of the filter. |
 | `startDateAttribute` | attribute |  |  | Attribute used to store the last value of the start date filter. |
 | `endDateAttribute` | attribute |  |  | Attribute used to store the last value of the end date filter. |

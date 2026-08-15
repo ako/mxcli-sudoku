@@ -21,31 +21,31 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.heatmap.HeatMap' widget1 {
 |----------|------|----------|---------|-------------|
 | `seriesDataSource` | datasource | Yes |  |  |
 | `seriesValueAttribute` | attribute | Yes |  | The attribute used to display “heat” at an “x y” location. |
-| `seriesItemSelection` | selection |  |  |  |
+| `seriesItemSelection` | selection | Yes |  |  |
 | `horizontalAxisAttribute` | attribute |  |  |  |
 | `horizontalSortAttribute` | attribute |  |  | Attribute to use for sorting the data. Sorting can only be used when data sou... |
-| `horizontalSortOrder` | enumeration |  | asc |  |
+| `horizontalSortOrder` | enumeration | Yes | asc |  |
 | `verticalAxisAttribute` | attribute |  |  |  |
 | `verticalSortAttribute` | attribute |  |  | Attribute to use for sorting the data. Sorting can only be used when data sou... |
-| `verticalSortOrder` | enumeration |  | asc |  |
-| `enableAdvancedOptions` | boolean |  | false |  |
-| `showPlaygroundSlot` | boolean |  | false |  |
+| `verticalSortOrder` | enumeration | Yes | asc |  |
+| `enableAdvancedOptions` | boolean | Yes | false |  |
+| `showPlaygroundSlot` | boolean | Yes | false |  |
 | `playground` | widgets |  |  |  |
 | `xAxisLabel` | textTemplate |  |  |  |
 | `yAxisLabel` | textTemplate |  |  |  |
-| `showScale` | boolean |  | false |  |
-| `gridLines` | enumeration |  | none |  |
+| `showScale` | boolean | Yes | false |  |
+| `gridLines` | enumeration | Yes | none |  |
 | `scaleColors` | object |  |  | The percentages with the colors that should be applied. At least two values n... |
-| `smoothColor` | boolean |  | false | Gradual color gradient between data points |
-| `showValues` | boolean |  | false |  |
+| `smoothColor` | boolean | Yes | false | Gradual color gradient between data points |
+| `showValues` | boolean | Yes | false |  |
 | `valuesColor` | string |  |  |  |
-| `widthUnit` | enumeration |  | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
-| `width` | integer |  | 100 |  |
-| `heightUnit` | enumeration |  | percentageOfWidth |  |
-| `height` | integer |  | 75 |  |
+| `widthUnit` | enumeration | Yes | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
+| `width` | integer | Yes | 100 |  |
+| `heightUnit` | enumeration | Yes | percentageOfWidth |  |
+| `height` | integer | Yes | 75 |  |
 | `onClickAction` | action |  |  |  |
 | `tooltipHoverText` | textTemplate |  |  |  |
-| `enableThemeConfig` | boolean |  | false |  |
+| `enableThemeConfig` | boolean | Yes | false |  |
 | `customLayout` | string |  |  |  |
 | `customConfigurations` | string |  |  |  |
 | `customSeriesOptions` | string |  |  |  |

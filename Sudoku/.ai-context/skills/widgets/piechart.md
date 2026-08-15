@@ -22,21 +22,21 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.piechart.PieChart' widget1 {
 | `seriesName` | textTemplate | Yes |  |  |
 | `seriesValueAttribute` | attribute | Yes |  |  |
 | `seriesSortAttribute` | attribute |  |  |  |
-| `seriesSortOrder` | enumeration |  | asc |  |
+| `seriesSortOrder` | enumeration | Yes | asc |  |
 | `seriesColorAttribute` | expression |  |  |  |
-| `seriesItemSelection` | selection |  |  |  |
-| `enableAdvancedOptions` | boolean |  | false |  |
-| `showPlaygroundSlot` | boolean |  | false |  |
+| `seriesItemSelection` | selection | Yes |  |  |
+| `enableAdvancedOptions` | boolean | Yes | false |  |
+| `showPlaygroundSlot` | boolean | Yes | false |  |
 | `playground` | widgets |  |  |  |
-| `showLegend` | boolean |  | true |  |
-| `holeRadius` | integer |  | 0 | A percentage between 0 and 100 indicating the radius of the hole in the pie c... |
+| `showLegend` | boolean | Yes | true |  |
+| `holeRadius` | integer | Yes | 0 | A percentage between 0 and 100 indicating the radius of the hole in the pie c... |
 | `tooltipHoverText` | textTemplate |  |  |  |
-| `widthUnit` | enumeration |  | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
-| `width` | integer |  | 100 |  |
-| `heightUnit` | enumeration |  | percentageOfWidth |  |
-| `height` | integer |  | 75 |  |
+| `widthUnit` | enumeration | Yes | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
+| `width` | integer | Yes | 100 |  |
+| `heightUnit` | enumeration | Yes | percentageOfWidth |  |
+| `height` | integer | Yes | 75 |  |
 | `onClickAction` | action |  |  |  |
-| `enableThemeConfig` | boolean |  | false |  |
+| `enableThemeConfig` | boolean | Yes | false |  |
 | `customLayout` | string |  |  |  |
 | `customConfigurations` | string |  |  |  |
 | `customSeriesOptions` | string |  |  |  |

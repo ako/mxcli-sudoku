@@ -19,20 +19,20 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.columnchart.ColumnChart' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `series` | object |  |  | Add one or more columns. The order influences how columns overlay one another... |
-| `advancedOptions` | boolean |  | false |  |
-| `showPlaygroundSlot` | boolean |  | false |  |
+| `series` | object | Yes |  | Add one or more columns. The order influences how columns overlay one another... |
+| `advancedOptions` | boolean | Yes | false |  |
+| `showPlaygroundSlot` | boolean | Yes | false |  |
 | `playground` | widgets |  |  |  |
 | `xAxisLabel` | textTemplate |  |  |  |
 | `yAxisLabel` | textTemplate |  |  |  |
-| `showLegend` | boolean |  | true |  |
-| `gridLines` | enumeration |  | none |  |
-| `barmode` | enumeration |  | group |  |
-| `widthUnit` | enumeration |  | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
-| `width` | integer |  | 100 |  |
-| `heightUnit` | enumeration |  | percentageOfWidth |  |
-| `height` | integer |  | 75 |  |
-| `enableThemeConfig` | boolean |  | false |  |
+| `showLegend` | boolean | Yes | true |  |
+| `gridLines` | enumeration | Yes | none |  |
+| `barmode` | enumeration | Yes | group |  |
+| `widthUnit` | enumeration | Yes | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
+| `width` | integer | Yes | 100 |  |
+| `heightUnit` | enumeration | Yes | percentageOfWidth |  |
+| `height` | integer | Yes | 75 |  |
+| `enableThemeConfig` | boolean | Yes | false |  |
 | `customLayout` | string |  |  |  |
 | `customConfigurations` | string |  |  |  |
 

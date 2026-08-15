@@ -25,9 +25,9 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.htmlelement.HTMLElement' widget1 {
 |----------|------|----------|---------|-------------|
 | `tagName` | enumeration | Yes | div |  |
 | `tagNameCustom` | string |  | div |  |
-| `tagUseRepeat` | boolean |  | false | Repeat element for each item in data source. |
+| `tagUseRepeat` | boolean | Yes | false | Repeat element for each item in data source. |
 | `tagContentRepeatDataSource` | datasource | Yes |  |  |
-| `tagContentMode` | enumeration |  | container |  |
+| `tagContentMode` | enumeration | Yes | container |  |
 | `tagContentHTML` | textTemplate |  |  |  |
 | `tagContentContainer` | widgets |  |  |  |
 | `tagContentRepeatHTML` | textTemplate |  |  |  |

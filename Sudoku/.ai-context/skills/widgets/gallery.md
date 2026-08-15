@@ -15,32 +15,32 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.gallery.Gallery' widget1
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `filtersPlaceholder` | widgets |  |  |  |
-| `datasource` | datasource |  |  |  |
-| `itemSelection` | selection |  |  |  |
-| `itemSelectionMode` | enumeration |  | clear | Defines item selection behavior. |
-| `keepSelection` | boolean |  | false | If enabled, selected items will stay selected unless cleared by the user or a... |
+| `datasource` | datasource | Yes |  |  |
+| `itemSelection` | selection | Yes |  |  |
+| `itemSelectionMode` | enumeration | Yes | clear | Defines item selection behavior. |
+| `keepSelection` | boolean | Yes | false | If enabled, selected items will stay selected unless cleared by the user or a... |
 | `content` | widgets |  |  |  |
-| `refreshIndicator` | boolean |  | false | Show a refresh indicator when the data is being loaded. |
-| `desktopItems` | integer |  | 1 |  |
-| `tabletItems` | integer |  | 1 |  |
-| `phoneItems` | integer |  | 1 |  |
-| `pageSize` | integer |  | 20 |  |
-| `pagination` | enumeration |  | buttons |  |
-| `showTotalCount` | boolean |  | false |  |
-| `showPagingButtons` | enumeration |  | always |  |
-| `pagingPosition` | enumeration |  | bottom |  |
+| `refreshIndicator` | boolean | Yes | false | Show a refresh indicator when the data is being loaded. |
+| `desktopItems` | integer | Yes | 1 |  |
+| `tabletItems` | integer | Yes | 1 |  |
+| `phoneItems` | integer | Yes | 1 |  |
+| `pageSize` | integer | Yes | 20 |  |
+| `pagination` | enumeration | Yes | buttons |  |
+| `showTotalCount` | boolean | Yes | false |  |
+| `showPagingButtons` | enumeration | Yes | always |  |
+| `pagingPosition` | enumeration | Yes | bottom |  |
 | `loadMoreButtonCaption` | textTemplate |  |  |  |
-| `showEmptyPlaceholder` | enumeration |  | none |  |
+| `showEmptyPlaceholder` | enumeration | Yes | none |  |
 | `emptyPlaceholder` | widgets |  |  |  |
 | `itemClass` | expression |  |  |  |
-| `onClickTrigger` | enumeration |  | single |  |
+| `onClickTrigger` | enumeration | Yes | single |  |
 | `onClick` | action |  |  |  |
 | `onSelectionChange` | action |  |  |  |
-| `stateStorageType` | enumeration |  | attribute | When Browser local storage is selected, the configuration is scoped to a brow... |
+| `stateStorageType` | enumeration | Yes | attribute | When Browser local storage is selected, the configuration is scoped to a brow... |
 | `stateStorageAttr` | attribute |  |  | Attribute containing the personalized configuration of the capabilities. This... |
 | `onConfigurationChange` | action |  |  |  |
-| `storeFilters` | boolean |  | true |  |
-| `storeSort` | boolean |  | true |  |
+| `storeFilters` | boolean | Yes | true |  |
+| `storeSort` | boolean | Yes | true |  |
 | `filterSectionTitle` | textTemplate |  |  | Assistive technology will read this upon reaching a filtering or sorting sect... |
 | `emptyMessageTitle` | textTemplate |  |  | Assistive technology will read this upon reaching an empty message section. |
 | `ariaLabelListBox` | textTemplate |  |  | Assistive technology will read this upon reaching gallery. |

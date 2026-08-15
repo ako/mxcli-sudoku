@@ -14,14 +14,14 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.datagridtextfilter.DatagridTextFilter' wi
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `attrChoice` | enumeration |  | auto |  |
-| `linkedDs` | datasource |  |  |  |
+| `attrChoice` | enumeration | Yes | auto |  |
+| `linkedDs` | datasource | Yes |  |  |
 | `attributes` | object |  |  | Select the attributes that the end-user may use for filtering. |
 | `defaultValue` | expression |  |  |  |
-| `defaultFilter` | enumeration |  | contains |  |
+| `defaultFilter` | enumeration | Yes | contains |  |
 | `placeholder` | textTemplate |  |  |  |
-| `adjustable` | boolean |  | true |  |
-| `delay` | integer |  | 500 | Wait this period before applying then change(s) to the filter |
+| `adjustable` | boolean | Yes | true |  |
+| `delay` | integer | Yes | 500 | Wait this period before applying then change(s) to the filter |
 | `valueAttribute` | attribute |  |  | Attribute used to store the last value of the filter. |
 | `onChange` | action |  |  | Action to be triggered when the value or filter changes. |
 | `screenReaderButtonCaption` | textTemplate |  |  | Assistive technology will read this upon reaching the comparison button that ... |

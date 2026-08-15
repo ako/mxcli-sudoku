@@ -22,38 +22,38 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.datagrid.Datagrid' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `advanced` | boolean |  | false |  |
-| `datasource` | datasource |  |  |  |
-| `refreshInterval` | integer |  | 0 |  |
-| `itemSelection` | selection |  |  |  |
-| `itemSelectionMethod` | enumeration |  | checkbox |  |
-| `itemSelectionMode` | enumeration |  | clear | Defines item selection behavior. |
-| `showSelectAllToggle` | boolean |  | true | Show a checkbox in the grid header to check or uncheck multiple items. |
-| `keepSelection` | boolean |  | false | If enabled, selected items will stay selected unless cleared by the user or a... |
+| `advanced` | boolean | Yes | false |  |
+| `datasource` | datasource | Yes |  |  |
+| `refreshInterval` | integer | Yes | 0 |  |
+| `itemSelection` | selection | Yes |  |  |
+| `itemSelectionMethod` | enumeration | Yes | checkbox |  |
+| `itemSelectionMode` | enumeration | Yes | clear | Defines item selection behavior. |
+| `showSelectAllToggle` | boolean | Yes | true | Show a checkbox in the grid header to check or uncheck multiple items. |
+| `keepSelection` | boolean | Yes | false | If enabled, selected items will stay selected unless cleared by the user or a... |
 | `loadingType` | enumeration | Yes | spinner |  |
-| `refreshIndicator` | boolean |  | false | Show a refresh indicator when the data is being loaded. |
-| `columns` | object |  |  |  |
-| `columnsFilterable` | boolean |  | true |  |
-| `pageSize` | integer |  | 20 |  |
-| `pagination` | enumeration |  | buttons |  |
-| `showPagingButtons` | enumeration |  | always |  |
-| `showNumberOfRows` | boolean |  | false |  |
-| `pagingPosition` | enumeration |  | bottom |  |
+| `refreshIndicator` | boolean | Yes | false | Show a refresh indicator when the data is being loaded. |
+| `columns` | object | Yes |  |  |
+| `columnsFilterable` | boolean | Yes | true |  |
+| `pageSize` | integer | Yes | 20 |  |
+| `pagination` | enumeration | Yes | buttons |  |
+| `showPagingButtons` | enumeration | Yes | always |  |
+| `showNumberOfRows` | boolean | Yes | false |  |
+| `pagingPosition` | enumeration | Yes | bottom |  |
 | `loadMoreButtonCaption` | textTemplate |  |  |  |
-| `showEmptyPlaceholder` | enumeration |  | none |  |
+| `showEmptyPlaceholder` | enumeration | Yes | none |  |
 | `emptyPlaceholder` | widgets |  |  |  |
 | `rowClass` | expression |  |  |  |
-| `onClickTrigger` | enumeration |  | single |  |
+| `onClickTrigger` | enumeration | Yes | single |  |
 | `onClick` | action |  |  |  |
 | `onSelectionChange` | action |  |  |  |
 | `filtersPlaceholder` | widgets |  |  |  |
-| `columnsSortable` | boolean |  | true | Enable sorting for all columns unless specified otherwise in the column setting |
-| `columnsResizable` | boolean |  | true | Enable resizing for all columns unless specified otherwise in the column setting |
-| `columnsDraggable` | boolean |  | true | Enable reordering for all columns unless specified otherwise in the column se... |
-| `columnsHidable` | boolean |  | true | Enable hiding for all columns unless specified otherwise in the column setting |
-| `configurationStorageType` | enumeration |  | attribute | When Browser local storage is selected, the configuration is scoped to a brow... |
+| `columnsSortable` | boolean | Yes | true | Enable sorting for all columns unless specified otherwise in the column setting |
+| `columnsResizable` | boolean | Yes | true | Enable resizing for all columns unless specified otherwise in the column setting |
+| `columnsDraggable` | boolean | Yes | true | Enable reordering for all columns unless specified otherwise in the column se... |
+| `columnsHidable` | boolean | Yes | true | Enable hiding for all columns unless specified otherwise in the column setting |
+| `configurationStorageType` | enumeration | Yes | attribute | When Browser local storage is selected, the configuration is scoped to a brow... |
 | `configurationAttribute` | attribute |  |  | Attribute containing the personalized configuration of the capabilities. This... |
-| `storeFiltersInPersonalization` | boolean |  | true |  |
+| `storeFiltersInPersonalization` | boolean | Yes | true |  |
 | `onConfigurationChange` | action |  |  |  |
 | `filterSectionTitle` | textTemplate |  |  | Assistive technology will read this upon reaching a filtering or sorting sect... |
 | `exportDialogLabel` | textTemplate |  |  | Assistive technology will read this upon reaching a export dialog. |

@@ -19,7 +19,7 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.fieldset.Fieldset' widget1 {
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `legend` | textTemplate |  |  |  |
-| `content` | widgets |  |  |  |
+| `content` | widgets | Yes |  |  |
 
 ## Child Slots (curly-brace blocks)
 

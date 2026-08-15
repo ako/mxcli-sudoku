@@ -16,16 +16,16 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.accordion.Accordion' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `advancedMode` | boolean |  | false |  |
+| `advancedMode` | boolean | Yes | false |  |
 | `groups` | object | Yes |  |  |
-| `collapsible` | boolean |  | true |  |
-| `expandBehavior` | enumeration |  | singleExpanded | Allow a single group or multiple groups to be expanded at the same time. |
-| `animate` | boolean |  | true |  |
-| `showIcon` | enumeration |  | right |  |
+| `collapsible` | boolean | Yes | true |  |
+| `expandBehavior` | enumeration | Yes | singleExpanded | Allow a single group or multiple groups to be expanded at the same time. |
+| `animate` | boolean | Yes | true |  |
+| `showIcon` | enumeration | Yes | right |  |
 | `icon` | icon |  |  |  |
 | `expandIcon` | icon |  |  |  |
 | `collapseIcon` | icon |  |  |  |
-| `animateIcon` | boolean |  | true | Animate the icon when the group is collapsing or expanding. |
+| `animateIcon` | boolean | Yes | true | Animate the icon when the group is collapsing or expanding. |
 
 ## Object Lists (repeating child entries)
 

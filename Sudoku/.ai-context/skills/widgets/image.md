@@ -14,25 +14,25 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.image.Image' widget1
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `datasource` | enumeration |  | image |  |
+| `datasource` | enumeration | Yes | image |  |
 | `imageObject` | image |  |  |  |
 | `defaultImageDynamic` | image |  |  | This is the image that is displayed if no image is uploaded. |
 | `imageUrl` | textTemplate |  |  | The link of the external image. |
 | `imageIcon` | icon |  |  | The icon image. |
-| `isBackgroundImage` | boolean |  | false | Whether the image is rendered as a background. More content can be put inside... |
+| `isBackgroundImage` | boolean | Yes | false | Whether the image is rendered as a background. More content can be put inside... |
 | `children` | widgets |  |  |  |
-| `onClickType` | enumeration |  | action |  |
+| `onClickType` | enumeration | Yes | action |  |
 | `onClick` | action |  |  |  |
 | `alternativeText` | textTemplate |  |  | Alternative text of the image for accessibility purposes. |
-| `widthUnit` | enumeration |  | auto |  |
-| `width` | integer |  | 100 |  |
-| `heightUnit` | enumeration |  | auto | Auto will keep the aspect ratio of the image. |
-| `height` | integer |  | 100 |  |
-| `minHeightUnit` | enumeration |  | none |  |
+| `widthUnit` | enumeration | Yes | auto |  |
+| `width` | integer | Yes | 100 |  |
+| `heightUnit` | enumeration | Yes | auto | Auto will keep the aspect ratio of the image. |
+| `height` | integer | Yes | 100 |  |
+| `minHeightUnit` | enumeration | Yes | none |  |
 | `minHeight` | integer | Yes | 0 |  |
-| `maxHeightUnit` | enumeration |  | none |  |
+| `maxHeightUnit` | enumeration | Yes | none |  |
 | `maxHeight` | integer | Yes | 0 |  |
-| `iconSize` | integer |  | 14 | The size of the icon in pixels. |
-| `displayAs` | enumeration |  | fullImage |  |
-| `responsive` | boolean |  | true | Image will never get larger than its original size. It can become smaller. |
+| `iconSize` | integer | Yes | 14 | The size of the icon in pixels. |
+| `displayAs` | enumeration | Yes | fullImage |  |
+| `responsive` | boolean | Yes | true | Image will never get larger than its original size. It can become smaller. |
 

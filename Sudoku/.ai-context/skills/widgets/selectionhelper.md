@@ -24,11 +24,11 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.selectionhelper.SelectionHelper' widget1 
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `renderStyle` | enumeration |  | checkbox | Custom enables placeholders for using widgets for the different states. |
+| `renderStyle` | enumeration | Yes | checkbox | Custom enables placeholders for using widgets for the different states. |
 | `checkboxCaption` | textTemplate |  |  |  |
-| `customAllSelected` | widgets |  |  |  |
-| `customSomeSelected` | widgets |  |  |  |
-| `customNoneSelected` | widgets |  |  |  |
+| `customAllSelected` | widgets | Yes |  |  |
+| `customSomeSelected` | widgets | Yes |  |  |
+| `customNoneSelected` | widgets | Yes |  |  |
 
 ## Child Slots (curly-brace blocks)
 

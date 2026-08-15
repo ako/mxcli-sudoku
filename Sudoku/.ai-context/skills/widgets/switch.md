@@ -14,6 +14,6 @@ PLUGGABLEWIDGET 'com.mendix.widget.custom.switch.Switch' widget1
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `booleanAttribute` | attribute |  |  | Attribute to toggle |
+| `booleanAttribute` | attribute | Yes |  | Attribute to toggle |
 | `action` | action |  |  | Action to be performed when the switch is toggled |
 
