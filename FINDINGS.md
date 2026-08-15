@@ -2535,6 +2535,61 @@ was wide enough to swallow the person who wrote the tooling.
 
 ---
 
+## 45. Byte-idempotent `exec` and `--watch` combine into an unrecoverable stale build
+
+**New. Worth fixing, and the fix is small.** Two behaviours that are each
+correct on their own compose into a state you cannot get out of by any means the
+tool offers.
+
+The `--watch` loop can snapshot the model **mid-write**. `exec` on a large script
+rewrites the `.mpr` and many `mprcontents/*.mxunit` files over several seconds;
+the watcher fires on the first change and starts building from whatever is on
+disk at that instant. What gets deployed is a half-applied model. This is the
+already-recorded stale-build trap (#43), and on its own it is survivable — you
+notice, you re-run the script, the watcher fires again, and the second build is
+complete.
+
+That escape hatch closed when `exec` became byte-idempotent. Re-running a script
+whose statements are already applied now writes **nothing** — which is the whole
+point of that work, and good. But it means:
+
+```
+exec 07-home.mdl        # watcher fires mid-write, build #5 is half-applied
+exec 07-home.mdl        # byte-identical: no file changes, no rebuild
+```
+
+The model on disk is correct — `DESCRIBE PAGE Sudoku.Home` shows the new text —
+and the running app serves the old. Nothing will re-trigger the watcher, because
+from its point of view nothing has changed since the build it already did. The
+only way out is killing and relaunching `mxcli run`.
+
+Hit while regenerating the README screenshots. The tell was oddly specific: a
+theme change in the same batch **had** landed (the card grid went from two
+columns to three) while a page-text change in the same rebuild had not. Two
+edits, one build, one applied and one not — which is what a mid-write snapshot
+looks like from the outside, and is not something you would guess.
+
+### What would fix it
+
+Either half would be enough:
+
+1. **Debounce the watcher behind `exec`.** The watcher should not start a build
+   while an `exec` against the same project is in flight. mxcli owns both sides
+   here, so this is a lock, not a heuristic.
+2. **Give the watcher a way to be told.** A `--force` / `touch` that re-deploys
+   the current model regardless of change detection would restore the escape
+   hatch that idempotency removed, and is useful on its own.
+
+A third, cheaper mitigation: have `exec` write to a staging path and move it into
+place atomically, so the watcher can only ever observe a complete model.
+
+**The generalisable lesson:** idempotency removed a *recovery path* nobody had
+written down as a recovery path. "Just run it again" was load-bearing, and it
+stopped working silently — the second `exec` still reports success, because from
+its point of view there was correctly nothing to do.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.

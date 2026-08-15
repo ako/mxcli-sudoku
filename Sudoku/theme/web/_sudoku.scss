@@ -564,8 +564,11 @@
 
 // The variants change the rules rather than the number of givens, so they sit
 // in their own row below the three difficulty tiers instead of extending them.
+// Three across, matching the difficulty row above it. At two columns the third
+// variant dropped to a row of its own and read as an afterthought rather than
+// as one of a set.
 .sd-cards-x {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   margin-top: 14px;
 }
 .sd-cards-x .sd-card-kicker { color: #8A7AFF; }
