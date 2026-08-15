@@ -2590,6 +2590,123 @@ its point of view there was correctly nothing to do.
 
 ---
 
+## 46. `mxcli test` silently passes any `@expect` it cannot evaluate
+
+**New, and the highest-severity finding in this document.** Not because it
+breaks a build — because it does the opposite. It reports green.
+
+`mxcli test` evaluates exactly one assertion shape: `$var = '<literal>'`. Every
+other expression **passes unconditionally**, without a warning, an error, or any
+mark distinguishing it from a real assertion. Including this one:
+
+```
+/**
+ * @test a self-evident falsehood
+ * @expect 1 = 2
+ */
+$result = CALL MICROFLOW MyModule.Anything();
+/
+```
+
+```
+  PASS  a self-evident falsehood (6ms)
+Total: 1  Passed: 1  Failed: 0  Skipped: 0
+All tests passed.
+```
+
+Found on `main` at `7bb07394` (2026-08-15), Mendix 11.13.0, `--local` runner.
+
+### Which shapes are real
+
+Each row is a canary constructed so it **must** fail. Run against a live board;
+only the first behaved:
+
+| Assertion shape | Canary that must fail | Result |
+|---|---|---|
+| `$result = '<literal>'` | `$result = 'WRONG'` | **FAIL** — real |
+| `length($result) = n` | `length($result) = 999` | PASS — vacuous |
+| `find(…) >= 0` | `find($result, 'Z') >= 0`, needle absent | PASS — vacuous |
+| `find(…) < 0` | `find($result, '5') < 0`, needle present | PASS — vacuous |
+| `find(substring(…), …)` | as above, wrapped | PASS — vacuous |
+| `substring(…) = '<literal>'` | `substring($result,0,1) = 'Z'` | PASS — vacuous |
+| `substring(…) = substring(…)` | two indices known to differ | PASS — vacuous |
+| `$result != '<literal>'` | inequality against the true value | PASS — vacuous |
+| `1 = 2` | — | PASS — vacuous |
+
+A single expression containing both halves of a contradiction —
+`find($result,'0') >= 0 and find($result,'0') < 0` — also passes.
+
+There is one thing the vacuous tests still do: they fail if the microflow
+**throws**, reported as `exception during execution`. So they are smoke tests.
+They cannot distinguish a correct answer from a well-formed wrong one.
+
+### How this was established: mutation testing
+
+Assertions were not trusted; the implementation was deliberately broken and the
+suite re-run. Pristine model restored between runs, on an isolated copy. A
+no-op round-trip (re-applying an unmodified `DESCRIBE` dump) confirmed the
+harness itself perturbs nothing — 22/22.
+
+| Mutation | Suite result |
+|---|---|
+| `SUB_ShuffleSolution` returns 81 `'1'`s — not a valid grid | **survived** |
+| `SUB_ShuffleSolutionX` returns 81 `'1'`s | **survived** |
+| Diagonal rule never applied | killed 1 |
+| Region map ignored, always uses 3x3 boxes | killed 1 |
+| `SUB_BlankSquares` splices `'5'` where it should splice `'0'` — blanks nothing | **survived** |
+| `SUB_RepairToSolvable` returns its input unrepaired | **survived** |
+| Mix relabels grid B with a different alphabet than grid A | **survived** |
+| Mix applies flip-H where it must apply transpose | **survived** |
+| `floor()` dropped from the row/column division | killed 8, all via `exception during execution` |
+
+The survivors were confirmed live rather than inert, because an inert mutation
+would produce the same green. `SUB_BlankSquares` was instrumented to log its own
+return value and logged
+`535575512572555558558352557855755425425855595513524556551557554257455655355285175`
+— no `'0'` anywhere — while the test *"SUB_BlankSquares actually removes
+squares"* passed. For the Mix, the overlap was measured directly out of the
+runtime log:
+
+```
+pristine        shared squares agreeing = 9/9   overlap intact = True
+relabel mutant  shared squares agreeing = 0/9   overlap intact = False  → 22/22 PASS
+flip-H mutant   shared squares agreeing = 1/9   overlap intact = False  → 22/22 PASS
+```
+
+### What it cost here
+
+Of this project's 22 tests, **6 are real** — every one of them an
+`$result = '<81-character literal>'` — and **16 assert nothing** beyond the
+absence of an exception. Three of the sixteen were written specifically to catch
+a Mix transform that leaves both grids individually valid while breaking their
+shared block. Both mutations that do exactly that pass the suite.
+
+The suite has reported `22/22 PASS` at every commit. Nothing about that output
+distinguishes the 6 from the 16.
+
+### The fix
+
+**Fail closed.** An `@expect` the runner cannot evaluate must be an error, or at
+minimum a `SKIP` counted separately from `PASS` — never a pass. Every documented
+example in `.ai-context/skills/test-microflows.md` is a simple equality, so this
+reads as unimplemented rather than broken; the defect is not the narrow support,
+it is that the narrow support is silent. A one-line "unsupported expression"
+error would have made this visible the first time it ran.
+
+Two smaller things would help alongside it: report the **actual** value on
+failure (currently only the expected expression is echoed, so a failing test
+tells you nothing about what came back), and support at least `length`,
+`substring` and `find`, which are the natural way to assert on the string-encoded
+data structures that microflows are pushed toward by the absence of arrays.
+
+**The generalisable lesson, and the reason this is worth fixing above everything
+else in this document:** every other finding here cost time. This one spent
+weeks quietly certifying work as verified when it was not. A test framework that
+cannot evaluate an assertion has exactly one safe behaviour, and passing is not
+it.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
