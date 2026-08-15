@@ -10,19 +10,20 @@ The toolchain that builds and runs it is set up by committed automation; see
 
 | | |
 |---|---|
-| **Landing page** | `Sudoku.Home` — pick Easy / Medium / Hard |
+| **Landing page** | `Sudoku.Home` — three difficulties and three variants |
 | **Board** | `Sudoku.Game_Play` — 9x9 grid, number pad, notes, undo/redo |
+| **Mix board** | `Sudoku.Game_Mix` — the 15x15 canvas the Mix variant needs |
 | **Completion** | `Sudoku.Game_Done` — elapsed time, stats, recent solves |
 | **Theme** | "Nocturne" — dark, mint accent, from a Claude design prototype |
 | **Module** | `Sudoku` (the scaffolded `MyFirstModule` is left untouched) |
 
 ![The landing page](docs/screenshots/01-home.png)
 
-**Playing.** Choose a difficulty and a fresh board is dealt. Select a square,
-then tap a digit on the number pad. Entries that disagree with the solution turn
-red immediately and the conflict counter updates; dealt squares are read-only.
-`Hint` reveals one square, `Reset` clears everything you filled in, and the board
-flips to a solved banner once all 81 squares are correct.
+**Playing.** Choose a difficulty or a variant and a fresh board is dealt. Select
+a square, then tap a digit on the number pad. Entries that disagree with the
+solution turn red immediately and the conflict counter updates; dealt squares are
+read-only. `Hint` reveals one square, `Reset` clears everything you filled in,
+and the board flips to a solved banner once every square is correct.
 
 `Notes` switches the pad to pencil marks: digits then leave candidates in a 3x3
 grid inside the square instead of an answer, and writing an answer clears that
@@ -32,7 +33,7 @@ deliberately not reversible. `Result` opens the completion page.
 Selecting a square that already holds a digit highlights every other square with
 the same digit, which makes scanning for a number's placement much quicker.
 
-![The board, with a dealt 4 selected and its matches highlighted](docs/screenshots/02-board.png)
+![The board, with a dealt square selected and its matching digits highlighted](docs/screenshots/02-board.png)
 
 In notes mode the pad writes pencil marks instead of answers, and the status
 line says so:
@@ -45,6 +46,64 @@ the completion page:
 ![A solved board](docs/screenshots/04-solved.png)
 
 ![The completion page](docs/screenshots/05-done.png)
+
+### Variants
+
+Three boards that change the rules rather than the number of givens. None of
+them needed a new entity or a change to the move layer: select, apply, undo and
+the same-digit highlight all act per-`Cell` against `SolutionValue` rather than
+against rules, so none of them had to learn what a variant is.
+
+**Diagonal X** — the classic rules plus both main diagonals, which are washed in
+violet on the board. The two extra units constrain the grid hard enough that it
+stays forced-solvable on **36** givens against Easy's 50; dealing it at 50 would
+leave almost nothing to do.
+
+![A Diagonal X board, both main diagonals washed violet](docs/screenshots/06-diagonal.png)
+
+**Jigsaw** — rows and columns as usual, but the nine 3x3 boxes are replaced by
+nine irregular connected regions, drawn by the same border rules the boxes used.
+`ACT_SolveGrid` takes a region map instead of assuming boxes; the map is
+inverted into a region index once per solve, so a jigsaw square still costs
+O(9) to scan rather than O(81) — **329 ms** to deal against Easy's 303 ms.
+
+![A jigsaw board with nine irregular regions](docs/screenshots/07-jigsaw.png)
+
+**Mix** — two classic 9x9 grids on one 15x15 canvas, the second offset six rows
+and six columns, so grid A's bottom-right 3x3 box **is** grid B's top-left box.
+225 squares, 153 playable, 72 in the two corners no grid reaches. The shared
+block is tinted violet.
+
+A shared square is **one** `Cell`, not two. That is the whole reason the variant
+needed no new entity: it is a square that happens to sit inside both grids'
+borders, and everything that acts on it acts per-`Cell`.
+
+![The Mix board: two 9x9 grids sharing a 3x3 block](docs/screenshots/08-mix.png)
+
+Two things about the Mix are worth stating rather than leaving implied:
+
+- **Its transform set is smaller than the other variants'** — only identity and
+  transpose. The overlap is A's bottom-right corner and B's top-left corner. A
+  flip or a 180-degree rotation leaves *each grid individually valid* while
+  moving those corners apart, so the grids stop agreeing on the nine squares
+  they share: a board that passes every per-grid check and is nonetheless
+  unsolvable. Verified that flip-H, flip-V and rot-180 each break the overlap
+  this way. Board space is 9! x 2 rather than 9! x 8.
+- **It deals a board solvable grid-by-grid**, not one that *requires* reading
+  across the overlap. Each grid is blanked and repaired independently, then the
+  shared squares are reconciled — a digit revealed by either grid is revealed
+  for both, which can only add givens. A true Mix needs a solver that alternates
+  between the two grids, and is not built.
+
+The Mix has its own page because gallery column counts cap at 12 and cannot
+express a 15-wide board. The layout comes from CSS (`.sd-board-15`) — which is
+already how the 9-wide board gets its columns — and the two corners are inert
+`sd-void` cells that hold their slots in the flow.
+
+**Not yet variant-aware:** the board header still shows the EASY/MEDIUM/HARD
+switch and a `/81` counter on a Diagonal or Jigsaw board, and the status line
+says `BOX` where a jigsaw means `REGION`. The board plays correctly; only the
+chrome is generic.
 
 ### How boards are generated
 
@@ -68,7 +127,10 @@ determined** — exactly one solution.
 
 3. **Repair until fully determined.** `Sudoku.ACT_SolveGrid` solves as far as
    logic allows using naked singles (one candidate left in a square) and hidden
-   singles (a digit that fits only one square in a unit). Any square it cannot
+   singles (a digit that fits only one square in a unit). It takes the variant
+   as parameters rather than branching on it — a `Diagonal` flag that adds two
+   units, and a `Regions` map that replaces the nine boxes when non-empty — so
+   one solver serves all four boards. Any square it cannot
    deduce is handed back as a given. Restoring every undetermined square at once
    massively over-restores, so the repair runs in four passes — returning a
    quarter, a third, a half, then the remainder — letting deductions cascade
@@ -83,8 +145,18 @@ Mendix microflows have no arrays, and running the solver over 81 `Cell` rows
 would put thousands of database operations in the middle of every deal. `Cell`
 objects are created once, at the end, from the finished puzzle and solution.
 
-Measured: a deal takes ~2-3s, and the ten most recent boards were each verified
-straight out of PostgreSQL as a valid grid with exactly one solution.
+Measured: a classic deal takes ~240 ms (median) and the ten most recent boards
+were each verified straight out of PostgreSQL as a valid grid with exactly one
+solution. The Mix is slower at ~3 s, because it runs the whole blank-and-repair
+pipeline twice and then reconciles.
+
+**Integer division in the hot loop.** The solver used to derive a square's row
+and column by repeated subtraction — up to nine iterations per square per pass —
+because Mendix `div` returns a Decimal and assigning it to an integer trips
+CE0117. `round(floor($i div 9))` is the integer quotient and `$i - $r * 9` the
+remainder; the `floor` is load-bearing, since `round` alone sends index 32 to
+row 4 instead of row 3. Median new-game time 565 ms → 236 ms, worst case
+1188 ms → 602 ms.
 
 **Difficulty ceiling.** The generator only emits puzzles solvable by singles, so
 in Sudoku terms every board is gentle; Hard lands around 38-44 givens rather than
@@ -191,6 +263,7 @@ MDL source lives in `Sudoku/mdlsource/` and is applied in order:
 | `04a-nanoflows.mdl` | Client-side moves — runs in the browser |
 | `05-page-done.mdl` | The completion page (no outgoing references) |
 | `06-page-play.mdl` | The board page (Nocturne) |
+| `06b-page-mix.mdl` | The Mix board — a 15x15 canvas, laid out by CSS |
 | `07-home.mdl` | New-game actions, landing page, back-links |
 | `08-navigation.mdl` | Responsive profile → `Sudoku.Home` |
 
@@ -211,7 +284,18 @@ page is built *before* the board page that links to it.
 
 `01` and `02` are create/add-only: re-running them against a built project stops
 at the first "already exists", so apply deltas separately. `03`-`08` are
-`create or replace` and safely repeatable.
+`create or replace` and safely repeatable — with one exception, and it is a trap
+worth knowing about.
+
+**Non-idempotent statements must sort to the end of their file.** `exec` halts at
+the first error, so an `alter page ... insert` sitting in the *middle* of a
+script means every statement below it silently never runs from the second pass
+onward. `07-home.mdl` had exactly that shape, and the symptom pointed nowhere
+near the cause: a **page** quietly stopped matching its script (a new card
+missing from the served Home) while the only error mentioned a duplicate widget
+on an entirely different page. `exec` never reports how many statements it
+skipped. The ALTER now lands last in the file, with a comment saying nothing may
+be appended after it — see [FINDINGS.md](FINDINGS.md) #11.
 
 Re-apply any of them (each is `create or replace`):
 
@@ -223,6 +307,15 @@ cd Sudoku
 
 After a page-structure change, restart `mxcli run` rather than trusting the
 incremental reload — see [FINDINGS.md](FINDINGS.md) #14.
+
+**Confirm the build before you trust a behavioural test.** `exec` succeeding
+does not mean the running app has your change: the `--watch` loop can snapshot
+the model mid-write and rebuild from a half-applied `.mpr`. Look for a
+`build #N applied` line in `Sudoku/.mxcli/run-app.log` first. And re-running the
+script does not necessarily fix it — `exec` is byte-idempotent, so a second pass
+writes nothing, the watcher sees no change, and the stale build stays up. That
+one needs a restart. Both are written up as [FINDINGS.md](FINDINGS.md) #43
+and #45.
 
 ## Running it
 
@@ -385,7 +478,23 @@ written up in [FINDINGS.md](FINDINGS.md) #26.
 
 ## Verification
 
-`mx check` reports **0 errors**. Beyond that the app was driven with Playwright:
+`mx check` reports **0 errors** and `mxcli test --local` runs **22 microflow
+tests**, all passing:
+
+```bash
+mxcli test Sudoku/sudoku.test.mdl -p Sudoku/Sudoku.mpr --local
+```
+
+Those tests are mostly *discriminators* rather than smoke checks — each variant
+is proved to need its own rule. The classic solver is handed a board that only
+the diagonal rule can finish and must fail; the diagonal solver must finish the
+same board. The box solver is handed a board whose regions are irregular and
+must fail; the region solver must finish it. And the two Mix grids are asserted
+to agree on the first, centre and last of their nine shared squares — the check
+that catches a transform which leaves both grids valid while breaking the
+overlap.
+
+Beyond that the app was driven with Playwright:
 a board was dealt, a square selected, digits entered, erased and reset, and a
 game played to completion (solved banner, 0 conflicts, no JS errors). The
 generator was checked independently by reading every dealt board out of
@@ -407,6 +516,27 @@ The notes/undo/completion pass was verified the same way: pencil marks land in
 the selected square without touching answers, writing an answer clears them,
 undo/redo step a move back and forward, and a solve reaches the completion page
 with the elapsed time and the recent-solves strip — no JS errors.
+
+The variants were verified the same way, and the Mix is the one worth spelling
+out because its shape is the thing most likely to be wrong:
+
+```
+cells 225 | void 72 | shared 9 | grid columns 15
+on deal   : 0 CONFLICTS · 75 EMPTY      (153 playable − 78 givens)
+after move: 1 CONFLICTS · 74 EMPTY
+console errors: none
+```
+
+That empty count is the assertion that matters. `ACT_Refresh` used to hardcode
+81 squares — true for three variants, false for the Mix, where it produced
+`-1 EMPTY`. It now counts squares carrying a solution, which fixes the counter,
+the progress bar and the solved test for the Mix while leaving every other board
+identical.
+
+All eight screenshots in this README are regenerated from the running app by
+`scripts/screenshots.js` — including the solved and completion shots, which are
+real: the script plays the board out with `Hint` rather than faking a finished
+state.
 
 Every mxcli bug, gap and limitation hit while building this is written up in
 [FINDINGS.md](FINDINGS.md), which also records a verification pass against

@@ -73,7 +73,7 @@ create or replace page Sudoku.Home
     container sdHero (class: 'sd-hero') {
       dynamictext sdHeroTitle (content: 'Sudoku', rendermode: H1, class: 'sd-hero-title')
       dynamictext sdHeroSub (
-        content: 'A freshly generated board every time. Pick a difficulty to begin.',
+        content: 'A freshly generated board every time. Pick a difficulty, or a variant that changes the rules.',
         rendermode: Paragraph,
         class: 'sd-hero-sub'
       )
