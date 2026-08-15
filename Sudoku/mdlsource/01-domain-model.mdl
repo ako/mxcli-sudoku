@@ -12,6 +12,19 @@ create module Sudoku;
 /**
  * Puzzle difficulty — drives how many cells are revealed at deal time.
  */
+/**
+ * Which rule set a game is played under.
+ *
+ * Classic is rows + columns + boxes. Diagonal adds both main diagonals
+ * (a "Sudoku X"), which constrains the board hard enough that it stays
+ * forced-solvable on noticeably fewer givens.
+ */
+create enumeration Sudoku."Variant" (
+  Classic 'Classic',
+  Diagonal 'Diagonal X'
+);
+/
+
 create enumeration Sudoku."Difficulty" (
   Easy 'Easy',
   Medium 'Medium',

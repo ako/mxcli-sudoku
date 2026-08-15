@@ -198,6 +198,10 @@ alter entity Sudoku."Game"
 
 alter entity Sudoku."Game"
   add attribute "BarBucket": integer default 0;
+
+alter entity Sudoku."Game"
+  /** Rule set this board is played under */
+  add attribute "Variant": Enumeration(Sudoku."Variant") default Classic;
 /
 
 /**

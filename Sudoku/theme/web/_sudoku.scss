@@ -266,6 +266,14 @@
 .sd-given { cursor: default; background: rgba(255, 255, 255, 0.014); }
 .sd-given .sd-num { color: var(--sd-ink-2); font-weight: 500; }
 
+// Sudoku X — the two diagonals are units in their own right, so they carry a
+// faint permanent wash. Declared before .sd-peer and .sd-sel so a live
+// highlight still reads over the top; it is board furniture, not state.
+.sd-diag {
+  background: rgba(138, 122, 255, 0.15);
+}
+.sd-diag.sd-given { background: rgba(138, 122, 255, 0.19); }
+
 // Selecting a filled square lights up every square holding the same digit,
 // so a digit's placement can be read at a glance. Declared BEFORE .sd-bad and
 // .sd-sel (equal specificity, so source order decides) — a conflict must stay

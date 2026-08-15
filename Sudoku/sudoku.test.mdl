@@ -47,7 +47,8 @@ $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolution();
  * @expect $result = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
-  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = false
 );
 /
 
@@ -60,7 +61,8 @@ $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
  * @expect $result = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
-  Grid = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  Grid = '034678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = false
 );
 /
 
@@ -97,6 +99,69 @@ $result = CALL MICROFLOW Sudoku.SUB_BlankSquares(
 $result = CALL MICROFLOW Sudoku.SUB_RepairToSolvable(
   Solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
   Puzzle = '000678912672195348198342567859761423426853791713924856961537284287419635345286179',
-  TargetGivens = 40
+  TargetGivens = 40,
+  Diagonal = false
+);
+/
+
+-- =====================================================================
+-- Sudoku X — the diagonal variant
+-- =====================================================================
+-- The fixture is the seed grid with four squares blanked: (1,4) (1,5) (5,4)
+-- (5,5). Those four form a swap rectangle — exchanging the two values
+-- diagonally leaves every row, column and box still valid, so classic logic
+-- has two completions and cannot choose. One of the four sits on the main
+-- diagonal, and the diagonal rule rejects the swapped grid, which is what
+-- makes this pair of tests a real discriminator rather than two spellings of
+-- the same assertion.
+
+/**
+ * @test the classic solver cannot finish a board that needs the diagonal rule
+ * @expect find($result, '0') >= 0
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '345721698869300271721986453416872539578693124932100867283469715157238946694517382',
+  Diagonal = false
+);
+/
+
+/**
+ * @test the diagonal solver finishes the same board
+ * @expect $result = '345721698869354271721986453416872539578693124932145867283469715157238946694517382'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '345721698869300271721986453416872539578693124932100867283469715157238946694517382',
+  Diagonal = true
+);
+/
+
+/**
+ * The generator cannot reuse the classic band shuffle, which preserves boxes
+ * but scrambles the diagonals. This asserts the shape of what it returns.
+ *
+ * @test SUB_ShuffleSolutionX returns a complete 81-character grid
+ * @expect length($result) = 81
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionX();
+/
+
+/**
+ * @test SUB_ShuffleSolutionX leaves no empty square
+ * @expect find($result, '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionX();
+/
+
+/**
+ * A grid that is already a valid Sudoku X has nothing left to force, so the
+ * diagonal solver must hand it back untouched — the canary for the two extra
+ * units being wired in without disturbing the existing 27.
+ *
+ * @test the diagonal solver returns a solved X grid unchanged
+ * @expect $result = '345721698869354271721986453416872539578693124932145867283469715157238946694517382'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '345721698869354271721986453416872539578693124932145867283469715157238946694517382',
+  Diagonal = true
 );
 /

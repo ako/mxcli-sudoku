@@ -17,7 +17,7 @@ folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewEasy';
 
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50, Variant = Sudoku."Variant".Classic);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -34,7 +34,7 @@ folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewMedium';
 
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42, Variant = Sudoku."Variant".Classic);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -51,7 +51,7 @@ folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewHard';
 
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30, Variant = Sudoku."Variant".Classic);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -148,6 +148,59 @@ alter page Sudoku.Game_Done {
     container sdDoneActions (class: 'sd-done-actions') {
       container doneNew (class: 'sd-tool sd-tool-on', OnClick: show_page Sudoku.Home) {
         dynamictext doneNewT (content: 'NEW PUZZLE', class: 'sd-tool-text')
+      }
+    }
+  }
+};
+/
+
+/**
+ * Deals a Sudoku X: the classic rules plus both main diagonals.
+ *
+ * The extra two units constrain the board hard, so a diagonal board stays
+ * forced-solvable on noticeably fewer givens than a classic one — 36 here
+ * against Easy's 50. Dealing it at 50 would leave almost nothing to do.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewDiagonal ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewDiagonal';
+
+  $Game = call microflow Sudoku.ACT_DealGame(
+    Level = Sudoku."Difficulty".Medium,
+    TargetGivens = 36,
+    Variant = Sudoku."Variant".Diagonal);
+
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_NewDiagonal to Sudoku.User;
+/
+
+-- A fourth card, set apart from the three difficulty tiers because it changes
+-- the rules rather than the number of givens.
+alter page Sudoku.Home {
+  insert after sdCards {
+    container sdCardsX (class: 'sd-cards sd-cards-x') {
+      container sdCardDiag (class: 'sd-card sd-card-diag') {
+        dynamictext sdDiagDot (content: 'Variant', class: 'sd-card-kicker')
+        dynamictext sdDiagName (content: 'Diagonal X', rendermode: H2, class: 'sd-card-name')
+        dynamictext sdDiagDesc (
+          content: 'Both marked diagonals must also hold 1 to 9 once. Fewer givens, same difficulty.',
+          rendermode: Paragraph,
+          class: 'sd-card-desc'
+        )
+        actionbutton bDiagonal (
+          caption: 'Start diagonal game',
+          action: microflow Sudoku.ACT_NewDiagonal,
+          buttonstyle: primary,
+          class: 'sd-cta'
+        )
       }
     }
   }

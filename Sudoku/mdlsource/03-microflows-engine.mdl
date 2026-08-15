@@ -281,11 +281,18 @@ end;
  *
  * Any square left '0' in the result is one logic could not determine.
  *
+ * A Sudoku X adds both main diagonals as units. That is the whole rule
+ * difference, so it enters here as one flag rather than a second solver:
+ * the naked-singles scan adds the diagonal a square sits on to its used
+ * set, and the hidden-singles pass gains units 27 and 28.
+ *
  * @param $Grid 81-character grid, '0' for empty
+ * @param $Diagonal True to also constrain both main diagonals (Sudoku X)
  * @returns The same grid with every deducible square filled
  */
 create or replace microflow Sudoku.ACT_SolveGrid (
-  $Grid: string
+  $Grid: string,
+  $Diagonal: boolean
 )
 returns string as $Result
 folder 'Engine'
@@ -323,6 +330,13 @@ begin
   declare $dc2 integer = 0;
 
   set $g = $Grid;
+
+  -- Units the hidden-singles pass sweeps: 9 rows + 9 columns + 9 boxes, plus
+  -- the two diagonals when this is a Sudoku X.
+  declare $unitCount integer = 27;
+  if $Diagonal then
+    set $unitCount = 29;
+  end if;
 
   @annotation 'Propagate until neither rule can place another digit'
   while $progress and $guard < 60
@@ -372,6 +386,27 @@ begin
           set $dr = $dr + 1;
         end while;
 
+        -- Sudoku X: a square on a diagonal also sees every other square on it.
+        -- A square can sit on both (the centre), so these are separate tests.
+        if $Diagonal then
+          if $r = $c then
+            set $j2 = 0;
+            while $j2 < 9
+            begin
+              set $used = $used + substring($g, $j2 * 9 + $j2, 1);
+              set $j2 = $j2 + 1;
+            end while;
+          end if;
+          if $r + $c = 8 then
+            set $j2 = 0;
+            while $j2 < 9
+            begin
+              set $used = $used + substring($g, $j2 * 9 + 8 - $j2, 1);
+              set $j2 = $j2 + 1;
+            end while;
+          end if;
+        end if;
+
         set $cnt = 0;
         set $only = 0;
         set $d = 1;
@@ -394,10 +429,11 @@ begin
 
     -- ================= hidden singles =================
     -- Only when naked singles found nothing this pass. Units 0-8 are
-    -- rows, 9-17 columns, 18-26 boxes.
+    -- rows, 9-17 columns, 18-26 boxes, and for a Sudoku X 27 is the main
+    -- diagonal and 28 the anti-diagonal.
     if $progress = false then
       set $u = 0;
-      while $u < 27
+      while $u < $unitCount
       begin
         -- Contents of this unit, and how many squares are still open
         set $unitStr = '';
@@ -411,13 +447,19 @@ begin
           if $u >= 9 and $u < 18 then
             set $idx = $j * 9 + $u - 9;
           end if;
-          if $u >= 18 then
+          if $u >= 18 and $u < 27 then
             set $bu = $u - 18;
             set $br2 = round(floor($bu div 3)) * 3;
             set $bc2 = ($bu - $br2) * 3;
             set $dr2 = round(floor($j div 3));
             set $dc2 = $j - $dr2 * 3;
             set $idx = ($br2 + $dr2) * 9 + $bc2 + $dc2;
+          end if;
+          if $u = 27 then
+            set $idx = $j * 9 + $j;
+          end if;
+          if $u = 28 then
+            set $idx = $j * 9 + 8 - $j;
           end if;
           set $unitStr = $unitStr + substring($g, $idx, 1);
           if substring($g, $idx, 1) = '0' then
@@ -442,13 +484,19 @@ begin
                 if $u >= 9 and $u < 18 then
                   set $idx = $j * 9 + $u - 9;
                 end if;
-                if $u >= 18 then
+                if $u >= 18 and $u < 27 then
                   set $bu = $u - 18;
                   set $br2 = round(floor($bu div 3)) * 3;
                   set $bc2 = ($bu - $br2) * 3;
                   set $dr2 = round(floor($j div 3));
                   set $dc2 = $j - $dr2 * 3;
                   set $idx = ($br2 + $dr2) * 9 + $bc2 + $dc2;
+                end if;
+                if $u = 27 then
+                  set $idx = $j * 9 + $j;
+                end if;
+                if $u = 28 then
+                  set $idx = $j * 9 + 8 - $j;
                 end if;
 
                 if substring($g, $idx, 1) = '0' then
@@ -641,6 +689,108 @@ end;
 /
 
 /**
+ * Produces a shuffled grid that is valid as a Sudoku X — rows, columns,
+ * boxes AND both main diagonals each hold 1..9 once.
+ *
+ * The classic generator cannot be reused. SUB_ShuffleSolution permutes rows
+ * within bands and columns within stacks, which preserves the 3x3 boxes by
+ * construction but scrambles both diagonals; measured against a Sudoku X seed
+ * it produced an invalid grid every time.
+ *
+ * So this uses only transforms proven to preserve all 29 units:
+ *
+ *   digit relabelling   any permutation of 1..9 renames values, never moves
+ *                       them, so every unit stays a permutation. 9! = 362,880.
+ *   transpose           swaps rows and columns; the main diagonal maps to
+ *                       itself and the anti-diagonal to itself.
+ *   flip horizontal     mirrors columns; the two diagonals swap places, and
+ *   flip vertical       both are still diagonals, so both stay valid.
+ *
+ * The three geometric flags are independent and generate the full dihedral
+ * group of the square — all 8 orientations, each verified valid against this
+ * seed. Board space is 9! x 8 = 2,903,040.
+ *
+ * The honest limitation: every board is isomorphic to the one seed below, so
+ * the deep structure repeats even though no two deals look alike. Breaking
+ * that needs a backtracking generator, which forced-logic ACT_SolveGrid is
+ * not. Recorded rather than hidden.
+ *
+ * @returns An 81-character Sudoku X solution
+ */
+create or replace microflow Sudoku.SUB_ShuffleSolutionX ()
+returns string as $sol
+folder 'Game'
+begin
+  declare $sol string = '';
+  declare $seed string = '';
+  declare $pool string = '123456789';
+  declare $map string = '';
+  declare $k integer = 0;
+  declare $i integer = 0;
+  declare $r integer = 0;
+  declare $c integer = 0;
+  declare $sr integer = 0;
+  declare $sc integer = 0;
+  declare $work string = '';
+
+  -- A verified Sudoku X grid: all 9 rows, 9 columns, 9 boxes and both
+  -- diagonals are permutations of 1..9.
+  set $seed = '345721698869354271721986453416872539578693124932145867283469715157238946694517382';
+
+  -- 1 --------------------------------------------------------------
+  -- Draw a random relabelling of the digits, position i in $map giving the
+  -- digit that i+1 becomes.
+  while length($pool) > 0
+  begin
+    set $k = round(random() * (length($pool) - 1));
+    set $map = $map + substring($pool, $k, 1);
+    set $pool = substring($pool, 0, $k) + substring($pool, $k + 1, length($pool) - $k - 1);
+  end while;
+
+  set $work = '';
+  set $i = 0;
+  while $i < 81
+  begin
+    set $work = $work + substring($map, parseInteger(substring($seed, $i, 1)) - 1, 1);
+    set $i = $i + 1;
+  end while;
+
+  -- 2 --------------------------------------------------------------
+  -- Then one of the eight orientations, as three independent coin flips.
+  declare $doTranspose boolean = round(random()) = 1;
+  declare $doFlipH boolean = round(random()) = 1;
+  declare $doFlipV boolean = round(random()) = 1;
+
+  set $sol = '';
+  set $r = 0;
+  while $r < 9
+  begin
+    set $c = 0;
+    while $c < 9
+    begin
+      set $sr = $r;
+      set $sc = $c;
+      if $doTranspose then
+        set $sr = $c;
+        set $sc = $r;
+      end if;
+      if $doFlipH then
+        set $sc = 8 - $sc;
+      end if;
+      if $doFlipV then
+        set $sr = 8 - $sr;
+      end if;
+      set $sol = $sol + substring($work, $sr * 9 + $sc, 1);
+      set $c = $c + 1;
+    end while;
+    set $r = $r + 1;
+  end while;
+
+  return $sol;
+end;
+/
+
+/**
  * Blanks squares until the board is down to the requested number of givens.
  *
  * Walks the board in a strided order rather than at random so the blanks are
@@ -717,12 +867,15 @@ end;
  * @param $Solution The solved grid squares are handed back from
  * @param $Puzzle The blanked grid to repair
  * @param $TargetGivens The number of givens the tier asks for
+ * @param $Diagonal True for a Sudoku X, so the solver counts both diagonals
+ *        as units — a more constrained board needs fewer squares handed back
  * @returns The repaired grid, 81 characters
  */
 create or replace microflow Sudoku.SUB_RepairToSolvable (
   $Solution: string,
   $Puzzle: string,
-  $TargetGivens: integer
+  $TargetGivens: integer,
+  $Diagonal: boolean
 )
 returns string as $puz
 folder 'Game'
@@ -757,7 +910,7 @@ begin
   -- giving back a few is usually enough to let the rest cascade. So repair in
   -- three passes, returning a third, then a half, then whatever still resists.
   -- Three solver calls buys a far sparser board than one blunt repair.
-  $solve0 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  $solve0 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz, Diagonal = $Diagonal);
   set $i = 0;
   set $n = 0;
   while $i < 81
@@ -772,7 +925,7 @@ begin
     set $i = $i + 1;
   end while;
 
-  $solve1 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  $solve1 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz, Diagonal = $Diagonal);
   set $i = 0;
   set $n = 0;
   while $i < 81
@@ -787,7 +940,7 @@ begin
     set $i = $i + 1;
   end while;
 
-  $solve2 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  $solve2 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz, Diagonal = $Diagonal);
   set $i = 0;
   set $n = 0;
   while $i < 81
@@ -804,7 +957,7 @@ begin
 
   -- Final pass: anything still undetermined goes back, which is what
   -- guarantees the finished puzzle is solvable by forced steps alone.
-  $solve3 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz);
+  $solve3 = call microflow Sudoku.ACT_SolveGrid(Grid = $puz, Diagonal = $Diagonal);
   set $i = 0;
   while $i < 81
   begin
@@ -858,11 +1011,13 @@ end;
  *
  * @param $Level The difficulty tier being dealt
  * @param $TargetGivens How many squares the tier reveals
+ * @param $Variant Classic, or Diagonal for a Sudoku X
  * @returns The new game
  */
 create or replace microflow Sudoku.ACT_DealGame (
   $Level: enum Sudoku."Difficulty",
-  $TargetGivens: integer
+  $TargetGivens: integer,
+  $Variant: enum Sudoku."Variant"
 )
 returns Sudoku."Game" as $Game
 folder 'Game'
@@ -875,14 +1030,26 @@ begin
   declare $c integer = 0;
   declare $t integer = 0;
   declare $cls string = '';
+  declare $sol string = '';
   declare $chSol string = '';
   declare $isGiven boolean = false;
 
   -- `call microflow` binds its result with `=`; the variable is created by the
   -- call, so these must not also be declared above.
-  $sol = call microflow Sudoku.SUB_ShuffleSolution();
+  declare $isDiagonal boolean = $Variant = Sudoku."Variant".Diagonal;
+
+  -- The two variants need different generators. The classic shuffle permutes
+  -- rows within bands, which preserves the boxes but wrecks the diagonals, so
+  -- a Sudoku X is built from a diagonal-valid seed instead.
+  if $isDiagonal then
+    $solX = call microflow Sudoku.SUB_ShuffleSolutionX();
+    set $sol = $solX;
+  else
+    $solC = call microflow Sudoku.SUB_ShuffleSolution();
+    set $sol = $solC;
+  end if;
   $blanked = call microflow Sudoku.SUB_BlankSquares(Solution = $sol, TargetGivens = $TargetGivens);
-  $puz = call microflow Sudoku.SUB_RepairToSolvable(Solution = $sol, Puzzle = $blanked, TargetGivens = $TargetGivens);
+  $puz = call microflow Sudoku.SUB_RepairToSolvable(Solution = $sol, Puzzle = $blanked, TargetGivens = $TargetGivens, Diagonal = $isDiagonal);
 
   -- Count what actually survived the repair; it is what the board reports.
   set $i = 0;
@@ -898,6 +1065,7 @@ begin
   -- Materialise the board.
   $Game = create Sudoku."Game" (
     "Level" = $Level,
+    "Variant" = $Variant,
     "Status" = Sudoku."GameStatus".Playing,
     "GivenCount" = $givens,
     "FilledCount" = $givens,
@@ -931,6 +1099,11 @@ begin
     end if;
     if $r = 2 or $r = 5 then
       set $cls = $cls + ' sd-bb';
+    end if;
+    -- Sudoku X: tint the two diagonals so the extra rule is visible on the
+    -- board rather than only in the rules text. The centre square is on both.
+    if $isDiagonal and ($r = $c or $r + $c = 8) then
+      set $cls = $cls + ' sd-diag';
     end if;
     if $isGiven then
       set $cls = $cls + ' sd-given';
