@@ -945,6 +945,104 @@ end;
 /
 
 /**
+ * Produces the two interlocking solutions of a "Sudoku Mix": two 9x9 grids
+ * laid on one canvas, the second offset six rows and six columns, so the
+ * bottom-right 3x3 box of grid A *is* the top-left 3x3 box of grid B.
+ *
+ * Returns 162 characters: grid A then grid B. Same argument as the jigsaw
+ * generator — a caller needs both halves and they must come from one transform,
+ * so concatenating makes a mismatch unrepresentable.
+ *
+ * The transform set is smaller here than for the other variants, and the reason
+ * is worth stating because the failure is silent. The overlap is A's
+ * bottom-right corner and B's top-left corner. A flip or a 180-degree rotation
+ * leaves *each grid individually valid* while moving those corners apart, so
+ * the two grids stop agreeing on the nine squares they share — a board that
+ * passes every per-grid check and is nonetheless unsolvable. Only transforms
+ * fixing both corners as sets survive: identity and transpose. Verified both,
+ * and verified that flip-H, flip-V and rot-180 each break the overlap while
+ * both grids still validate.
+ *
+ * Board space is therefore 9! x 2 = 725,760 rather than 9! x 8.
+ *
+ * @returns 162 characters: 81 of grid A, then 81 of grid B
+ */
+create or replace microflow Sudoku.SUB_ShuffleSolutionMix ()
+returns string as $out
+folder 'Game'
+begin
+  declare $out string = '';
+  declare $seedA string = '';
+  declare $seedB string = '';
+  declare $pool string = '123456789';
+  declare $map string = '';
+  declare $k integer = 0;
+  declare $i integer = 0;
+  declare $r integer = 0;
+  declare $c integer = 0;
+  declare $sr integer = 0;
+  declare $sc integer = 0;
+  declare $workA string = '';
+  declare $workB string = '';
+  declare $gridA string = '';
+  declare $gridB string = '';
+
+  -- A verified interlocking pair: both grids valid, and A[6+i][6+j] = B[i][j]
+  -- across the nine shared squares.
+  set $seedA = '149263785567498132283715964418527693952836417736941528395172846821654379674389251';
+  set $seedB = '846235917379168524251947368765314892198752643432896175683421759914573286527689431';
+
+  -- 1 --------------------------------------------------------------
+  -- One relabelling, applied to BOTH grids. Relabelling moves no square, so
+  -- the overlap keeps agreeing; using two different maps would break it.
+  while length($pool) > 0
+  begin
+    set $k = round(random() * (length($pool) - 1));
+    set $map = $map + substring($pool, $k, 1);
+    set $pool = substring($pool, 0, $k) + substring($pool, $k + 1, length($pool) - $k - 1);
+  end while;
+
+  set $workA = '';
+  set $workB = '';
+  set $i = 0;
+  while $i < 81
+  begin
+    set $workA = $workA + substring($map, parseInteger(substring($seedA, $i, 1)) - 1, 1);
+    set $workB = $workB + substring($map, parseInteger(substring($seedB, $i, 1)) - 1, 1);
+    set $i = $i + 1;
+  end while;
+
+  -- 2 --------------------------------------------------------------
+  -- Then transpose or not. No flips: see the note above.
+  declare $doTranspose boolean = round(random()) = 1;
+
+  set $gridA = '';
+  set $gridB = '';
+  set $r = 0;
+  while $r < 9
+  begin
+    set $c = 0;
+    while $c < 9
+    begin
+      set $sr = $r;
+      set $sc = $c;
+      if $doTranspose then
+        set $sr = $c;
+        set $sc = $r;
+      end if;
+      set $gridA = $gridA + substring($workA, $sr * 9 + $sc, 1);
+      set $gridB = $gridB + substring($workB, $sr * 9 + $sc, 1);
+      set $c = $c + 1;
+    end while;
+    set $r = $r + 1;
+  end while;
+
+  set $out = $gridA + $gridB;
+  return $out;
+end;
+/
+
+/**
  * Blanks squares until the board is down to the requested number of givens.
  *
  * Walks the board in a strided order rather than at random so the blanks are

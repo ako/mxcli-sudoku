@@ -232,3 +232,55 @@ $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionJ();
  */
 $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionJ();
 /
+
+-- =====================================================================
+-- Sudoku Mix — two interlocking grids
+-- =====================================================================
+-- The generator's job is that the two grids agree on the nine squares they
+-- share. These pin the overlap explicitly, because the failure is silent: a
+-- flip leaves each grid individually valid while moving the shared corners
+-- apart, so per-grid checks alone would pass on a broken board.
+--
+-- Overlap relation: A[6+i][6+j] = B[i][j] — index (6+i)*9+(6+j) in the first
+-- half equals 81 + i*9 + j in the second.
+
+/**
+ * @test SUB_ShuffleSolutionMix returns 162 characters
+ * @expect length($result) = 162
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * @test SUB_ShuffleSolutionMix leaves no empty square
+ * @expect find($result, '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * Top-left of the shared block: A row 6 col 6 against B row 0 col 0.
+ *
+ * @test the grids agree on the first shared square
+ * @expect substring($result, 60, 1) = substring($result, 81, 1)
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * Centre of the shared block: A row 7 col 7 against B row 1 col 1.
+ *
+ * @test the grids agree on the centre shared square
+ * @expect substring($result, 70, 1) = substring($result, 91, 1)
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * Bottom-right of the shared block: A row 8 col 8 against B row 2 col 2.
+ *
+ * @test the grids agree on the last shared square
+ * @expect substring($result, 80, 1) = substring($result, 101, 1)
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
