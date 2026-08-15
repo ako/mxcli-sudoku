@@ -2705,6 +2705,85 @@ weeks quietly certifying work as verified when it was not. A test framework that
 cannot evaluate an assertion has exactly one safe behaviour, and passing is not
 it.
 
+### Fixed by ako/mxcli PR 151 — verified
+
+`0bf93824`, built and run against this project. The regex that matched one
+assertion shape is replaced by a validating recursive-descent parser; anything
+it cannot compile becomes an error rather than an absent assertion.
+
+**Every canary now behaves.** All nine must-fail shapes fail, including
+`@expect 1 = 2` and the contradiction. The positive controls still pass — the
+baseline suite is 22/22, `find` on a needle that *is* absent still satisfies
+`< 0`, and `<>`, `and`/`not`, `length`, `substring` and `find` all evaluate. So
+this is real evaluation, not blanket failure.
+
+**The actual value is reported**, which was the second ask:
+
+```
+FAIL  C2 length equality       expected length($result) = 999, actual: 81
+FAIL  C4 find < 0              expected find($result, '5') < 0, actual: 0
+```
+
+**Unevaluable expressions fail closed and stay local to their own test:**
+
+```
+ERROR  E1 case
+       @expect randomInt($result) = 1: randomInt() is not a Mendix expression
+       function at column 1 ("randomInt")
+PASS   E1 companion — a valid assertion that must still run
+Total: 2  Passed: 1  Failed: 0  Errors: 1  Skipped: 0
+```
+
+`Errors` is tallied separately from `Failed`, the run exits non-zero, and a
+valid test sharing the file still runs.
+
+**Mutation score rose from 3/9 to 6/9**, and the three newly-caught mutants are
+exactly the ones this defect was hiding:
+
+| Mutation | before | after |
+|---|---|---|
+| `SUB_BlankSquares` splices `'5'`, blanks nothing | survived | **killed** |
+| Mix relabels grid B with a different alphabet | survived | **killed** (all 3 overlap tests) |
+| Mix applies flip-H instead of transpose | survived | **killed** |
+| generators return 81 `'1'`s; repair returns its input | survived | survived — *see below* |
+| diagonal rule removed / region map ignored / `floor()` dropped | killed | killed |
+
+The four still surviving are **not** a shortfall in the fix. Those assertions
+genuinely are true of the mutants — 81 `'1'`s really is 81 characters with no
+`'0'` — so the runner is now right to pass them. Same output as before, opposite
+cause: previously nothing was evaluated, now weak assertions are evaluated
+correctly. The fix repairs the runner; it cannot strengthen an assertion that
+never asked for much. Those tests need rewriting here, which is this project's
+job, not mxcli's.
+
+### One gap left, pre-existing rather than introduced
+
+An assertion that is syntactically valid but only fails inside **mxbuild** still
+takes down the whole run:
+
+```
+@expect $nosuchvar = 'x'      -- undefined variable
+@expect $result = 3           -- String compared to a number, CE0117
+```
+
+```
+Error: local runtime: build failed: The project cannot be deployed, because it
+contains errors.
+```
+
+No test results at all — valid tests in the same file never run — and the cause
+arrives as ~200 lines of mxbuild JSON in which `Undefined variable 'nosuchvar'`
+in `MxTest.Test_test_3` sits among dozens of unrelated Atlas warnings. Confirmed
+identical on pre-PR `7bb07394`, so PR 151 neither caused nor worsened it, and
+the project is still restored correctly afterwards (no `MxTest` residue).
+
+It is worth a follow-up because it is the same *shape* as this finding: the
+failure is not attributed to the assertion that caused it. Two things would
+close it — resolve `$vars` against the test's own bindings during the parse pass
+that already exists, and map an mxbuild error located in a generated
+`MxTest.Test_test_N` unit back to that test as an `ERROR` row instead of
+aborting the run.
+
 ---
 
 ## Verification summary
