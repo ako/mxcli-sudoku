@@ -2748,7 +2748,7 @@ exactly the ones this defect was hiding:
 | generators return 81 `'1'`s; repair returns its input | survived | survived — *see below* |
 | diagonal rule removed / region map ignored / `floor()` dropped | killed | killed |
 
-The four still surviving are **not** a shortfall in the fix. Those assertions
+The three still surviving are **not** a shortfall in the fix. Those assertions
 genuinely are true of the mutants — 81 `'1'`s really is 81 characters with no
 `'0'` — so the runner is now right to pass them. Same output as before, opposite
 cause: previously nothing was evaluated, now weak assertions are evaluated

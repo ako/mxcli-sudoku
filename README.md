@@ -485,25 +485,37 @@ tests**, all passing:
 mxcli test Sudoku/sudoku.test.mdl -p Sudoku/Sudoku.mpr --local
 ```
 
-**Read that number with care: 6 of those 22 tests are real assertions and the
-other 16 assert nothing.** `mxcli test` evaluates only `$result = '<literal>'`;
-every other expression — `length(…) = 81`, `find(…) < 0`, even `1 = 2` — passes
-unconditionally, with no warning. Established by mutation testing: a generator
-rewritten to return 81 `1`s, a blanking pass that blanks nothing, and a Mix
-transform that breaks the shared block all leave the suite reporting 22/22. The
-full evidence, and the fix mxcli needs, is [FINDINGS.md](FINDINGS.md) #46.
+**Read that number with care.** Until recently only 6 of those 22 tests were
+real assertions: `mxcli test` evaluated `$result = '<literal>'` and passed every
+other expression unconditionally — `length(…) = 81`, `find(…) < 0`, even
+`1 = 2`. That is fixed by ako/mxcli PR 151, verified here; all 22 now genuinely
+evaluate. The defect and the verification are [FINDINGS.md](FINDINGS.md) #46.
 
-The six that do work are the ones asserting a whole grid against a literal: the
-solved-grid and solved-X and solved-jigsaw canaries, the single forced square,
-and — the two genuine discriminators — the diagonal solver finishing a board the
-classic solver cannot, and the region solver finishing a board the box solver
-cannot. Deliberately removing the diagonal rule, or ignoring the region map,
-each kills exactly its own test.
+**The remaining gap is coverage, and it is large.** With a working runner, the
+suite kills 6 of 12 deliberate defects. It reaches **8 of the module's 36
+microflows**, and all 8 are pure string functions. Every microflow that touches
+the database — the whole move layer, refresh, undo/redo, hint, reset, deal — has
+no test at all. Measured, not estimated:
 
-The other sixteen are worth keeping only as smoke tests: they still fail if a
-microflow throws, which is how a broken row/column division was caught. They
-cannot tell a correct answer from a well-formed wrong one, and this README
-previously claimed they could.
+| Deliberate defect | Suite result |
+|---|---|
+| diagonal rule removed | **killed** |
+| region map ignored | **killed** |
+| blanking pass blanks nothing | **killed** |
+| Mix relabels grid B with a different alphabet | **killed** |
+| Mix applies flip-H instead of transpose | **killed** |
+| `floor()` dropped from row/column division | **killed** |
+| generator returns 81 `1`s — not a valid grid | survives |
+| Sudoku-X generator returns 81 `1`s | survives |
+| repair pass returns its input unrepaired | survives |
+| `EmptyCount` hardcoded to 81 — *the bug that actually shipped* | survives |
+| every move writes `5`, whatever key was pressed | survives |
+| undo restores nothing | survives |
+
+The last three are the ones worth acting on first: an app in which pressing 7
+writes 5, and undo does nothing, passes this suite 22/22. The three above them
+say the generators are checked for shape but never for validity — no test
+asserts that a dealt grid satisfies the rules it was generated to satisfy.
 
 Beyond that the app was driven with Playwright:
 a board was dealt, a square selected, digits entered, erased and reset, and a
