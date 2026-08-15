@@ -485,14 +485,25 @@ tests**, all passing:
 mxcli test Sudoku/sudoku.test.mdl -p Sudoku/Sudoku.mpr --local
 ```
 
-Those tests are mostly *discriminators* rather than smoke checks — each variant
-is proved to need its own rule. The classic solver is handed a board that only
-the diagonal rule can finish and must fail; the diagonal solver must finish the
-same board. The box solver is handed a board whose regions are irregular and
-must fail; the region solver must finish it. And the two Mix grids are asserted
-to agree on the first, centre and last of their nine shared squares — the check
-that catches a transform which leaves both grids valid while breaking the
-overlap.
+**Read that number with care: 6 of those 22 tests are real assertions and the
+other 16 assert nothing.** `mxcli test` evaluates only `$result = '<literal>'`;
+every other expression — `length(…) = 81`, `find(…) < 0`, even `1 = 2` — passes
+unconditionally, with no warning. Established by mutation testing: a generator
+rewritten to return 81 `1`s, a blanking pass that blanks nothing, and a Mix
+transform that breaks the shared block all leave the suite reporting 22/22. The
+full evidence, and the fix mxcli needs, is [FINDINGS.md](FINDINGS.md) #46.
+
+The six that do work are the ones asserting a whole grid against a literal: the
+solved-grid and solved-X and solved-jigsaw canaries, the single forced square,
+and — the two genuine discriminators — the diagonal solver finishing a board the
+classic solver cannot, and the region solver finishing a board the box solver
+cannot. Deliberately removing the diagonal rule, or ignoring the region map,
+each kills exactly its own test.
+
+The other sixteen are worth keeping only as smoke tests: they still fail if a
+microflow throws, which is how a broken row/column division was caught. They
+cannot tell a correct answer from a well-formed wrong one, and this README
+previously claimed they could.
 
 Beyond that the app was driven with Playwright:
 a board was dealt, a square selected, digits entered, erased and reset, and a
