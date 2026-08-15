@@ -491,31 +491,48 @@ other expression unconditionally — `length(…) = 81`, `find(…) < 0`, even
 `1 = 2`. That is fixed by ako/mxcli PR 151, verified here; all 22 now genuinely
 evaluate. The defect and the verification are [FINDINGS.md](FINDINGS.md) #46.
 
-**The remaining gap is coverage, and it is large.** With a working runner, the
-suite kills 6 of 12 deliberate defects. It reaches **8 of the module's 36
-microflows**, and all 8 are pure string functions. Every microflow that touches
-the database — the whole move layer, refresh, undo/redo, hint, reset, deal — has
-no test at all. Measured, not estimated:
+**The suite was then measured and extended.** With a working runner it killed
+only 6 of 12 deliberately introduced defects and reached 8 of the module's 36
+microflows — all 8 pure string functions. Nothing that touched the database was
+tested, so a board where every key wrote `5` and undo restored nothing passed
+22/22. It now stands at **38 tests killing 12 of 12**:
 
-| Deliberate defect | Suite result |
-|---|---|
-| diagonal rule removed | **killed** |
-| region map ignored | **killed** |
-| blanking pass blanks nothing | **killed** |
-| Mix relabels grid B with a different alphabet | **killed** |
-| Mix applies flip-H instead of transpose | **killed** |
-| `floor()` dropped from row/column division | **killed** |
-| generator returns 81 `1`s — not a valid grid | survives |
-| Sudoku-X generator returns 81 `1`s | survives |
-| repair pass returns its input unrepaired | survives |
-| `EmptyCount` hardcoded to 81 — *the bug that actually shipped* | survives |
-| every move writes `5`, whatever key was pressed | survives |
-| undo restores nothing | survives |
+| Deliberate defect | before | now |
+|---|---|---|
+| diagonal rule removed | killed | killed |
+| region map ignored | killed | killed |
+| blanking pass blanks nothing | killed | killed |
+| Mix relabels grid B with a different alphabet | killed | killed |
+| Mix applies flip-H instead of transpose | killed | killed |
+| `floor()` dropped from row/column division | killed | killed |
+| generator returns 81 `1`s — not a valid grid | survives | **killed** |
+| Sudoku-X generator returns 81 `1`s | survives | **killed** |
+| repair pass returns its input unrepaired | survives | **killed** |
+| `EmptyCount` hardcoded to 81 — *the bug that shipped* | survives | **killed** |
+| every move writes `5`, whatever key was pressed | survives | **killed** |
+| undo restores nothing | survives | **killed** |
 
-The last three are the ones worth acting on first: an app in which pressing 7
-writes 5, and undo does nothing, passes this suite 22/22. The three above them
-say the generators are checked for shape but never for validity — no test
-asserts that a dealt grid satisfies the rules it was generated to satisfy.
+Two things made that possible. `Sudoku.SUB_ValidateGrid` checks that a grid
+actually obeys the rules it was generated for — rows, columns, boxes or jigsaw
+regions, and both diagonals on request — which is what the generator tests were
+missing entirely. And the `TST_*` fixtures in
+[`09-test-helpers.mdl`](Sudoku/mdlsource/09-test-helpers.mdl) build a
+deterministic board and drive the real move microflows, folding the resulting
+row state into one string so an assertion can see it.
+
+That last part is the trick worth reusing: `mxcli test` asserts on what a
+microflow **returns**, and the move layer's whole job is side effects. Every
+assertion here is `$result = '<literal>'` — the one form that evaluates
+correctly both before and after PR 151, so the suite reports honestly on either
+build. It is verified against both.
+
+The validator is itself tested against a grid it must reject, because a
+validator that always says OK is the same trap as an assertion that cannot
+fail.
+
+Still untested: `ACT_Hint`, the notes layer, and the deal microflows end to end
+(they are covered only through their generators). The nine pad wrappers are
+one-line delegations to `ACT_ApplyValue`, which is tested.
 
 Beyond that the app was driven with Playwright:
 a board was dealt, a square selected, digits entered, erased and reset, and a
