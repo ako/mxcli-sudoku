@@ -245,8 +245,34 @@
 .sd-br { border-right: 2px solid var(--sd-rule) !important; }
 .sd-bb { border-bottom: 2px solid var(--sd-rule) !important; }
 
-.sd-board [class*="gallery-items"] > *:nth-child(9n) .sd-cell { border-right: none !important; }
-.sd-board [class*="gallery-items"] > *:nth-child(n + 73) .sd-cell { border-bottom: none !important; }
+.sd-board:not(.sd-board-15) [class*="gallery-items"] > *:nth-child(9n) .sd-cell { border-right: none !important; }
+.sd-board:not(.sd-board-15) [class*="gallery-items"] > *:nth-child(n + 73) .sd-cell { border-bottom: none !important; }
+
+// ---- the Mix: one 15x15 canvas carrying two overlapping 9x9 grids ----
+// Scoped away from the rules above, which assume nine columns and 81 squares.
+.sd-mix { --sd-cell: 36px; }
+.sd-app-wide { max-width: 1320px; }
+
+.sd-board-15 [class*="gallery-items"] {
+  grid-template-columns: repeat(15, var(--sd-cell)) !important;
+}
+.sd-board-15 { background: transparent; border: none; }
+
+// The two 6x6 corners no grid reaches. They hold their slot in the flow and do
+// nothing else — no rule, no ground, no pointer.
+.sd-void {
+  background: transparent !important;
+  border: none !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+// The nine squares both grids own. A faint mark, because which squares are
+// shared is the one thing a player cannot read off the borders alone.
+.sd-shared { background: rgba(138, 122, 255, 0.13); }
+.sd-shared.sd-given { background: rgba(138, 122, 255, 0.17); }
+
+.sd-mix .sd-num { font-size: 16px; }
 
 // Jigsaw: the heavy rule falls on region edges rather than every third column,
 // so ACT_DealGame emits sd-br / sd-bb per square by comparing region ids with

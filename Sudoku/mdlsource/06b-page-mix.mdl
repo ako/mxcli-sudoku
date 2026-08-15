@@ -1,0 +1,168 @@
+/**
+ * The Mix board: one 15x15 canvas carrying two overlapping 9x9 grids.
+ *
+ * A separate page rather than a variant of Game_Play, because that board is
+ * fixed at nine columns and 81 rows per page — changing those would have
+ * reshaped every existing game. This is additive: nothing about the classic,
+ * diagonal or jigsaw boards moves.
+ *
+ * The keypad and tools are the same microflows the other board uses. Nothing
+ * in the move layer knows about grids, so none of it needed a variant.
+ */
+create or replace page Sudoku.Game_Mix
+(
+  params: { $Game: Sudoku."Game" },
+  title: 'Sudoku Mix',
+  layout: Atlas_Core.Atlas_Default,
+  class: 'sd-page sd-dark sd-mix'
+)
+{
+  container sdApp (class: 'sd-app sd-app-wide') {
+    dataview dvGame (datasource: $Game, class: 'sd-game', FormOrientation: Vertical) {
+
+      container sdTop (class: 'sd-top') {
+        container sdBrand (class: 'sd-brand') {
+          container sdMark (class: 'sd-mark') {
+            dynamictext sdMarkText (content: 'M', class: 'sd-mark-text')
+          }
+          container sdBrandText (class: 'sd-brand-text') {
+            dynamictext sdPuzzleName (
+              content: 'Mix No. {1}',
+              contentparams: [{1} = "PuzzleNo"],
+              class: 'sd-puzzle-name'
+            )
+            dynamictext sdPuzzleDate (
+              content: '{1}',
+              contentparams: [{1} = "DateLabel"],
+              class: 'sd-puzzle-date'
+            )
+          }
+        }
+        container sdTopRight (class: 'sd-top-right') {
+          container sdCount (class: 'sd-count') {
+            dynamictext sdCountText (
+              content: '{1} left',
+              contentparams: [{1} = "EmptyCount"],
+              class: 'sd-count-text'
+            )
+          }
+        }
+      }
+
+      container sdMain (class: 'sd-main') {
+
+        container sdBoardCol (class: 'sd-board-col') {
+          container sdBoardWrap (class: 'sd-board-wrap') {
+            gallery galBoard (
+              datasource: database from Sudoku."Cell"
+                where [Sudoku."Cell_Game" = $Game]
+                sort by "Row" asc, "Col" asc,
+              -- Mendix caps these at 12, so they cannot express a 15-wide
+              -- board. The grid is laid out by CSS instead (.sd-board-15),
+              -- which is already how the 9-wide board gets its columns.
+              DesktopColumns: 1,
+              TabletColumns: 1,
+              PhoneColumns: 1,
+              PageSize: 225,
+              class: 'sd-board sd-board-15'
+            ) {
+              template tplCell {
+                container sdCell (
+                  dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsPeer then '' sd-peer'' else '''') + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
+                  OnClick: microflow Sudoku.ACT_SelectCell(Cell: $currentObject)
+                ) {
+                  dynamictext sdCellNum (
+                    content: '{1}',
+                    contentparams: [{1} = "Value"],
+                    class: 'sd-num',
+                    visible: ["Value" != empty]
+                  )
+                }
+              }
+            }
+          }
+
+          container sdStatus (class: 'sd-status') {
+            dynamictext sdStatusSel (
+              content: 'ROW {1} · COLUMN {2}',
+              contentparams: [{1} = "SelRow", {2} = "SelCol"],
+              class: 'sd-status-left',
+              visible: ["HasSelection"]
+            )
+            dynamictext sdStatusNone (
+              content: 'SELECT A SQUARE',
+              class: 'sd-status-left',
+              visible: ["HasSelection" = false]
+            )
+            dynamictext sdStatusRight (
+              content: '{1} CONFLICTS · {2} EMPTY',
+              contentparams: [{1} = "ErrorCount", {2} = "EmptyCount"],
+              class: 'sd-status-right'
+            )
+          }
+        }
+
+        container sdRail (class: 'sd-rail') {
+          container sdPad (class: 'sd-pad') {
+            container key1 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set1(Game: $Game)) {
+              dynamictext key1d (content: '1', class: 'sd-key-digit')
+            }
+            container key2 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set2(Game: $Game)) {
+              dynamictext key2d (content: '2', class: 'sd-key-digit')
+            }
+            container key3 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set3(Game: $Game)) {
+              dynamictext key3d (content: '3', class: 'sd-key-digit')
+            }
+            container key4 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set4(Game: $Game)) {
+              dynamictext key4d (content: '4', class: 'sd-key-digit')
+            }
+            container key5 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set5(Game: $Game)) {
+              dynamictext key5d (content: '5', class: 'sd-key-digit')
+            }
+            container key6 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set6(Game: $Game)) {
+              dynamictext key6d (content: '6', class: 'sd-key-digit')
+            }
+            container key7 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set7(Game: $Game)) {
+              dynamictext key7d (content: '7', class: 'sd-key-digit')
+            }
+            container key8 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set8(Game: $Game)) {
+              dynamictext key8d (content: '8', class: 'sd-key-digit')
+            }
+            container key9 (class: 'sd-key', OnClick: microflow Sudoku.ACT_Set9(Game: $Game)) {
+              dynamictext key9d (content: '9', class: 'sd-key-digit')
+            }
+          }
+
+          container sdTools (class: 'sd-tools') {
+            container toolErase (class: 'sd-tool', OnClick: microflow Sudoku.ACT_ClearValue(Game: $Game)) {
+              dynamictext toolEraseT (content: 'ERASE', class: 'sd-tool-text')
+            }
+            container toolUndo (
+              class: 'sd-tool',
+              dynamicclasses: 'if $currentObject/CanUndo then '''' else ''sd-tool-off''',
+              OnClick: microflow Sudoku.ACT_Undo(Game: $Game)
+            ) {
+              dynamictext toolUndoT (content: 'UNDO', class: 'sd-tool-text')
+            }
+            container toolNew (class: 'sd-tool', OnClick: show_page Sudoku.Home) {
+              dynamictext toolNewT (content: 'NEW', class: 'sd-tool-text')
+            }
+          }
+
+          container sdPanel (class: 'sd-panel') {
+            dynamictext sdPanelKicker (content: 'BOARD', class: 'sd-panel-kicker')
+            dynamictext sdMsg (
+              content: '{1}',
+              contentparams: [{1} = "Message"],
+              class: 'sd-panel-body'
+            )
+          }
+        }
+      }
+    }
+  }
+}
+/
+
+grant view on page Sudoku.Game_Mix to Sudoku.User;
+/

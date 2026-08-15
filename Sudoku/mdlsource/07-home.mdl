@@ -162,6 +162,22 @@ create or replace page Sudoku.Home
         class: 'sd-cta'
       )
     }
+
+    container sdCardMix (class: 'sd-card sd-card-mix') {
+      dynamictext sdMixDot (content: 'Variant', class: 'sd-card-kicker')
+      dynamictext sdMixName (content: 'Mix', rendermode: H2, class: 'sd-card-name')
+      dynamictext sdMixDesc (
+        content: 'Two grids on one canvas, sharing a block of nine squares.',
+        rendermode: Paragraph,
+        class: 'sd-card-desc'
+      )
+      actionbutton bMix (
+        caption: 'Start mix game',
+        action: microflow Sudoku.ACT_NewMix,
+        buttonstyle: primary,
+        class: 'sd-cta'
+      )
+    }
   }
 
     container sdHomeFoot (class: 'sd-home-foot') {
@@ -204,19 +220,6 @@ end;
 grant execute on microflow Sudoku.ACT_NewJigsaw to Sudoku.User;
 /
 
--- The completion page cannot reference Sudoku.Home at creation time (it is
--- built before the landing page), so its actions are appended here.
-alter page Sudoku.Game_Done {
-  insert after sdDoneChartWrap {
-    container sdDoneActions (class: 'sd-done-actions') {
-      container doneNew (class: 'sd-tool sd-tool-on', OnClick: show_page Sudoku.Home) {
-        dynamictext doneNewT (content: 'NEW PUZZLE', class: 'sd-tool-text')
-      }
-    }
-  }
-};
-/
-
 /**
  * Deals a Sudoku X: the classic rules plus both main diagonals.
  *
@@ -245,5 +248,47 @@ end;
 grant execute on microflow Sudoku.ACT_NewDiagonal to Sudoku.User;
 /
 
--- A fourth card, set apart from the three difficulty tiers because it changes
--- the rules rather than the number of givens.
+/**
+ * Deals a Sudoku Mix and opens its board.
+ *
+ * 40 givens per grid, the same as the jigsaw. The nine shared squares are
+ * reconciled during the deal, which can only add givens, so a Mix opens
+ * slightly denser than 80 — see ACT_DealMix.
+ *
+ * It opens Sudoku.Game_Mix rather than Sudoku.Game_Play: the classic board is
+ * fixed at nine columns and 81 rows per page, and widening it would have
+ * reshaped every existing game.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewMix ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewMix';
+
+  $Game = call microflow Sudoku.ACT_DealMix(TargetGivens = 40);
+  show page Sudoku.Game_Mix($Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_NewMix to Sudoku.User;
+/
+
+-- Everything below this line is deliberately last. `alter page ... insert`
+-- is not idempotent: re-running the pipeline fails here on the duplicate
+-- widget name and stops the script. That is survivable only because nothing
+-- follows — statements placed after it were silently never applied.
+-- The completion page cannot reference Sudoku.Home at creation time (it is
+-- built before the landing page), so its actions are appended here.
+alter page Sudoku.Game_Done {
+  insert after sdDoneChartWrap {
+    container sdDoneActions (class: 'sd-done-actions') {
+      container doneNew (class: 'sd-tool sd-tool-on', OnClick: show_page Sudoku.Home) {
+        dynamictext doneNewT (content: 'NEW PUZZLE', class: 'sd-tool-text')
+      }
+    }
+  }
+};
+/

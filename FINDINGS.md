@@ -240,6 +240,39 @@ Error: failed to insert: widget "btnReset" not found
 There is no conditional insert and no `drop widget if exists`, so a page script
 plus its ALTERs cannot be replayed without hand-editing.
 
+### The consequence is worse than a failed statement: it truncates the script
+
+Hit twice while adding the variant boards, and both times it cost real time
+because the symptom does not point at the cause. `exec` halts at the first
+error, so a non-idempotent ALTER sitting in the *middle* of a file means every
+statement after it silently never runs — on the second and every subsequent
+pass. `07-home.mdl` had this shape:
+
+```
+create or replace page Sudoku.Home        -- has a card calling ACT_NewMix
+...
+alter page Sudoku.Game_Done { insert ... }  -- fails on pass 2
+create or replace microflow Sudoku.ACT_NewDiagonal
+create or replace microflow Sudoku.ACT_NewMix
+```
+
+On a fresh project this applies cleanly and everything looks fine. On a re-run
+the ALTER fails, and the two microflows below it are never written. What you
+observe is a *page* that has silently stopped matching its script — the new
+card is missing from the served Home — while the error text talks only about a
+duplicate widget on an entirely different page. Nothing connects the two.
+
+The failure is loud but the *loss* is silent: `exec` reports the error and
+stops, and never says "12 statements after this point were not applied." A
+count of skipped statements in the error would make this diagnosable in
+seconds instead of a build-by-build bisect.
+
+The workaround is structural and unpleasant: every non-idempotent statement has
+to be manually sorted to the end of its file, with a comment explaining why
+nothing may be appended after it. That is a constraint the script author has to
+carry in their head, and it gets violated the moment someone appends to the
+bottom of the file — which is the natural thing to do.
+
 ---
 
 ## 12. `create or replace page` silently drops ALTER-added widgets

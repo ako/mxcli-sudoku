@@ -108,6 +108,7 @@ begin
 
   declare $IsSolved boolean = false;
   declare $filled integer = 0;
+  declare $playable integer = 0;
   declare $errors integer = 0;
   declare $correct integer = 0;
   declare $v integer = 0;
@@ -135,6 +136,12 @@ begin
 
   loop $Cell in $Cells
   begin
+    -- The Mix lays two grids on a 15x15 canvas, so a board is no longer 81
+    -- squares: the corners no grid reaches are Cells too, carrying no solution.
+    -- Counting the playable ones keeps every counter right for both shapes.
+    if $Cell/"SolutionValue" > 0 then
+      set $playable = $playable + 1;
+    end if;
     if $Cell/"Value" != empty then
       set $filled = $filled + 1;
       set $v = $Cell/"Value";
@@ -193,7 +200,7 @@ begin
 
   -- Progress in twentieths, so one CSS class per 5% can set the bar width
   set $bucket = 0;
-  while $bucket < 20 and ($bucket + 1) * 81 <= $filled * 20
+  while $bucket < 20 and ($bucket + 1) * $playable <= $filled * 20
   begin
     set $bucket = $bucket + 1;
   end while;
@@ -201,7 +208,7 @@ begin
   change $Game (
     "FilledCount" = $filled,
     "ErrorCount" = $errors,
-    "EmptyCount" = 81 - $filled,
+    "EmptyCount" = $playable - $filled,
     "ProgressBucket" = $bucket,
     "Remaining1" = 9 - $r1,
     "Remaining2" = 9 - $r2,
@@ -213,7 +220,7 @@ begin
     "Remaining8" = 9 - $r8,
     "Remaining9" = 9 - $r9);
 
-  if $correct = 81 then
+  if $correct = $playable and $playable > 0 then
     set $IsSolved = true;
     -- Stamp the finish once, so re-running Refresh on a solved board does
     -- not keep resetting the clock.
@@ -252,7 +259,7 @@ begin
     else
       change $Game (
         "Status" = Sudoku."GameStatus".Playing,
-        "Message" = toString(81 - $filled) + ' squares to go.');
+        "Message" = toString($playable - $filled) + ' squares to go.');
     end if;
   end if;
 
@@ -1414,6 +1421,186 @@ begin
 
   return $Game;
 end;
+/
+
+/**
+ * Deals a Sudoku Mix: two 9x9 grids on one 15x15 canvas, the second offset six
+ * rows and six columns, sharing a 3x3 block.
+ *
+ * Canvas geometry, which every index below follows from:
+ *
+ *   grid A  canvas rows 0-8,  cols 0-8    local index = R*9 + C
+ *   grid B  canvas rows 6-14, cols 6-14   local index = (R-6)*9 + (C-6)
+ *   shared  canvas rows 6-8,  cols 6-8    in both
+ *   void    the two 6x6 corners no grid reaches
+ *
+ * 225 squares, 153 playable, 72 void. The void squares are still created: the
+ * board is one gallery flowing 15 across, so something has to occupy those
+ * positions. They carry sd-void and are inert.
+ *
+ * A shared square is ONE Cell, not two. That is the whole reason this variant
+ * needs no new entity — it is a square that happens to sit inside both grids'
+ * borders, and the existing move layer (select, apply, refresh, mark peers)
+ * works on it unchanged because those all act per-Cell against SolutionValue
+ * rather than against rules.
+ *
+ * Each grid is blanked and repaired independently, then the overlap is
+ * reconciled: if either grid revealed a shared square, it is given. That can
+ * only add givens, never remove them, so each grid stays at least as solvable
+ * as the repair pass made it. The honest consequence is that this deals a
+ * board solvable grid-by-grid rather than one that *requires* reading across
+ * the overlap — a true Mix is harder, and needs a solver that alternates
+ * between the two grids. Recorded rather than implied.
+ *
+ * @param $TargetGivens Squares each grid aims to leave revealed
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_DealMix (
+  $TargetGivens: integer
+)
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_DealMix givens=' + toString($TargetGivens);
+
+  declare $solA string = '';
+  declare $solB string = '';
+  declare $puzA string = '';
+  declare $puzB string = '';
+  declare $i integer = 0;
+  declare $r integer = 0;
+  declare $c integer = 0;
+  declare $la integer = 0;
+  declare $lb integer = 0;
+  declare $inA boolean = false;
+  declare $inB boolean = false;
+  declare $cls string = '';
+  declare $ch string = '';
+  declare $isGiven boolean = false;
+  declare $givens integer = 0;
+  declare $sr integer = 0;
+  declare $sc integer = 0;
+
+  $pair = call microflow Sudoku.SUB_ShuffleSolutionMix();
+  set $solA = substring($pair, 0, 81);
+  set $solB = substring($pair, 81, 81);
+
+  $blankA = call microflow Sudoku.SUB_BlankSquares(Solution = $solA, TargetGivens = $TargetGivens);
+  $repA = call microflow Sudoku.SUB_RepairToSolvable(
+    Solution = $solA, Puzzle = $blankA, TargetGivens = $TargetGivens,
+    Diagonal = false, Regions = '');
+  set $puzA = $repA;
+
+  $blankB = call microflow Sudoku.SUB_BlankSquares(Solution = $solB, TargetGivens = $TargetGivens);
+  $repB = call microflow Sudoku.SUB_RepairToSolvable(
+    Solution = $solB, Puzzle = $blankB, TargetGivens = $TargetGivens,
+    Diagonal = false, Regions = '');
+  set $puzB = $repB;
+
+  -- Reconcile the nine shared squares. They are one square shown in two grids,
+  -- so a digit revealed by either is revealed for both.
+  set $i = 0;
+  while $i < 9
+  begin
+    set $sr = round(floor($i div 3));
+    set $sc = $i - $sr * 3;
+    set $la = (6 + $sr) * 9 + 6 + $sc;
+    set $lb = $sr * 9 + $sc;
+    if substring($puzA, $la, 1) != '0' or substring($puzB, $lb, 1) != '0' then
+      set $puzA = substring($puzA, 0, $la) + substring($solA, $la, 1)
+                + substring($puzA, $la + 1, 80 - $la);
+      set $puzB = substring($puzB, 0, $lb) + substring($solB, $lb, 1)
+                + substring($puzB, $lb + 1, 80 - $lb);
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  $Game = create Sudoku."Game" (
+    "Level" = Sudoku."Difficulty".Medium,
+    "Variant" = Sudoku."Variant".Mix,
+    "Status" = Sudoku."GameStatus".Playing,
+    "DealtAt" = [%CurrentDateTime%],
+    "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEEE d MMMM'),
+    "Message" = 'Two grids, one shared block.');
+  commit $Game;
+
+  set $i = 0;
+  while $i < 225
+  begin
+    set $r = round(floor($i div 15));
+    set $c = $i - $r * 15;
+    set $inA = $r < 9 and $c < 9;
+    set $inB = $r >= 6 and $c >= 6;
+
+    if $inA = false and $inB = false then
+      -- A corner no grid reaches: a placeholder that holds its slot in the flow
+      $Void = create Sudoku."Cell" (
+        "Row" = $r, "Col" = $c,
+        "SolutionValue" = 0,
+        "IsGiven" = false, "IsEditable" = false, "IsInvalid" = false,
+        "CellClass" = 'sd-cell sd-void',
+        Sudoku."Cell_Game" = $Game);
+      commit $Void;
+    else
+      set $la = $r * 9 + $c;
+      set $lb = ($r - 6) * 9 + $c - 6;
+      if $inA then
+        set $ch = substring($solA, $la, 1);
+        set $isGiven = substring($puzA, $la, 1) != '0';
+      else
+        set $ch = substring($solB, $lb, 1);
+        set $isGiven = substring($puzB, $lb, 1) != '0';
+      end if;
+
+      -- Heavy rules fall on each grid's own 3x3 lines and its outer edge. A
+      -- shared square belongs to both grids, so it takes the union.
+      set $cls = 'sd-cell';
+      if ($inA and ($c = 2 or $c = 5 or $c = 8))
+         or ($inB and ($c = 8 or $c = 11 or $c = 14)) then
+        set $cls = $cls + ' sd-br';
+      end if;
+      if ($inA and ($r = 2 or $r = 5 or $r = 8))
+         or ($inB and ($r = 8 or $r = 11 or $r = 14)) then
+        set $cls = $cls + ' sd-bb';
+      end if;
+      if $inA and $inB then
+        set $cls = $cls + ' sd-shared';
+      end if;
+      if $isGiven then
+        set $cls = $cls + ' sd-given';
+        set $givens = $givens + 1;
+      else
+        set $cls = $cls + ' sd-open';
+      end if;
+
+      $Cell = create Sudoku."Cell" (
+        "Row" = $r, "Col" = $c,
+        "SolutionValue" = parseInteger($ch),
+        "IsGiven" = $isGiven,
+        "IsEditable" = $isGiven = false,
+        "IsInvalid" = false,
+        "CellClass" = $cls,
+        Sudoku."Cell_Game" = $Game);
+      if $isGiven then
+        change $Cell ("Value" = parseInteger($ch));
+      end if;
+      commit $Cell;
+    end if;
+    set $i = $i + 1;
+  end while;
+
+  change $Game ("GivenCount" = $givens) refresh;
+  commit $Game refresh;
+
+  -- Without this the board opens on default counters — the status line read
+  -- "81 EMPTY" on a 153-square board until the first move triggered a refresh.
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_DealMix to Sudoku.User;
 /
 
 /**
