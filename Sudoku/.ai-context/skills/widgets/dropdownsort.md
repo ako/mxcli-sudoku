@@ -14,7 +14,7 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.dropdownsort.DropdownSort' widget1
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `linkedDs` | datasource |  |  |  |
+| `linkedDs` | datasource | Yes |  |  |
 | `attributes` | object |  |  | Select the attributes that the end-user may use for sorting |
 | `emptyOptionCaption` | textTemplate |  |  |  |
 | `screenReaderButtonCaption` | textTemplate |  |  | Assistive technology will read this upon reaching the sort order button. |

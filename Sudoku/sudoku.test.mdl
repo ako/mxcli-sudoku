@@ -47,7 +47,9 @@ $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolution();
  * @expect $result = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
-  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = false,
+  Regions = ''
 );
 /
 
@@ -60,7 +62,9 @@ $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
  * @expect $result = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
  */
 $result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
-  Grid = '034678912672195348198342567859761423426853791713924856961537284287419635345286179'
+  Grid = '034678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = false,
+  Regions = ''
 );
 /
 
@@ -97,6 +101,186 @@ $result = CALL MICROFLOW Sudoku.SUB_BlankSquares(
 $result = CALL MICROFLOW Sudoku.SUB_RepairToSolvable(
   Solution = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
   Puzzle = '000678912672195348198342567859761423426853791713924856961537284287419635345286179',
-  TargetGivens = 40
+  TargetGivens = 40,
+  Diagonal = false,
+  Regions = ''
 );
+/
+
+-- =====================================================================
+-- Sudoku X — the diagonal variant
+-- =====================================================================
+-- The fixture is the seed grid with four squares blanked: (1,4) (1,5) (5,4)
+-- (5,5). Those four form a swap rectangle — exchanging the two values
+-- diagonally leaves every row, column and box still valid, so classic logic
+-- has two completions and cannot choose. One of the four sits on the main
+-- diagonal, and the diagonal rule rejects the swapped grid, which is what
+-- makes this pair of tests a real discriminator rather than two spellings of
+-- the same assertion.
+
+/**
+ * @test the classic solver cannot finish a board that needs the diagonal rule
+ * @expect find($result, '0') >= 0
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '345721698869300271721986453416872539578693124932100867283469715157238946694517382',
+  Diagonal = false,
+  Regions = ''
+);
+/
+
+/**
+ * @test the diagonal solver finishes the same board
+ * @expect $result = '345721698869354271721986453416872539578693124932145867283469715157238946694517382'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '345721698869300271721986453416872539578693124932100867283469715157238946694517382',
+  Diagonal = true,
+  Regions = ''
+);
+/
+
+/**
+ * The generator cannot reuse the classic band shuffle, which preserves boxes
+ * but scrambles the diagonals. This asserts the shape of what it returns.
+ *
+ * @test SUB_ShuffleSolutionX returns a complete 81-character grid
+ * @expect length($result) = 81
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionX();
+/
+
+/**
+ * @test SUB_ShuffleSolutionX leaves no empty square
+ * @expect find($result, '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionX();
+/
+
+/**
+ * A grid that is already a valid Sudoku X has nothing left to force, so the
+ * diagonal solver must hand it back untouched — the canary for the two extra
+ * units being wired in without disturbing the existing 27.
+ *
+ * @test the diagonal solver returns a solved X grid unchanged
+ * @expect $result = '345721698869354271721986453416872539578693124932145867283469715157238946694517382'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '345721698869354271721986453416872539578693124932145867283469715157238946694517382',
+  Diagonal = true,
+  Regions = ''
+);
+/
+
+-- =====================================================================
+-- Jigsaw — irregular regions instead of 3x3 boxes
+-- =====================================================================
+-- The fixture blanks one entire region (nine squares). The classic box rule
+-- knows nothing about that shape, so it stalls; the region rule rebuilds the
+-- board exactly. Same construction as the Sudoku X pair — two runs of the same
+-- solver over the same grid, differing only in the rule set.
+
+/**
+ * @test the box solver cannot finish a board whose regions are irregular
+ * @expect find($result, '0') >= 0
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '495173826132986745856724931729865314567419203683547102341258009274390068918600057',
+  Diagonal = false,
+  Regions = ''
+);
+/
+
+/**
+ * @test the region solver finishes the same board
+ * @expect $result = '495173826132986745856724931729865314567419283683547192341258679274391568918632457'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '495173826132986745856724931729865314567419203683547102341258009274390068918600057',
+  Diagonal = false,
+  Regions = '881111333881111333888221333886222277566222407566644407566644007555440077555400077'
+);
+/
+
+/**
+ * A finished jigsaw has nothing left to force, so the region solver must hand
+ * it back untouched — the canary for the region index being built correctly.
+ *
+ * @test the region solver returns a solved jigsaw unchanged
+ * @expect $result = '495173826132986745856724931729865314567419283683547192341258679274391568918632457'
+ */
+$result = CALL MICROFLOW Sudoku.ACT_SolveGrid(
+  Grid = '495173826132986745856724931729865314567419283683547192341258679274391568918632457',
+  Diagonal = false,
+  Regions = '881111333881111333888221333886222277566222407566644407566644007555440077555400077'
+);
+/
+
+/**
+ * The generator returns the solution and its layout in one string, because the
+ * two must come from the same random transform.
+ *
+ * @test SUB_ShuffleSolutionJ returns 162 characters
+ * @expect length($result) = 162
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionJ();
+/
+
+/**
+ * @test SUB_ShuffleSolutionJ leaves no empty square in the solution half
+ * @expect find(substring($result, 0, 81), '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionJ();
+/
+
+-- =====================================================================
+-- Sudoku Mix — two interlocking grids
+-- =====================================================================
+-- The generator's job is that the two grids agree on the nine squares they
+-- share. These pin the overlap explicitly, because the failure is silent: a
+-- flip leaves each grid individually valid while moving the shared corners
+-- apart, so per-grid checks alone would pass on a broken board.
+--
+-- Overlap relation: A[6+i][6+j] = B[i][j] — index (6+i)*9+(6+j) in the first
+-- half equals 81 + i*9 + j in the second.
+
+/**
+ * @test SUB_ShuffleSolutionMix returns 162 characters
+ * @expect length($result) = 162
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * @test SUB_ShuffleSolutionMix leaves no empty square
+ * @expect find($result, '0') < 0
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * Top-left of the shared block: A row 6 col 6 against B row 0 col 0.
+ *
+ * @test the grids agree on the first shared square
+ * @expect substring($result, 60, 1) = substring($result, 81, 1)
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * Centre of the shared block: A row 7 col 7 against B row 1 col 1.
+ *
+ * @test the grids agree on the centre shared square
+ * @expect substring($result, 70, 1) = substring($result, 91, 1)
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
+/
+
+/**
+ * Bottom-right of the shared block: A row 8 col 8 against B row 2 col 2.
+ *
+ * @test the grids agree on the last shared square
+ * @expect substring($result, 80, 1) = substring($result, 101, 1)
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
 /

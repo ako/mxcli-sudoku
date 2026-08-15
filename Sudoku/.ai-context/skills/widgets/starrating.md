@@ -14,10 +14,10 @@ PLUGGABLEWIDGET 'com.mendix.widget.custom.starrating.StarRating' widget1
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `rateAttribute` | attribute |  |  |  |
+| `rateAttribute` | attribute | Yes |  |  |
 | `emptyIcon` | icon |  |  |  |
 | `icon` | icon |  |  |  |
-| `maximumStars` | integer |  | 5 | The number of rating icons |
-| `animation` | boolean |  | true |  |
+| `maximumStars` | integer | Yes | 5 | The number of rating icons |
+| `animation` | boolean | Yes | true |  |
 | `onChange` | action |  |  |  |
 

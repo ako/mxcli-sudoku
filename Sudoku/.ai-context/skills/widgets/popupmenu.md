@@ -20,15 +20,15 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.popupmenu.PopupMenu' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `advancedMode` | boolean |  | false |  |
+| `advancedMode` | boolean | Yes | false |  |
 | `menuTrigger` | widgets | Yes |  | Responsible for toggling the Pop-up menu. |
 | `basicItems` | object |  |  | The popup menu items. |
 | `customItems` | object |  |  | The popup menu custom items. To make sure the popup closes correctly after a ... |
-| `trigger` | enumeration |  | onclick |  |
-| `hoverCloseOn` | enumeration |  | onHoverLeave |  |
-| `position` | enumeration |  | bottom | The location of the menu relative to the click area. |
-| `clippingStrategy` | enumeration |  | absolute | 'Absolute' positions the floating element relative to its nearest positioned ... |
-| `menuToggle` | boolean |  | false | Use this to see a preview of the menu items while developing. |
+| `trigger` | enumeration | Yes | onclick |  |
+| `hoverCloseOn` | enumeration | Yes | onHoverLeave |  |
+| `position` | enumeration | Yes | bottom | The location of the menu relative to the click area. |
+| `clippingStrategy` | enumeration | Yes | absolute | 'Absolute' positions the floating element relative to its nearest positioned ... |
+| `menuToggle` | boolean | Yes | false | Use this to see a preview of the menu items while developing. |
 
 ## Child Slots (curly-brace blocks)
 

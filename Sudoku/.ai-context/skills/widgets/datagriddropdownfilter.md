@@ -14,26 +14,26 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.datagriddropdownfilter.DatagridDropdownFi
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `baseType` | enumeration |  | attr |  |
-| `linkedDs` | datasource |  |  |  |
-| `attrChoice` | enumeration |  | auto | "Auto" works only when the widget is placed in a Data grid column. |
-| `attr` | attribute |  |  |  |
-| `auto` | boolean |  | true | Show options based on the references or the enumeration values and captions. |
+| `baseType` | enumeration | Yes | attr |  |
+| `linkedDs` | datasource | Yes |  |  |
+| `attrChoice` | enumeration | Yes | auto | "Auto" works only when the widget is placed in a Data grid column. |
+| `attr` | attribute | Yes |  |  |
+| `auto` | boolean | Yes | true | Show options based on the references or the enumeration values and captions. |
 | `filterOptions` | object |  |  |  |
 | `refEntity` | association | Yes |  | Set the entity to enable filtering over association. |
 | `refOptions` | datasource |  |  | The options to show in the Drop-down filter widget. |
-| `refCaptionSource` | enumeration |  | attr |  |
+| `refCaptionSource` | enumeration | Yes | attr |  |
 | `refCaption` | attribute |  |  |  |
 | `refCaptionExp` | expression |  |  |  |
 | `refSearchAttr` | attribute | Yes |  | Required when Filterable is set to yes |
-| `fetchOptionsLazy` | boolean |  | false | Lazy loading enables faster parent loading, but with personalization enabled,... |
+| `fetchOptionsLazy` | boolean | Yes | false | Lazy loading enables faster parent loading, but with personalization enabled,... |
 | `defaultValue` | expression |  |  | Empty option caption will be shown by default or if configured default value ... |
-| `filterable` | boolean |  | false |  |
-| `multiSelect` | boolean |  | false |  |
+| `filterable` | boolean | Yes | false |  |
+| `multiSelect` | boolean | Yes | false |  |
 | `emptyOptionCaption` | textTemplate |  |  |  |
-| `clearable` | boolean |  | true |  |
+| `clearable` | boolean | Yes | true |  |
 | `selectedItemsStyle` | enumeration | Yes | text |  |
-| `selectionMethod` | enumeration |  | checkbox |  |
+| `selectionMethod` | enumeration | Yes | checkbox |  |
 | `valueAttribute` | attribute |  |  | Attribute used to store the last value of the filter. Associations are not su... |
 | `onChange` | action |  |  | Action to be triggered when the value or filter changes. |
 | `ariaLabel` | textTemplate |  |  | Assistive technology will read this upon reaching the input element. |

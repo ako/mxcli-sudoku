@@ -19,23 +19,23 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.timeseries.TimeSeries' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `lines` | object |  |  | Add one or more series. The order of series influences how lines overlay one ... |
-| `enableAdvancedOptions` | boolean |  | false |  |
-| `showPlaygroundSlot` | boolean |  | false |  |
+| `lines` | object | Yes |  | Add one or more series. The order of series influences how lines overlay one ... |
+| `enableAdvancedOptions` | boolean | Yes | false |  |
+| `showPlaygroundSlot` | boolean | Yes | false |  |
 | `playground` | widgets |  |  |  |
 | `xAxisLabel` | textTemplate |  |  |  |
 | `yAxisLabel` | textTemplate |  |  |  |
-| `showLegend` | boolean |  | true |  |
-| `showRangeSlider` | boolean |  | true |  |
-| `gridLines` | enumeration |  | none |  |
-| `widthUnit` | enumeration |  | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
-| `width` | integer |  | 100 |  |
-| `heightUnit` | enumeration |  | percentageOfWidth |  |
-| `height` | integer |  | 75 |  |
-| `enableThemeConfig` | boolean |  | false |  |
+| `showLegend` | boolean | Yes | true |  |
+| `showRangeSlider` | boolean | Yes | true |  |
+| `gridLines` | enumeration | Yes | none |  |
+| `widthUnit` | enumeration | Yes | percentage | Percentage: portion of parent size. Pixels: absolute amount of pixels. |
+| `width` | integer | Yes | 100 |  |
+| `heightUnit` | enumeration | Yes | percentageOfWidth |  |
+| `height` | integer | Yes | 75 |  |
+| `enableThemeConfig` | boolean | Yes | false |  |
 | `customLayout` | string |  |  |  |
 | `customConfigurations` | string |  |  |  |
-| `yAxisRangeMode` | enumeration |  | tozero | Controls the y-axis range. "From zero" starts the y-axis from zero. "Auto" se... |
+| `yAxisRangeMode` | enumeration | Yes | tozero | Controls the y-axis range. "From zero" starts the y-axis from zero. "Auto" se... |
 
 ## Child Slots (curly-brace blocks)
 

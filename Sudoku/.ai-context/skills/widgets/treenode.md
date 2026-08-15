@@ -21,20 +21,20 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.treenode.TreeNode' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `advancedMode` | boolean |  | false |  |
-| `datasource` | datasource |  |  |  |
-| `headerType` | enumeration |  | text |  |
-| `openNodeOn` | enumeration |  | headerClick | Define which part of the node, when clicked, should open or close this node. ... |
+| `advancedMode` | boolean | Yes | false |  |
+| `datasource` | datasource | Yes |  |  |
+| `headerType` | enumeration | Yes | text |  |
+| `openNodeOn` | enumeration | Yes | headerClick | Define which part of the node, when clicked, should open or close this node. ... |
 | `headerContent` | widgets |  |  |  |
 | `headerCaption` | textTemplate |  |  |  |
-| `hasChildren` | boolean |  | true | Indicate whether the node has children or is an end node. When set to yes, a ... |
-| `startExpanded` | boolean |  | false |  |
+| `hasChildren` | boolean | Yes | true | Indicate whether the node has children or is an end node. When set to yes, a ... |
+| `startExpanded` | boolean | Yes | false |  |
 | `children` | widgets |  |  |  |
-| `animate` | boolean |  | true |  |
-| `showIcon` | enumeration |  | left |  |
+| `animate` | boolean | Yes | true |  |
+| `showIcon` | enumeration | Yes | left |  |
 | `expandedIcon` | icon |  |  |  |
 | `collapsedIcon` | icon |  |  |  |
-| `animateIcon` | boolean |  | true | Animate the icon when the group is collapsing or expanding. |
+| `animateIcon` | boolean | Yes | true | Animate the icon when the group is collapsing or expanding. |
 
 ## Child Slots (curly-brace blocks)
 

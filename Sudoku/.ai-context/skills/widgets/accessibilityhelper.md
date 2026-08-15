@@ -19,8 +19,8 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.accessibilityhelper.AccessibilityHelper' 
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `targetSelector` | string |  |  | Selector to find the first HTML element you want to target which must be a va... |
-| `content` | widgets |  |  |  |
+| `targetSelector` | string | Yes |  | Selector to find the first HTML element you want to target which must be a va... |
+| `content` | widgets | Yes |  |  |
 | `attributesList` | object |  |  |  |
 
 ## Child Slots (curly-brace blocks)

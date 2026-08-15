@@ -17,7 +17,7 @@ folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewEasy';
 
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50, Variant = Sudoku."Variant".Classic);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -34,7 +34,7 @@ folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewMedium';
 
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42, Variant = Sudoku."Variant".Classic);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -51,7 +51,7 @@ folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewHard';
 
-  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30);
+  $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30, Variant = Sudoku."Variant".Classic);
   show page Sudoku.Game_Play($Game = $Game);
   return $Game;
 end;
@@ -130,6 +130,56 @@ create or replace page Sudoku.Home
       }
     }
 
+  container sdCardsX (class: 'sd-cards sd-cards-x') {
+    container sdCardDiag (class: 'sd-card sd-card-diag') {
+      dynamictext sdDiagDot (content: 'Variant', class: 'sd-card-kicker')
+      dynamictext sdDiagName (content: 'Diagonal X', rendermode: H2, class: 'sd-card-name')
+      dynamictext sdDiagDesc (
+        content: 'Both marked diagonals must also hold 1 to 9 once. Fewer givens, same difficulty.',
+        rendermode: Paragraph,
+        class: 'sd-card-desc'
+      )
+      actionbutton bDiagonal (
+        caption: 'Start diagonal game',
+        action: microflow Sudoku.ACT_NewDiagonal,
+        buttonstyle: primary,
+        class: 'sd-cta'
+      )
+    }
+
+    container sdCardJig (class: 'sd-card sd-card-jig') {
+      dynamictext sdJigDot (content: 'Variant', class: 'sd-card-kicker')
+      dynamictext sdJigName (content: 'Jigsaw', rendermode: H2, class: 'sd-card-name')
+      dynamictext sdJigDesc (
+        content: 'The nine boxes become nine irregular shapes. Rows and columns are unchanged.',
+        rendermode: Paragraph,
+        class: 'sd-card-desc'
+      )
+      actionbutton bJigsaw (
+        caption: 'Start jigsaw game',
+        action: microflow Sudoku.ACT_NewJigsaw,
+        buttonstyle: primary,
+        class: 'sd-cta'
+      )
+    }
+
+    container sdCardMix (class: 'sd-card sd-card-mix') {
+      dynamictext sdMixDot (content: 'Variant', class: 'sd-card-kicker')
+      dynamictext sdMixName (content: 'Mix', rendermode: H2, class: 'sd-card-name')
+      dynamictext sdMixDesc (
+        content: 'Two grids on one canvas, sharing a block of nine squares.',
+        rendermode: Paragraph,
+        class: 'sd-card-desc'
+      )
+      actionbutton bMix (
+        caption: 'Start mix game',
+        action: microflow Sudoku.ACT_NewMix,
+        buttonstyle: primary,
+        class: 'sd-cta'
+      )
+    }
+  }
+
     container sdHomeFoot (class: 'sd-home-foot') {
       dynamictext sdFootText (
         content: 'Select a square on the board, then tap a number to fill it in.',
@@ -141,6 +191,95 @@ create or replace page Sudoku.Home
 }
 /
 
+/**
+ * Deals a jigsaw ("vorm") sudoku: rows and columns as usual, but the nine
+ * 3x3 boxes are replaced by nine irregular connected regions.
+ *
+ * Dealt at 40 givens. A jigsaw's regions are less regular than boxes, which
+ * makes forced logic reach further in some places and stall sooner in others,
+ * so it sits between Easy and the Sudoku X rather than following either.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewJigsaw ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewJigsaw';
+
+  $Game = call microflow Sudoku.ACT_DealGame(
+    Level = Sudoku."Difficulty".Medium,
+    TargetGivens = 40,
+    Variant = Sudoku."Variant".Jigsaw);
+
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_NewJigsaw to Sudoku.User;
+/
+
+/**
+ * Deals a Sudoku X: the classic rules plus both main diagonals.
+ *
+ * The extra two units constrain the board hard, so a diagonal board stays
+ * forced-solvable on noticeably fewer givens than a classic one — 36 here
+ * against Easy's 50. Dealing it at 50 would leave almost nothing to do.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewDiagonal ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewDiagonal';
+
+  $Game = call microflow Sudoku.ACT_DealGame(
+    Level = Sudoku."Difficulty".Medium,
+    TargetGivens = 36,
+    Variant = Sudoku."Variant".Diagonal);
+
+  show page Sudoku.Game_Play($Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_NewDiagonal to Sudoku.User;
+/
+
+/**
+ * Deals a Sudoku Mix and opens its board.
+ *
+ * 40 givens per grid, the same as the jigsaw. The nine shared squares are
+ * reconciled during the deal, which can only add givens, so a Mix opens
+ * slightly denser than 80 — see ACT_DealMix.
+ *
+ * It opens Sudoku.Game_Mix rather than Sudoku.Game_Play: the classic board is
+ * fixed at nine columns and 81 rows per page, and widening it would have
+ * reshaped every existing game.
+ *
+ * @returns The dealt game
+ */
+create or replace microflow Sudoku.ACT_NewMix ()
+returns Sudoku."Game" as $Game
+folder 'Game'
+begin
+  log info node 'Sudoku' 'ACT_NewMix';
+
+  $Game = call microflow Sudoku.ACT_DealMix(TargetGivens = 40);
+  show page Sudoku.Game_Mix($Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.ACT_NewMix to Sudoku.User;
+/
+
+-- Everything below this line is deliberately last. `alter page ... insert`
+-- is not idempotent: re-running the pipeline fails here on the duplicate
+-- widget name and stops the script. That is survivable only because nothing
+-- follows — statements placed after it were silently never applied.
 -- The completion page cannot reference Sudoku.Home at creation time (it is
 -- built before the landing page), so its actions are appended here.
 alter page Sudoku.Game_Done {

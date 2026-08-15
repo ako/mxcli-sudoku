@@ -227,7 +227,17 @@
   border-bottom: 1px solid var(--sd-grid);
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+  // Asymmetric on purpose. A transition is read from the state being moved TO,
+  // so this rule governs the *release* of a highlight and the rules below govern
+  // its application: highlighting arrives in 0.12s and lets go over 0.42s.
+  //
+  // Erasing a digit empties the selected square, which drops the whole peer
+  // group — up to nine squares losing their tint in the same repaint. At an
+  // equal 0.12s that read as "ERASE cleared nine squares"; released slowly it
+  // reads as the highlight letting go, while the one square that actually
+  // changed keeps its selection ring. The box-shadow stays fast so the ring
+  // itself still tracks the cursor.
+  transition: background-color 0.42s ease, box-shadow 0.12s ease;
 }
 
 .sd-open:hover { background: rgba(95, 211, 196, 0.06); }
@@ -235,8 +245,40 @@
 .sd-br { border-right: 2px solid var(--sd-rule) !important; }
 .sd-bb { border-bottom: 2px solid var(--sd-rule) !important; }
 
-.sd-board [class*="gallery-items"] > *:nth-child(9n) .sd-cell { border-right: none !important; }
-.sd-board [class*="gallery-items"] > *:nth-child(n + 73) .sd-cell { border-bottom: none !important; }
+.sd-board:not(.sd-board-15) [class*="gallery-items"] > *:nth-child(9n) .sd-cell { border-right: none !important; }
+.sd-board:not(.sd-board-15) [class*="gallery-items"] > *:nth-child(n + 73) .sd-cell { border-bottom: none !important; }
+
+// ---- the Mix: one 15x15 canvas carrying two overlapping 9x9 grids ----
+// Scoped away from the rules above, which assume nine columns and 81 squares.
+.sd-mix { --sd-cell: 36px; }
+.sd-app-wide { max-width: 1320px; }
+
+.sd-board-15 [class*="gallery-items"] {
+  grid-template-columns: repeat(15, var(--sd-cell)) !important;
+}
+.sd-board-15 { background: transparent; border: none; }
+
+// The two 6x6 corners no grid reaches. They hold their slot in the flow and do
+// nothing else — no rule, no ground, no pointer.
+.sd-void {
+  background: transparent !important;
+  border: none !important;
+  cursor: default;
+  pointer-events: none;
+}
+
+// The nine squares both grids own. A faint mark, because which squares are
+// shared is the one thing a player cannot read off the borders alone.
+.sd-shared { background: rgba(138, 122, 255, 0.13); }
+.sd-shared.sd-given { background: rgba(138, 122, 255, 0.17); }
+
+.sd-mix .sd-num { font-size: 16px; }
+
+// Jigsaw: the heavy rule falls on region edges rather than every third column,
+// so ACT_DealGame emits sd-br / sd-bb per square by comparing region ids with
+// the neighbour. The classes are the same ones the 3x3 boxes use — only where
+// they land changes — which is why the board needed no new styling to draw an
+// irregular shape.
 
 .sd-num {
   font-size: 23px;
@@ -244,10 +286,25 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--sd-accent);        // the player's own entries
+  // A given's digit brightens while it is a peer, so it has to fade back on the
+  // same clock as the tint behind it — otherwise the colour snaps while the
+  // background is still easing out.
+  transition: color 0.42s ease;
 }
+.sd-peer .sd-num,
+.sd-sel .sd-num,
+.sd-bad .sd-num { transition: color 0.12s ease; }
 
 .sd-given { cursor: default; background: rgba(255, 255, 255, 0.014); }
 .sd-given .sd-num { color: var(--sd-ink-2); font-weight: 500; }
+
+// Sudoku X — the two diagonals are units in their own right, so they carry a
+// faint permanent wash. Declared before .sd-peer and .sd-sel so a live
+// highlight still reads over the top; it is board furniture, not state.
+.sd-diag {
+  background: rgba(138, 122, 255, 0.15);
+}
+.sd-diag.sd-given { background: rgba(138, 122, 255, 0.19); }
 
 // Selecting a filled square lights up every square holding the same digit,
 // so a digit's placement can be read at a glance. Declared BEFORE .sd-bad and
@@ -255,6 +312,7 @@
 // red and the selected square must keep its ring even when both also match.
 .sd-peer {
   background: rgba(95, 211, 196, 0.09);
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
 }
 
 .sd-peer .sd-num {
@@ -265,13 +323,19 @@
   color: #9FE6DC;   // a dealt digit stays calmer than a player's own
 }
 
-.sd-bad { background: rgba(255, 107, 107, 0.12); }
+// A conflict must land immediately — it is feedback on the digit just typed,
+// not an ambient highlight, so it keeps the fast timing in both directions.
+.sd-bad {
+  background: rgba(255, 107, 107, 0.12);
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
 .sd-bad .sd-num { color: var(--sd-bad); font-weight: 700; }
 
 // Selected square — mint ring, matching the prototype's anchor treatment
 .sd-sel {
   background: rgba(95, 211, 196, 0.10) !important;
   box-shadow: inset 0 0 0 2px var(--sd-accent);
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
 }
 
 // --------------------------------------------------------- status line
@@ -497,6 +561,14 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
 }
+
+// The variants change the rules rather than the number of givens, so they sit
+// in their own row below the three difficulty tiers instead of extending them.
+.sd-cards-x {
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 14px;
+}
+.sd-cards-x .sd-card-kicker { color: #8A7AFF; }
 
 .sd-card {
   background: var(--sd-panel);

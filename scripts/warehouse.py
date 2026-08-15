@@ -36,7 +36,13 @@ MXCLI = ROOT / "Sudoku" / "mxcli"
 ADMIN = os.environ.get("MXCLI_ADMIN_URL", "http://127.0.0.1:8090")
 ADMIN_PASS = os.environ.get("MXCLI_ADMIN_PASS", "mxcli-local-dev")
 DB = os.environ.get("MXCLI_DB_NAME", "sudoku")
-SPANS = os.environ.get("MXCLI_SPANS", str(WH / "spans.jsonl"))
+# The live span file is the one run-app.sh points the collector at. This used to
+# default to a snapshot under warehouse/, which still exists from an earlier run —
+# so the warehouse silently answered from 2,476 stale spans while 105,613 sat next
+# door. Prefer the live file, fall back to the snapshot only if it is absent.
+_LIVE_SPANS = ROOT / "Sudoku" / ".mxcli" / "spans.jsonl"
+SPANS = os.environ.get(
+    "MXCLI_SPANS", str(_LIVE_SPANS if _LIVE_SPANS.exists() else WH / "spans.jsonl"))
 CATALOG = os.environ.get("MXCLI_CATALOG", str(ROOT / "Sudoku" / ".mxcli" / "catalog.db"))
 
 

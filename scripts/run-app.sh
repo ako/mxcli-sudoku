@@ -88,4 +88,9 @@ nohup mxcli "$@" >"$LOG" 2>&1 &
 disown 2>/dev/null || true
 log "app launching in background (PID $!) — boot progress in $LOG"
 log "once booted, the preview URL is printed in that log (grep 'Preview available')."
+# The spans this collects are only useful if you know they are queryable. Naming
+# the endpoint and not the query is what let three sessions hand-roll JSONL parse
+# loops over a file the warehouse already reads (FINDINGS #44).
+log "telemetry -> $SPANS  ·  query it: scripts/warehouse.py sql \"SELECT ...\""
+log "  canned: scripts/warehouse.py hot-microflows | hot-tables | slow-activities"
 exit 0

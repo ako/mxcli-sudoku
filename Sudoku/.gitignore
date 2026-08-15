@@ -33,3 +33,7 @@
 mxcli
 mxcli.exe
 .mxcli/
+
+# DuckDB spills its temp storage into ./.tmp when a query run from this
+# directory exceeds memory — analysis scratch, never project content.
+/.tmp/

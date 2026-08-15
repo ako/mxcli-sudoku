@@ -30,18 +30,18 @@ PLUGGABLEWIDGET 'com.mendix.widget.web.timeline.Timeline' widget1 {
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `data` | datasource |  |  |  |
+| `data` | datasource | Yes |  |  |
 | `title` | textTemplate |  |  |  |
 | `description` | textTemplate |  |  |  |
 | `timeIndication` | textTemplate |  |  |  |
-| `customVisualization` | boolean |  | false | Enables free to model timeline. |
+| `customVisualization` | boolean | Yes | false | Enables free to model timeline. |
 | `icon` | icon |  |  | If no icon is configured, a circle will be rendered. |
-| `groupEvents` | boolean |  | true | Shows a header between grouped events based on event date. |
+| `groupEvents` | boolean | Yes | true | Shows a header between grouped events based on event date. |
 | `groupAttribute` | attribute |  |  | Will be used for grouping events, as a group header value. If events have no ... |
-| `groupByKey` | enumeration |  | day | Group events based on day, month or year. |
-| `groupByDayOptions` | enumeration |  | dayName | Format group header with current language's format |
-| `groupByMonthOptions` | enumeration |  | month |  |
-| `ungroupedEventsPosition` | enumeration |  | end | Position in the list of events without a date and time |
+| `groupByKey` | enumeration | Yes | day | Group events based on day, month or year. |
+| `groupByDayOptions` | enumeration | Yes | dayName | Format group header with current language's format |
+| `groupByMonthOptions` | enumeration | Yes | month |  |
+| `ungroupedEventsPosition` | enumeration | Yes | end | Position in the list of events without a date and time |
 | `customIcon` | widgets |  |  | Content of the icon |
 | `customGroupHeader` | widgets |  |  | Content of the group header |
 | `customTitle` | widgets |  |  | Content of the title |

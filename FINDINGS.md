@@ -240,6 +240,39 @@ Error: failed to insert: widget "btnReset" not found
 There is no conditional insert and no `drop widget if exists`, so a page script
 plus its ALTERs cannot be replayed without hand-editing.
 
+### The consequence is worse than a failed statement: it truncates the script
+
+Hit twice while adding the variant boards, and both times it cost real time
+because the symptom does not point at the cause. `exec` halts at the first
+error, so a non-idempotent ALTER sitting in the *middle* of a file means every
+statement after it silently never runs — on the second and every subsequent
+pass. `07-home.mdl` had this shape:
+
+```
+create or replace page Sudoku.Home        -- has a card calling ACT_NewMix
+...
+alter page Sudoku.Game_Done { insert ... }  -- fails on pass 2
+create or replace microflow Sudoku.ACT_NewDiagonal
+create or replace microflow Sudoku.ACT_NewMix
+```
+
+On a fresh project this applies cleanly and everything looks fine. On a re-run
+the ALTER fails, and the two microflows below it are never written. What you
+observe is a *page* that has silently stopped matching its script — the new
+card is missing from the served Home — while the error text talks only about a
+duplicate widget on an entirely different page. Nothing connects the two.
+
+The failure is loud but the *loss* is silent: `exec` reports the error and
+stops, and never says "12 statements after this point were not applied." A
+count of skipped statements in the error would make this diagnosable in
+seconds instead of a build-by-build bisect.
+
+The workaround is structural and unpleasant: every non-idempotent statement has
+to be manually sorted to the end of its file, with a comment explaining why
+nothing may be appended after it. That is a constraint the script author has to
+carry in their head, and it gets violated the moment someone appends to the
+bottom of the file — which is the natural thing to do.
+
 ---
 
 ## 12. `create or replace page` silently drops ALTER-added widgets
@@ -2327,6 +2360,178 @@ mechanism that does not exist yet. (1) is available now and would already have
 made this session's `ACT_DealGame` verification a set of assertions rather than
 a hand-built harness reading the database — which is how finding 39's two bugs
 came to matter at all.
+
+## 42. Restarting the app breaks an open tab only on the *next page it opens*
+
+**Not an mxcli bug in itself** — a consequence of finding 34's container
+suspend, recorded because the failure it produces looks nothing like a
+restart and cost two rounds of investigation to place.
+
+The player reported an error popup on pressing RESULT after finishing a game.
+The board itself had worked fine all the way to the last digit. The runtime log
+named it exactly:
+
+```
+22:23:18.667 ERROR - Client: An error occurred while loading page 'Sudoku.Game_Done'.
+                     This likely means that the page includes a broken widget...
+22:23:18.667 ERROR - Client: An error occurred while executing an action of
+                     Sudoku.Game_Play.toolResult: Importing a module script failed.
+```
+
+The first line is Mendix guessing, and the guess is wrong — no widget is
+broken. The second line is the real cause: Mendix ships **each page as its own
+lazily-loaded JavaScript module**, fetched the first time that page is opened.
+`deployment/web/dist` had been rewritten 23 seconds earlier by the restart that
+this session's `SessionStart` hook fires on resume; the click landed eleven
+seconds into the runtime boot.
+
+Reproduced by 404-ing chunk requests once a game was under way, which names the
+file:
+
+```
+POPUP: "Error — An error occurred, please contact your system administrator."
+chunks the tab asked for: [ 'Sudoku.Game_Done.js' ]
+[Client] ... toolResult: Failed to fetch dynamically imported module:
+         http://127.0.0.1:8080/dist/pages/Sudoku.Game_Done.js
+```
+
+Same first line as the log; the second differs only in browser wording
+(Chromium says "Failed to fetch dynamically imported module", Firefox and
+Safari say "Importing a module script failed").
+
+What makes this worth writing down is the **shape of the failure**. Everything
+already loaded keeps working — selecting cells, entering digits, undo, reset all
+run from code the tab holds in memory, so the app feels healthy right through a
+restart. The break lands on the first navigation to a page not yet visited. In
+this app that is exactly one moment: finishing a game and pressing RESULT. The
+symptom therefore points at the feature, not at the restart that caused it.
+
+The same suspend produces a second, unrelated-looking symptom when the tab
+needs the *server* rather than a module — `A connection error occurred, please
+try again later.`, logged as `Client: Failed to fetch`. Both were reported as
+game bugs; neither was.
+
+No app-side fix exists — a tab cannot recover a module the server is not
+serving. The workaround is to reload the page after the preview has been idle.
+What would help from the tooling side is for a rebuild to keep the previous
+build's page modules addressable, or for the client to surface "the app was
+updated, reload" rather than a broken-widget message that sends you reading
+page definitions.
+
+## 43. RESET left the undo history in place, so UNDO resurrected erased digits
+
+**Not an mxcli bug — an app bug**, found while investigating a popup that
+turned out to be finding 42. Fixed in this session.
+
+`ACT_ResetBoard` cleared every non-given square and nothing else. `MoveSeq`,
+`MaxSeq`, `CanUndo`/`CanRedo` and every `Move` row survived, so undo afterwards
+replayed a move recorded against the board as it stood *before* the reset.
+
+Invisible unless the undone move had a non-empty `OldValue` — the first attempt
+to reproduce it missed for that reason, because typing into an empty square
+gives `OldValue = empty` and undo then restores empty. It needs an erase:
+
+```
+type 5 into an empty square : 51 filled
+ERASE it                    : 50 filled
+RESET                       : 50 filled   cell = ""
+UNDO                        : 51 filled   cell = "5"   <- resurrected
+```
+
+Fixed by having reset drop the history it invalidates: delete the game's
+`Move` rows, zero `MoveSeq`/`MaxSeq`, clear both `CanUndo` and `CanRedo`. Reset
+becomes a fresh start rather than a step that can be walked back past. The
+alternative — logging the whole clear as one undoable move — was considered and
+rejected as more machinery than the behaviour is worth.
+
+After the fix:
+
+```
+RESET     : 50 | UNDO off? true | REDO off? true
+UNDO clickable after RESET: false -> filled: 50
+>>> resurrected: false
+>>> undo still works for new moves: 50 -> 51 -> undo -> 50 => true
+```
+
+A process note that cost real time here: the first verification run reported
+the bug still present *after* the fix was applied and `mx check` passed. The
+model on disk was correct and the runtime had logged `Model update detected`;
+the running app was nonetheless serving the pre-fix build, because the `exec`
+landed while `--watch`'s initial build was still in flight (the same race noted
+during the nanoflow probe). The database gave the unambiguous answer — a game
+showing `MoveSeq=1` after reset+undo proves the new code never ran. **After
+`mxcli exec`, confirm a `build #N applied` line before trusting any behavioural
+test**; "model updated" in the runtime log is not that confirmation.
+
+## 44. The observability tooling exists and is not reachable from where you need it
+
+**Not an mxcli bug — a discoverability finding**, and the evidence is that its
+own author failed the test twice in one session.
+
+Finding 30 established that DuckDB reads the model catalog, the app's
+PostgreSQL, the OTLP spans, the metrics scrape and the runtime log in place, and
+that a question crossing two of them is one SQL query. That was tested, written
+up, and turned into working tooling in this repo:
+
+```
+scripts/warehouse.py   171 lines   build | sql | hot-microflows | hot-tables | slow-activities
+scripts/flame.py       267 lines
+scripts/trace.sh        28 lines
+scripts/otel.sh        119 lines
+```
+
+Then, asked "what are the most expensive SQL statements", I hand-wrote a Python
+JSONL parse loop — five times, once per refinement — computing medians and
+percentiles by hand over a 108 MB file. `warehouse.py hot-microflows` is a canned
+query for almost exactly that. Earlier in the same session, asked for a flame
+chart, I wrote a generator from scratch while `scripts/flame.py` sat unopened in
+the same directory.
+
+So the failure is not that the capability is missing or that it is
+under-documented. It is documented at length — in a 2,400-line findings file
+nobody reads at the moment of need, and in scripts nothing points to.
+
+**Three concrete gaps, in increasing order of how much they cost:**
+
+1. **Nothing at the point of need mentions it.** `run-app.sh` prints
+   `Tracing enabled … spans -> OTLP http://127.0.0.1:4318` and stops there. It
+   names the endpoint the app writes to and never names the file that results,
+   let alone how to query it. One extra line — `Query it: scripts/warehouse.py
+   sql "…"` — would have closed the whole gap.
+
+2. **It silently answered from stale data.** `MXCLI_SPANS` defaulted to
+   `warehouse/spans.jsonl`, a snapshot from an earlier run, while the collector
+   had since been pointed at `.mxcli/spans.jsonl`. `warehouse.py build`
+   cheerfully reported `spans 2476` next to a live file holding **105,613**. No
+   warning, no error — the kind of wrongness that is worse than a crash, because
+   the answer looks fine. Fixed here: the default now prefers the live file and
+   falls back to the snapshot only if it is absent.
+
+3. **Nothing in the project's own AI context mentions it.** `CLAUDE.md` lists
+   every MDL command and 40-odd skills; none covers querying telemetry. The
+   `.ai-context/skills/` set has `verify-with-oql` and `runtime-admin-api` but
+   nothing for traces.
+
+**Worth being accurate about the payoff, because it is not "DuckDB is faster".**
+Measured on this 108 MB / 104k-span file:
+
+| | DuckDB | hand-rolled Python |
+|---|---|---|
+| flat SQL aggregation | 0.46 s | 0.65 s |
+| recursive caller attribution | 8.85 s | **1.23 s** |
+| …same, after `CREATE INDEX` | 1.61 s | 1.23 s |
+| **load once, then query** | **2–25 ms** | 0.65–1.23 s *every time* |
+
+A recursive CTE re-joins the whole span table at each depth and is *worse* than
+dict-chasing until indexed. The win is not raw speed on one query; it is
+(a) persisting once — 108 MB of JSONL becomes a 10.2 MB DuckDB file and queries
+drop to milliseconds — and (b) joins Python cannot do at all, like runtime cost
+from spans against activity counts from the catalog in 157 ms.
+
+**The generalisable lesson:** a technique that lives only in a findings document
+is not available; it is merely recorded. What makes it available is a pointer
+emitted at the moment the data is produced. This entry exists because the gap
+was wide enough to swallow the person who wrote the tooling.
 
 ---
 
