@@ -2705,6 +2705,227 @@ weeks quietly certifying work as verified when it was not. A test framework that
 cannot evaluate an assertion has exactly one safe behaviour, and passing is not
 it.
 
+### Fixed by ako/mxcli PR 151 — verified
+
+`0bf93824`, built and run against this project. The regex that matched one
+assertion shape is replaced by a validating recursive-descent parser; anything
+it cannot compile becomes an error rather than an absent assertion.
+
+**Every canary now behaves.** All nine must-fail shapes fail, including
+`@expect 1 = 2` and the contradiction. The positive controls still pass — the
+baseline suite is 22/22, `find` on a needle that *is* absent still satisfies
+`< 0`, and `<>`, `and`/`not`, `length`, `substring` and `find` all evaluate. So
+this is real evaluation, not blanket failure.
+
+**The actual value is reported**, which was the second ask:
+
+```
+FAIL  C2 length equality       expected length($result) = 999, actual: 81
+FAIL  C4 find < 0              expected find($result, '5') < 0, actual: 0
+```
+
+**Unevaluable expressions fail closed and stay local to their own test:**
+
+```
+ERROR  E1 case
+       @expect randomInt($result) = 1: randomInt() is not a Mendix expression
+       function at column 1 ("randomInt")
+PASS   E1 companion — a valid assertion that must still run
+Total: 2  Passed: 1  Failed: 0  Errors: 1  Skipped: 0
+```
+
+`Errors` is tallied separately from `Failed`, the run exits non-zero, and a
+valid test sharing the file still runs.
+
+**Mutation score rose from 3/9 to 6/9**, and the three newly-caught mutants are
+exactly the ones this defect was hiding:
+
+| Mutation | before | after |
+|---|---|---|
+| `SUB_BlankSquares` splices `'5'`, blanks nothing | survived | **killed** |
+| Mix relabels grid B with a different alphabet | survived | **killed** (all 3 overlap tests) |
+| Mix applies flip-H instead of transpose | survived | **killed** |
+| generators return 81 `'1'`s; repair returns its input | survived | survived — *see below* |
+| diagonal rule removed / region map ignored / `floor()` dropped | killed | killed |
+
+The three still surviving are **not** a shortfall in the fix. Those assertions
+genuinely are true of the mutants — 81 `'1'`s really is 81 characters with no
+`'0'` — so the runner is now right to pass them. Same output as before, opposite
+cause: previously nothing was evaluated, now weak assertions are evaluated
+correctly. The fix repairs the runner; it cannot strengthen an assertion that
+never asked for much. Those tests need rewriting here, which is this project's
+job, not mxcli's.
+
+### One gap left, pre-existing rather than introduced
+
+An assertion that is syntactically valid but only fails inside **mxbuild** still
+takes down the whole run:
+
+```
+@expect $nosuchvar = 'x'      -- undefined variable
+@expect $result = 3           -- String compared to a number, CE0117
+```
+
+```
+Error: local runtime: build failed: The project cannot be deployed, because it
+contains errors.
+```
+
+No test results at all — valid tests in the same file never run — and the cause
+arrives as ~200 lines of mxbuild JSON in which `Undefined variable 'nosuchvar'`
+in `MxTest.Test_test_3` sits among dozens of unrelated Atlas warnings. Confirmed
+identical on pre-PR `7bb07394`, so PR 151 neither caused nor worsened it, and
+the project is still restored correctly afterwards (no `MxTest` residue).
+
+It is worth a follow-up because it is the same *shape* as this finding: the
+failure is not attributed to the assertion that caused it. Two things would
+close it — resolve `$vars` against the test's own bindings during the parse pass
+that already exists, and map an mxbuild error located in a generated
+`MxTest.Test_test_N` unit back to that test as an `ERROR` row instead of
+aborting the run.
+
+---
+
+## 47. `mxcli test` leaves the `.mpr` modified on every run
+
+**New. Small, and it undoes for the test path what PR 125 achieved for the
+script path.** Running the test suite dirties the project file, so `git status`
+reports a change after a run that changed nothing.
+
+Found on `main` at `54a013b4`, Mendix 11.13.0, `--local` runner.
+
+The runner injects an `MxTest` module, builds, runs, then restores the project —
+and the restore is very nearly perfect. Three consecutive runs against an
+untouched copy, tracking the transaction id, the `.mpr` bytes, and a hash over
+every `mprcontents/*.mxunit`:
+
+```
+state = txid / mpr-hash / mprcontents-hash
+initial  d764a6ef-0b78-4052-a2a9-e9f251368834  afc5bbd4  6beffdfc
+run 1    40f4fdcc-4f2a-4032-8aa5-f8acec150387  62a5ab55  6beffdfc
+run 2    aaaaf22e-6203-4a4f-81cc-125de0a7a844  bf15a620  6beffdfc
+run 3    eb49e655-4249-4b2f-813f-a0538530c8eb  168782fb  6beffdfc
+```
+
+`mprcontents` is byte-identical throughout — every generated unit is cleaned up
+exactly. The entire difference is one row in one SQLite table inside the `.mpr`:
+
+```sql
+select LastTransactionID from _Transaction;
+```
+
+A fresh GUID per run. Nothing else in any table differs.
+
+### It is specifically the test runner
+
+Worth stating because the obvious suspect is innocent. Each operation run
+against a clean copy, comparing the transaction id and file hash before and
+after:
+
+| Operation | Result |
+|---|---|
+| `mxcli -c 'SHOW MICROFLOWS IN …'` | unchanged |
+| `mxcli -c 'DESCRIBE MICROFLOW …'` | unchanged |
+| `mxcli lint` | unchanged |
+| `mxcli check … --references` | unchanged |
+| `mx check` — **Mendix's own validator** | unchanged |
+| `mxcli exec` of an already-applied script | unchanged |
+| `mxcli test … --local` | **rewrites the id** |
+
+That last contrast is the useful one. An idempotent `exec` now leaves the model
+byte-identical, which is exactly what PR 125 set out to deliver. `mxcli test`
+does not, so a project whose `.mpr` is committed shows a spurious modification
+after every test run — the same "changes appear in Studio Pro's changes panel
+for no reason" symptom, arriving through a different door.
+
+### Why it is worth fixing rather than tolerating
+
+It is one row, and it is genuinely harmless to the model. The cost is that
+nothing about it *looks* harmless:
+
+- A stop hook in this workspace flagged uncommitted changes, and establishing
+  that they were meaningless took opening both `.mpr` files as SQLite databases
+  and diffing every table. There is no cheaper way to tell a bookkeeping GUID
+  from a real model edit, because a `.mpr` diff is opaque.
+- Any CI step of the form "run the tests, then assert the tree is clean" fails,
+  and fails in a way that reads as a real change.
+- Committing it adds a meaningless diff to a pull request; discarding it is a
+  manual step someone has to know about.
+
+### The fix
+
+The restore path already puts `mprcontents` back perfectly, so it only needs to
+cover this row too — preserve `LastTransactionID` across the injection and write
+the original back, or snapshot the `.mpr` bytes before injecting and restore
+that file wholesale. Either makes a test run a genuine no-op on disk.
+
+Worth confirming the same holds for the Docker runner; only `--local` was
+measured here.
+
+**The generalisable lesson:** a tool that modifies a project to do its work owes
+the caller a restore that is byte-exact, not merely semantically equivalent.
+"Semantically identical" is invisible to version control, which compares bytes —
+and every consumer downstream of it, from `git status` to a reviewer's changes
+panel, reports the difference as if it mattered.
+
+---
+
+## 48. `@verify` is vacuous — the same defect as #46, in the annotation PR 151 did not touch
+
+**New.** PR 151 fixed `@expect` thoroughly: it now compiles the whole
+annotation, evaluates any Mendix condition, and errors rather than passing on
+anything it cannot compile. `@verify` was left as it was, and it accepts
+everything.
+
+Found on `main` at `a8dc0835`, Mendix 11.13.0, `--local` runner.
+
+Every one of these passes, on a board with 81 `Cell` rows and 1 `Game`:
+
+| `@verify` | Should | Actual |
+|---|---|---|
+| `select count(*) from Sudoku.Game = 999999` | fail | **PASS** |
+| `select count(*) from Sudoku.Cell = 0` | fail | **PASS** |
+| `select count(*) from Sudoku.NoSuchEntity = 1` | error | **PASS** |
+| `select count(*) frm Sudoku.Cell = 1` (malformed) | error | **PASS** |
+| `this is not a query` | error | **PASS** |
+| `select count(*) from Sudoku.Cell = 81` | pass | PASS |
+
+No OQL, well-formed or not, true or not, against a real entity or an invented
+one, can make a `@verify` fail. The controls confirm the runner is otherwise
+healthy: `@throws` correctly fails when nothing throws, and `@expect` fails and
+reports the observed value.
+
+### Why this one matters more than its size suggests
+
+`@verify` is the annotation you reach for precisely when `@expect` cannot help —
+asserting on rows a microflow wrote rather than on what it returned. That is
+the hard half of testing a Mendix app, because most microflows are side
+effects. So the annotation covering the least testable surface is the one that
+cannot fail.
+
+It is also newly *more* dangerous than before PR 151. The documentation now
+describes an `@expect` that genuinely evaluates anything, which reasonably reads
+as "assertions work now", and `@verify` sits in the same table one row below.
+
+### The fix
+
+Same shape as #46, and the machinery already exists: run the OQL, compare, fail
+on mismatch, and make an unparseable or unresolvable query an `ERROR` counted
+separately from `PASS` — never a pass. `mxcli oql` already executes OQL against
+the running app, so this is wiring rather than new capability.
+
+Worth auditing `@cleanup` in the same pass. It was not tested here, but it is
+the remaining annotation whose failure mode would also be silent.
+
+### Consequence here
+
+None, and only by luck: this project's suite never adopted `@verify`. When the
+new features landed the intention *was* to use it to assert Cell and Game rows
+directly and drop several helper microflows. Canary-testing it first — a
+`@verify` written to be false — is what caught it. That habit is worth keeping:
+**a new assertion feature should be proved able to fail before any real test
+depends on it.**
+
 ---
 
 ## Verification summary

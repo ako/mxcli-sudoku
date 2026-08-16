@@ -485,25 +485,61 @@ tests**, all passing:
 mxcli test Sudoku/sudoku.test.mdl -p Sudoku/Sudoku.mpr --local
 ```
 
-**Read that number with care: 6 of those 22 tests are real assertions and the
-other 16 assert nothing.** `mxcli test` evaluates only `$result = '<literal>'`;
-every other expression — `length(…) = 81`, `find(…) < 0`, even `1 = 2` — passes
-unconditionally, with no warning. Established by mutation testing: a generator
-rewritten to return 81 `1`s, a blanking pass that blanks nothing, and a Mix
-transform that breaks the shared block all leave the suite reporting 22/22. The
-full evidence, and the fix mxcli needs, is [FINDINGS.md](FINDINGS.md) #46.
+**Read that number with care.** Until recently only 6 of those 22 tests were
+real assertions: `mxcli test` evaluated `$result = '<literal>'` and passed every
+other expression unconditionally — `length(…) = 81`, `find(…) < 0`, even
+`1 = 2`. That is fixed by ako/mxcli PR 151, verified here; all 22 now genuinely
+evaluate. The defect and the verification are [FINDINGS.md](FINDINGS.md) #46.
 
-The six that do work are the ones asserting a whole grid against a literal: the
-solved-grid and solved-X and solved-jigsaw canaries, the single forced square,
-and — the two genuine discriminators — the diagonal solver finishing a board the
-classic solver cannot, and the region solver finishing a board the box solver
-cannot. Deliberately removing the diagonal rule, or ignoring the region map,
-each kills exactly its own test.
+**The suite was measured by mutation testing, then extended.** With a working
+runner it killed only 6 of 12 deliberately introduced defects and reached 8 of
+the module's 36 microflows — all 8 pure string functions. Nothing touching the
+database was tested, so a board where every key wrote `5` and undo restored
+nothing passed 22/22. It now stands at **44 tests killing 15 of 16 defects**:
 
-The other sixteen are worth keeping only as smoke tests: they still fail if a
-microflow throws, which is how a broken row/column division was caught. They
-cannot tell a correct answer from a well-formed wrong one, and this README
-previously claimed they could.
+| Deliberate defect | caught |
+|---|---|
+| diagonal rule removed / region map ignored | yes |
+| blanking pass blanks nothing | yes |
+| repair pass returns its input unrepaired | yes |
+| generator returns 81 `1`s — not a valid grid | yes |
+| Mix relabel or flip-H breaking the shared block | yes |
+| `floor()` dropped from row/column division | yes |
+| `EmptyCount` hardcoded to 81 — *the bug that shipped* | yes |
+| every move writes `5`, whatever key was pressed | yes |
+| undo restores nothing | yes |
+| a hint reveals a square without being counted | yes |
+| notes mode writes the answer instead of a mark | yes |
+| the deal transcribes a square to the wrong column | yes |
+| the deal transcribes every square transposed | **no — see below** |
+
+The one survivor is not a gap. Transposing a sudoku yields another perfectly
+valid sudoku, so a board dealt with `Row` and `Col` swapped is a different
+legal puzzle rather than a broken one. The test asserts the dealt board obeys
+the rules, and it does. An off-by-one in the same line — which is not
+validity-preserving — is caught.
+
+Three pieces do the work:
+
+- **`Sudoku.SUB_ValidateGrid`** checks a grid actually obeys the rules it was
+  generated for — rows, columns, boxes or jigsaw regions, and both diagonals on
+  request. The generator tests previously asserted only "81 characters, no
+  zero", which a string of 81 ones satisfies. It returns the location of the
+  first violation rather than false, so a failure arrives as a diagnosis, and
+  it is itself tested against a grid it must reject.
+- **`TST_*` fixtures** in
+  [`09-test-helpers.mdl`](Sudoku/mdlsource/09-test-helpers.mdl) build a
+  deterministic board and drive the real move microflows.
+- **Expression assertions.** Tests read the returned board directly —
+  `$result/ErrorCount = 1`, or `$result/Sudoku.Game_SelectedCell/Value = 5`
+  across an association — so a failure names the field and shows what came
+  back. An earlier version folded the whole board into one string because that
+  was the only shape the runner could evaluate.
+
+`@verify` is deliberately unused: it accepts any OQL and passes
+unconditionally, including against entities that do not exist
+([FINDINGS.md](FINDINGS.md) #48). It was canary-tested before being adopted,
+which is why no test here depends on it.
 
 Beyond that the app was driven with Playwright:
 a board was dealt, a square selected, digits entered, erased and reset, and a

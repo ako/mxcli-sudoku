@@ -284,3 +284,232 @@ $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
  */
 $result = CALL MICROFLOW Sudoku.SUB_ShuffleSolutionMix();
 /
+
+-- =====================================================================
+-- Coverage added after measuring the suite by mutation testing
+-- =====================================================================
+-- Every assertion below is `$result = '<literal>'`, the one shape that
+-- evaluates correctly on both sides of ako/mxcli PR 151. Helpers in
+-- 09-test-helpers.mdl fold side effects into that shape.
+-- =====================================================================
+
+/**
+ * The validator has to be able to say no, or it is the same trap as an
+ * assertion that cannot fail. 81 ones is a complete 81-character grid with
+ * no empty square — everything the old generator tests checked — and it
+ * duplicates a digit in the very first row.
+ *
+ * @test the grid validator rejects an invalid grid
+ * @expect $result = 'row 0'
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ValidateGrid(
+  Grid = '111111111111111111111111111111111111111111111111111111111111111111111111111111111',
+  Diagonal = false,
+  Regions = ''
+);
+/
+
+/**
+ * A valid classic grid that breaks only the diagonal rule must pass as a
+ * classic and fail as a Sudoku X, or the Diagonal flag is doing nothing.
+ *
+ * @test the validator accepts a classic grid
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ValidateGrid(
+  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = false,
+  Regions = ''
+);
+/
+
+/**
+ * @test the validator applies the diagonal rule only when asked
+ * @expect $result = 'diag 0'
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ValidateGrid(
+  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = true,
+  Regions = ''
+);
+/
+
+/**
+ * @test the validator rejects a region map that is not a partition
+ * @expect $result = 'unit 0 size 8'
+ */
+$result = CALL MICROFLOW Sudoku.SUB_ValidateGrid(
+  Grid = '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+  Diagonal = false,
+  Regions = '100111222000111222000111222333444555333444555333444555666777888666777888666777888'
+);
+/
+
+/**
+ * The generators are the highest-risk code here — random transforms with no
+ * fixed expected output — and were covered only by "81 characters, no zero".
+ * A generator returning 81 ones satisfied that, and did.
+ *
+ * @test the classic generator produces a valid grid
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_GenClassicValid();
+/
+
+/**
+ * @test the Sudoku X generator produces a grid valid on both diagonals
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_GenDiagonalValid();
+/
+
+/**
+ * @test the jigsaw generator produces a grid valid against its own region map
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_GenJigsawValid();
+/
+
+/**
+ * Checks both grids and all nine shared squares, not the three the old
+ * tests sampled. This is the assertion that catches a transform leaving
+ * each grid individually valid while pulling the overlap apart.
+ *
+ * @test the Mix generator produces two valid grids that agree on the overlap
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_GenMixValid();
+/
+
+/**
+ * The property the "exactly one solution" claim rests on. A repair pass
+ * that returned its input unrepaired passed the whole suite before.
+ *
+ * @test a repaired puzzle solves back to the grid it came from
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_RepairSolvesBack();
+/
+
+/**
+ * The move layer had no test at all. A board where every key wrote the
+ * digit 5 passed 22/22.
+ *
+ * These assert on the board the helper returns rather than on a summary
+ * string it builds. Before `@expect` could evaluate expressions the only
+ * readable shape was one folded literal, which reported a whole board when
+ * a single field was wrong; now a failure names the field and shows the
+ * value that came back.
+ *
+ * @test playing the right digit lands that digit in the selected square
+ * @expect $result/Sudoku.Game_SelectedCell/Value = 5
+ */
+$result = CALL MICROFLOW Sudoku.TST_Play(Digit = 5);
+/
+
+/**
+ * @test playing the right digit raises no conflict and advances the counters
+ * @expect $result/FilledCount = 41 and $result/ErrorCount = 0 and $result/EmptyCount = 40
+ */
+$result = CALL MICROFLOW Sudoku.TST_Play(Digit = 5);
+/
+
+/**
+ * The answer at that square is 5, so 3 must land and be counted wrong —
+ * the board records the move rather than rejecting it.
+ *
+ * @test playing a wrong digit lands it and is counted as a conflict
+ * @expect $result/Sudoku.Game_SelectedCell/Value = 3 and $result/ErrorCount = 1
+ */
+$result = CALL MICROFLOW Sudoku.TST_Play(Digit = 3);
+/
+
+/**
+ * @test undo removes the digit, restores the counters and empties the history
+ * @expect $result/Sudoku.Game_SelectedCell/Value = empty and $result/EmptyCount = 41 and $result/CanUndo = false
+ */
+$result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'undo');
+/
+
+/**
+ * @test redo puts it back
+ * @expect $result/Sudoku.Game_SelectedCell/Value = 5 and $result/EmptyCount = 40 and $result/CanUndo
+ */
+$result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'redo');
+/
+
+/**
+ * Erase clears the square but is itself a move, so it stays undoable.
+ *
+ * @test erase clears the selected square and remains undoable
+ * @expect $result/Sudoku.Game_SelectedCell/Value = empty and $result/EmptyCount = 41 and $result/CanUndo
+ */
+$result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'erase');
+/
+
+/**
+ * Reset drops the undo history as well as the digits — the bug in
+ * FINDINGS #43 was undo resurrecting a value reset had just erased.
+ *
+ * @test reset clears the board and drops the undo history
+ * @expect $result/EmptyCount = 41 and $result/FilledCount = 40 and $result/CanUndo = false
+ */
+$result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'reset');
+/
+
+/**
+ * ACT_Refresh assumed 81 squares, which is false for the Mix and shipped as
+ * a negative empty count. This board has 100 playable squares and 20 with
+ * no solution, so a hardcoded 81 cannot produce the right answer.
+ *
+ * @test the empty count follows the board size, not a constant 81
+ * @expect $result/EmptyCount = 100 and $result/FilledCount = 0
+ */
+$result = CALL MICROFLOW Sudoku.TST_RefreshCounters();
+/
+
+/**
+ * ACT_Hint was untested. It reveals one square and charges a hint for it.
+ *
+ * @test a hint reveals exactly one square and is counted
+ * @expect $result/HintCount = 1 and $result/FilledCount = 41 and $result/EmptyCount = 40 and $result/ErrorCount = 0
+ */
+$result = CALL MICROFLOW Sudoku.TST_Hint();
+/
+
+/**
+ * In notes mode a digit must leave a pencil mark and NOT an answer. Both
+ * halves matter: a notes mode that also wrote the answer would look right
+ * on screen until the conflict counter moved.
+ *
+ * @test in notes mode a digit marks a candidate instead of answering
+ * @expect $result/Sudoku.Game_SelectedCell/N5 and $result/Sudoku.Game_SelectedCell/Value = empty
+ */
+$result = CALL MICROFLOW Sudoku.TST_NoteMark();
+/
+
+/**
+ * @test notes mode leaves the board counters untouched
+ * @expect $result/FilledCount = 40 and $result/EmptyCount = 41
+ */
+$result = CALL MICROFLOW Sudoku.TST_NoteMark();
+/
+
+/**
+ * ACT_DealGame turns a generated grid into 81 rows, and that step had no
+ * test: the generators were checked, the transcription was not. Each square
+ * is read back at the index its own Row and Col claim, so a deal that wrote
+ * a square to the wrong coordinates fails here.
+ *
+ * @test a dealt classic board transcribes to a valid grid
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_DealValid(Variant = Sudoku.Variant.Classic);
+/
+
+/**
+ * @test a dealt Sudoku X board is valid on both diagonals too
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_DealValid(Variant = Sudoku.Variant.Diagonal);
+/

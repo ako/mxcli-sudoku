@@ -1,0 +1,639 @@
+-- =====================================================================
+-- Sudoku — test helpers
+-- =====================================================================
+-- These exist because of a measurement, not a hunch. With the assertion
+-- runner fixed (FINDINGS #46) the suite still killed only 6 of 12
+-- deliberately introduced defects, and reached 8 of the module's 36
+-- microflows — all 8 pure string functions. A generator returning 81 '1's
+-- passed. So did a board where every move wrote the digit 5 whatever key
+-- was pressed, and an undo that restored nothing.
+--
+-- The cause is a shape problem, not laziness. `mxcli test` asserts on the
+-- value a microflow RETURNS, and the interesting behaviour here lives in
+-- side effects on Game and Cell rows. Every helper below closes that gap:
+-- it performs the real work through the real microflows and then hands back
+-- something an assertion can read.
+--
+-- What that "something" is changed once assertions could evaluate
+-- expressions. The move helpers now return the Game itself, so a test says
+-- `$result/ErrorCount = 1` or traverses to the selected cell and a failure
+-- names the field. The grid helpers still return a verdict string, because
+-- what they assert is a property of an 81-character value rather than of a
+-- row, and 'unit 3' is a better failure message than a boolean.
+--
+-- @verify is deliberately not used anywhere here: it accepts any OQL and
+-- passes unconditionally, including against entities that do not exist.
+-- See FINDINGS #48.
+--
+-- Fixtures are fully deterministic. The generators are random, so a test
+-- built on a dealt board would assert on a different grid every run; these
+-- build their own board from a fixed solution instead. Test data is
+-- rolled back by the runner (@cleanup rollback is the default).
+-- =====================================================================
+
+/**
+ * Checks that a grid actually satisfies the rules it was generated to
+ * satisfy: every row, column and unit holds 1-9 exactly once, and both
+ * diagonals too when the variant asks for it.
+ *
+ * This is the check the suite was missing entirely. Every generator test
+ * asserted only that the output was 81 characters with no '0' in it, which
+ * a string of 81 ones satisfies — and did.
+ *
+ * Returns 'OK', or the first violation found, named precisely enough to
+ * debug from: 'row 3', 'col 5', 'unit 2', 'diag 1', 'length 80',
+ * 'incomplete'. Returning the location rather than false costs nothing and
+ * turns a failing assertion into a diagnosis.
+ *
+ * @param $Grid The 81-character grid to check
+ * @param $Diagonal True to also require both main diagonals (Sudoku X)
+ * @param $Regions 81-character region map for a jigsaw, or '' for 3x3 boxes
+ * @returns 'OK', or the first rule violation
+ */
+create or replace microflow Sudoku.SUB_ValidateGrid (
+  $Grid: string,
+  $Diagonal: boolean,
+  $Regions: string
+)
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = 'OK';
+  declare $i integer = 0;
+  declare $j integer = 0;
+  declare $u integer = 0;
+  declare $r integer = 0;
+  declare $c integer = 0;
+  declare $reg integer = 0;
+  declare $ch string = '';
+  declare $seen string = '';
+
+  -- Mendix forbids an end event inside a loop (CE0068), so there is one
+  -- exit at the bottom and every loop carries `$verdict = 'OK'` in its
+  -- condition. Setting a verdict is therefore also how a loop stops.
+  if length($Grid) != 81 then
+    set $verdict = 'length ' + toString(length($Grid));
+  end if;
+  if $verdict = 'OK' and find($Grid, '0') >= 0 then
+    set $verdict = 'incomplete';
+  end if;
+
+  -- Rows -------------------------------------------------------------
+  set $r = 0;
+  while $r < 9 and $verdict = 'OK'
+  begin
+    set $seen = '';
+    set $c = 0;
+    while $c < 9 and $verdict = 'OK'
+    begin
+      set $ch = substring($Grid, $r * 9 + $c, 1);
+      if find($seen, $ch) >= 0 then
+        set $verdict = 'row ' + toString($r);
+      else
+        set $seen = $seen + $ch;
+      end if;
+      set $c = $c + 1;
+    end while;
+    set $r = $r + 1;
+  end while;
+
+  -- Columns ----------------------------------------------------------
+  set $c = 0;
+  while $c < 9 and $verdict = 'OK'
+  begin
+    set $seen = '';
+    set $r = 0;
+    while $r < 9 and $verdict = 'OK'
+    begin
+      set $ch = substring($Grid, $r * 9 + $c, 1);
+      if find($seen, $ch) >= 0 then
+        set $verdict = 'col ' + toString($c);
+      else
+        set $seen = $seen + $ch;
+      end if;
+      set $r = $r + 1;
+    end while;
+    set $c = $c + 1;
+  end while;
+
+  -- Boxes, or a jigsaw's irregular regions ---------------------------
+  -- Scanning all 81 squares per unit is O(729) rather than O(81), which
+  -- does not matter in a test helper and keeps one loop covering both
+  -- shapes instead of two index calculations that could disagree.
+  set $u = 0;
+  while $u < 9 and $verdict = 'OK'
+  begin
+    set $seen = '';
+    set $i = 0;
+    while $i < 81 and $verdict = 'OK'
+    begin
+      set $r = round(floor($i div 9));
+      set $c = $i - $r * 9;
+      if $Regions = '' then
+        set $reg = round(floor($r div 3)) * 3 + round(floor($c div 3));
+      else
+        set $reg = parseInteger(substring($Regions, $i, 1));
+      end if;
+      if $reg = $u then
+        set $ch = substring($Grid, $i, 1);
+        if find($seen, $ch) >= 0 then
+          set $verdict = 'unit ' + toString($u);
+        else
+          set $seen = $seen + $ch;
+        end if;
+      end if;
+      set $i = $i + 1;
+    end while;
+    -- A region map naming fewer than nine squares for a unit is itself a
+    -- defect, and one that would otherwise pass every duplicate check.
+    if $verdict = 'OK' and length($seen) != 9 then
+      set $verdict = 'unit ' + toString($u) + ' size ' + toString(length($seen));
+    end if;
+    set $u = $u + 1;
+  end while;
+
+  -- Both main diagonals, for a Sudoku X ------------------------------
+  if $Diagonal then
+    set $seen = '';
+    set $j = 0;
+    while $j < 9 and $verdict = 'OK'
+    begin
+      set $ch = substring($Grid, $j * 9 + $j, 1);
+      if find($seen, $ch) >= 0 then
+        set $verdict = 'diag 0';
+      else
+        set $seen = $seen + $ch;
+      end if;
+      set $j = $j + 1;
+    end while;
+
+    set $seen = '';
+    set $j = 0;
+    while $j < 9 and $verdict = 'OK'
+    begin
+      set $ch = substring($Grid, $j * 9 + 8 - $j, 1);
+      if find($seen, $ch) >= 0 then
+        set $verdict = 'diag 1';
+      else
+        set $seen = $seen + $ch;
+      end if;
+      set $j = $j + 1;
+    end while;
+  end if;
+
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.SUB_ValidateGrid to Sudoku.User;
+/
+
+/**
+ * Validates whatever the classic generator just produced.
+ *
+ * The generator is unseeded, so a test cannot assert its output against a
+ * literal. Folding "generate, then check the rules" into one microflow
+ * gives the runner a fixed string to compare against while still
+ * exercising a fresh random grid on every run.
+ *
+ * @returns 'OK', or the first rule violation in the generated grid
+ */
+create or replace microflow Sudoku.TST_GenClassicValid ()
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = '';
+  $g = call microflow Sudoku.SUB_ShuffleSolution();
+  $v = call microflow Sudoku.SUB_ValidateGrid(Grid = $g, Diagonal = false, Regions = '');
+  set $verdict = $v;
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.TST_GenClassicValid to Sudoku.User;
+/
+
+/**
+ * Validates the Sudoku X generator, diagonals included.
+ *
+ * @returns 'OK', or the first rule violation
+ */
+create or replace microflow Sudoku.TST_GenDiagonalValid ()
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = '';
+  $g = call microflow Sudoku.SUB_ShuffleSolutionX();
+  $v = call microflow Sudoku.SUB_ValidateGrid(Grid = $g, Diagonal = true, Regions = '');
+  set $verdict = $v;
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.TST_GenDiagonalValid to Sudoku.User;
+/
+
+/**
+ * Validates the jigsaw generator against the region map it returns.
+ *
+ * The generator hands back solution and layout in one 162-character string
+ * precisely so they cannot drift apart; this checks the grid using the map
+ * that came with it, which is the only check that means anything.
+ *
+ * @returns 'OK', or the first rule violation
+ */
+create or replace microflow Sudoku.TST_GenJigsawValid ()
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = '';
+  $pair = call microflow Sudoku.SUB_ShuffleSolutionJ();
+  $v = call microflow Sudoku.SUB_ValidateGrid(
+    Grid = substring($pair, 0, 81),
+    Diagonal = false,
+    Regions = substring($pair, 81, 81));
+  set $verdict = $v;
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.TST_GenJigsawValid to Sudoku.User;
+/
+
+/**
+ * Validates both Mix grids and the nine squares they share.
+ *
+ * Per-grid validity is not enough here and that is the whole point of the
+ * variant: a flip leaves each grid individually valid while moving the two
+ * overlapping corners apart. So this checks A, then B, then every one of
+ * the nine shared squares rather than the three the suite sampled.
+ *
+ * @returns 'OK', 'A:<violation>', 'B:<violation>', or 'overlap <i> <j>'
+ */
+create or replace microflow Sudoku.TST_GenMixValid ()
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = 'OK';
+  declare $a string = '';
+  declare $b string = '';
+  declare $i integer = 0;
+  declare $j integer = 0;
+
+  $pair = call microflow Sudoku.SUB_ShuffleSolutionMix();
+  set $a = substring($pair, 0, 81);
+  set $b = substring($pair, 81, 81);
+
+  $va = call microflow Sudoku.SUB_ValidateGrid(Grid = $a, Diagonal = false, Regions = '');
+  if $va != 'OK' then
+    set $verdict = 'A:' + $va;
+  end if;
+
+  if $verdict = 'OK' then
+    $vb = call microflow Sudoku.SUB_ValidateGrid(Grid = $b, Diagonal = false, Regions = '');
+    if $vb != 'OK' then
+      set $verdict = 'B:' + $vb;
+    end if;
+  end if;
+
+  set $i = 0;
+  while $i < 3 and $verdict = 'OK'
+  begin
+    set $j = 0;
+    while $j < 3 and $verdict = 'OK'
+    begin
+      if substring($a, (6 + $i) * 9 + 6 + $j, 1) != substring($b, $i * 9 + $j, 1) then
+        set $verdict = 'overlap ' + toString($i) + ' ' + toString($j);
+      end if;
+      set $j = $j + 1;
+    end while;
+    set $i = $i + 1;
+  end while;
+
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.TST_GenMixValid to Sudoku.User;
+/
+
+/**
+ * Checks that repair leaves a puzzle the solver can finish, and finish
+ * back to the grid it came from.
+ *
+ * This is the property the "exactly one solution" claim rests on, and
+ * nothing asserted it: a repair pass that returned its input unchanged
+ * passed the whole suite, because the only test on it checked the result
+ * was still 81 characters long.
+ *
+ * @returns 'OK', or 'MISMATCH' when the repaired puzzle does not solve
+ *          back to the original solution
+ */
+create or replace microflow Sudoku.TST_RepairSolvesBack ()
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = '';
+  declare $sol string = '';
+  declare $puz string = '';
+
+  -- A fixed puzzle stripped to 21 givens, not a random blanking to 40.
+  -- Blanking to 40 leaves a board forced logic can usually finish on its
+  -- own, so a repair pass that did nothing still passed this test. At 21
+  -- the solver stalls unless repair genuinely hands squares back.
+  set $sol = '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
+  set $puz = '000000000000000000000000000000000000000000000000000000000000284287419635345286179';
+  $rep = call microflow Sudoku.SUB_RepairToSolvable(
+    Solution = $sol, Puzzle = $puz, TargetGivens = 40,
+    Diagonal = false, Regions = '');
+  $solved = call microflow Sudoku.ACT_SolveGrid(Grid = $rep, Diagonal = false, Regions = '');
+
+  if $solved = $sol then
+    return 'OK';
+  end if;
+  return 'MISMATCH';
+end;
+/
+
+grant execute on microflow Sudoku.TST_RepairSolvesBack to Sudoku.User;
+/
+
+/**
+ * Builds a deterministic board: a known solution with squares 0-40 blanked,
+ * so it opens with exactly 40 givens and 41 empty squares and the first
+ * open square is index 0, whose answer is 5.
+ *
+ * Every move-layer test starts here rather than from ACT_DealGame, which
+ * deals a different board each run and cannot be asserted against.
+ *
+ * @returns The prepared game
+ */
+create or replace microflow Sudoku.TST_FixedGame ()
+returns Sudoku."Game" as $Game
+folder 'Test'
+begin
+  declare $sol string = '';
+  declare $i integer = 0;
+  declare $ch string = '';
+  declare $isGiven boolean = false;
+
+  set $sol = '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
+
+  $Game = create Sudoku."Game" (
+    "Level" = Sudoku."Difficulty".Medium,
+    "Variant" = Sudoku."Variant".Classic,
+    "Status" = Sudoku."GameStatus".Playing,
+    "DealtAt" = [%CurrentDateTime%],
+    "GivenCount" = 40,
+    "Message" = 'fixture');
+  commit $Game;
+
+  set $i = 0;
+  while $i < 81
+  begin
+    set $ch = substring($sol, $i, 1);
+    set $isGiven = $i >= 41;
+    $Cell = create Sudoku."Cell" (
+      "Row" = round(floor($i div 9)),
+      "Col" = $i - round(floor($i div 9)) * 9,
+      "SolutionValue" = parseInteger($ch),
+      "IsGiven" = $isGiven,
+      "IsEditable" = $isGiven = false,
+      "IsInvalid" = false,
+      "CellClass" = 'sd-cell',
+      Sudoku."Cell_Game" = $Game);
+    if $isGiven then
+      change $Cell ("Value" = parseInteger($ch));
+    end if;
+    commit $Cell;
+    set $i = $i + 1;
+  end while;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.TST_FixedGame to Sudoku.User;
+/
+
+/**
+ * Selects the first open square and plays a digit into it through the real
+ * move microflows, then hands back the board.
+ *
+ * Returning the Game rather than a summary string is what lets a test say
+ * what it means — `$result/ErrorCount = 1`, or
+ * `$result/Sudoku.Game_SelectedCell/Value = 5` — and get the observed value
+ * back when it fails. Before assertions could evaluate expressions, the only
+ * way to see side effects was to fold them into one string and compare it
+ * whole, which reported a whole board when one field was wrong.
+ *
+ * @param $Digit The digit to play
+ * @returns The board after the move
+ */
+create or replace microflow Sudoku.TST_Play (
+  $Digit: integer
+)
+returns Sudoku."Game" as $Board
+folder 'Test'
+begin
+  $Game = call microflow Sudoku.TST_FixedGame();
+  retrieve $Cell from Sudoku."Cell"
+    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
+  call microflow Sudoku.ACT_SelectCell(Cell = $Cell);
+  -- ACT_SelectCell sets the selection on the Game it retrieves from the
+  -- cell, not on the handle held here, and that change is invisible to a
+  -- stale one — ACT_ApplyValue read no selection and silently did nothing.
+  retrieve $Board from $Cell/Sudoku."Cell_Game";
+  call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = $Digit);
+  return $Board;
+end;
+/
+
+grant execute on microflow Sudoku.TST_Play to Sudoku.User;
+/
+
+/**
+ * Plays the correct digit, then runs one history or board action on it.
+ *
+ * @param $Action 'undo', 'redo', 'erase' or 'reset'
+ * @returns The board afterwards
+ */
+create or replace microflow Sudoku.TST_PlayThen (
+  $Action: string
+)
+returns Sudoku."Game" as $Board
+folder 'Test'
+begin
+  $Board = call microflow Sudoku.TST_Play(Digit = 5);
+
+  if $Action = 'undo' then
+    call microflow Sudoku.ACT_Undo(Game = $Board);
+  end if;
+  if $Action = 'redo' then
+    call microflow Sudoku.ACT_Undo(Game = $Board);
+    call microflow Sudoku.ACT_Redo(Game = $Board);
+  end if;
+  if $Action = 'erase' then
+    call microflow Sudoku.ACT_ClearValue(Game = $Board);
+  end if;
+  if $Action = 'reset' then
+    call microflow Sudoku.ACT_ResetBoard(Game = $Board);
+  end if;
+
+  return $Board;
+end;
+/
+
+grant execute on microflow Sudoku.TST_PlayThen to Sudoku.User;
+/
+
+/**
+ * Counts empty squares on a board that is deliberately not 81 squares.
+ *
+ * ACT_Refresh assumed every board was 81 squares, which was true of three
+ * variants and false of the Mix, where it reported a negative empty count.
+ * That bug shipped. This builds a board of 100 playable squares plus 20
+ * squares carrying no solution — the Mix's void corners in miniature — and
+ * asserts the counter follows the board rather than the constant.
+ *
+ * @returns The refreshed board
+ */
+create or replace microflow Sudoku.TST_RefreshCounters ()
+returns Sudoku."Game" as $Game
+folder 'Test'
+begin
+  declare $i integer = 0;
+  declare $playable boolean = false;
+
+  $Game = create Sudoku."Game" (
+    "Level" = Sudoku."Difficulty".Medium,
+    "Variant" = Sudoku."Variant".Mix,
+    "Status" = Sudoku."GameStatus".Playing,
+    "DealtAt" = [%CurrentDateTime%],
+    "Message" = 'fixture');
+  commit $Game;
+
+  set $i = 0;
+  while $i < 120
+  begin
+    set $playable = $i < 100;
+    $Cell = create Sudoku."Cell" (
+      "Row" = 0, "Col" = 0,
+      "SolutionValue" = 0,
+      "IsGiven" = false, "IsEditable" = true, "IsInvalid" = false,
+      "CellClass" = 'sd-cell',
+      Sudoku."Cell_Game" = $Game);
+    if $playable then
+      change $Cell ("SolutionValue" = 1);
+    end if;
+    commit $Cell;
+    set $i = $i + 1;
+  end while;
+
+  call microflow Sudoku.ACT_Refresh(Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.TST_RefreshCounters to Sudoku.User;
+/
+
+/**
+ * Reveals one square through ACT_Hint.
+ *
+ * @returns The board after the hint
+ */
+create or replace microflow Sudoku.TST_Hint ()
+returns Sudoku."Game" as $Game
+folder 'Test'
+begin
+  $Game = call microflow Sudoku.TST_FixedGame();
+  call microflow Sudoku.ACT_Hint(Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.TST_Hint to Sudoku.User;
+/
+
+/**
+ * Switches to notes mode and presses a digit, which must leave a pencil mark
+ * rather than an answer.
+ *
+ * @returns The board, whose selected cell carries the mark
+ */
+create or replace microflow Sudoku.TST_NoteMark ()
+returns Sudoku."Game" as $Board
+folder 'Test'
+begin
+  $Game = call microflow Sudoku.TST_FixedGame();
+  retrieve $Cell from Sudoku."Cell"
+    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
+  call microflow Sudoku.ACT_SelectCell(Cell = $Cell);
+  retrieve $Board from $Cell/Sudoku."Cell_Game";
+  call microflow Sudoku.ACT_ToggleNotes(Game = $Board);
+  call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = 5);
+  return $Board;
+end;
+/
+
+grant execute on microflow Sudoku.TST_NoteMark to Sudoku.User;
+/
+
+/**
+ * Deals a real board and validates the solution its Cell rows carry.
+ *
+ * ACT_DealGame had no test of its own: the generators were checked, but not
+ * the step that turns a generated grid into 81 rows. An off-by-one in the
+ * row/column arithmetic there would leave every generator test passing.
+ *
+ * @param $Variant Which board to deal
+ * @returns 'OK', or the first rule violation in the dealt board
+ */
+create or replace microflow Sudoku.TST_DealValid (
+  $Variant: enum Sudoku."Variant"
+)
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = '';
+  declare $grid string = '';
+  declare $idx integer = 0;
+  declare $i integer = 0;
+
+  $Game = call microflow Sudoku.ACT_DealGame(
+    Level = Sudoku."Difficulty".Medium, TargetGivens = 40, Variant = $Variant);
+
+  set $i = 0;
+  while $i < 81
+  begin
+    set $grid = $grid + '0';
+    set $i = $i + 1;
+  end while;
+
+  -- Each square is placed at the index its OWN Row and Col say it occupies,
+  -- rather than trusting retrieval order. A deal that wrote a square to the
+  -- wrong coordinates therefore lands it in the wrong place here and the
+  -- grid stops validating, even though the generator that produced it was
+  -- perfectly fine.
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  loop $C in $Cells
+  begin
+    set $idx = $C/"Row" * 9 + $C/"Col";
+    set $grid = substring($grid, 0, $idx)
+              + toString($C/"SolutionValue")
+              + substring($grid, $idx + 1, 80 - $idx);
+  end loop;
+
+  $v = call microflow Sudoku.SUB_ValidateGrid(
+    Grid = $grid,
+    Diagonal = $Variant = Sudoku."Variant".Diagonal,
+    Regions = '');
+  set $verdict = $v;
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.TST_DealValid to Sudoku.User;
+/
