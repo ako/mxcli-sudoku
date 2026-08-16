@@ -10,14 +10,20 @@
 --
 -- The cause is a shape problem, not laziness. `mxcli test` asserts on the
 -- value a microflow RETURNS, and the interesting behaviour here lives in
--- side effects on Game and Cell rows. Every helper below closes that gap
--- the same way: it performs the real work through the real microflows and
--- folds the observable outcome into one string, so an ordinary
--- `@expect $result = '...'` can see it.
+-- side effects on Game and Cell rows. Every helper below closes that gap:
+-- it performs the real work through the real microflows and then hands back
+-- something an assertion can read.
 --
--- That shape is also the portable one. It is the single assertion form
--- that evaluated correctly before PR 151 as well as after, so this suite
--- reports honestly whichever mxcli is installed.
+-- What that "something" is changed once assertions could evaluate
+-- expressions. The move helpers now return the Game itself, so a test says
+-- `$result/ErrorCount = 1` or traverses to the selected cell and a failure
+-- names the field. The grid helpers still return a verdict string, because
+-- what they assert is a property of an 81-character value rather than of a
+-- row, and 'unit 3' is a better failure message than a boolean.
+--
+-- @verify is deliberately not used anywhere here: it accepts any OQL and
+-- passes unconditionally, including against entities that do not exist.
+-- See FINDINGS #48.
 --
 -- Fixtures are fully deterministic. The generators are random, so a test
 -- built on a dealt board would assert on a different grid every run; these
@@ -412,61 +418,25 @@ grant execute on microflow Sudoku.TST_FixedGame to Sudoku.User;
 /
 
 /**
- * Folds the observable state of a board into one comparable string.
- *
- * The move layer's whole job is side effects on rows, which an assertion on
- * a return value cannot see. This makes them visible: the digit sitting in
- * the first open square, the counters, and whether undo is offered.
- *
- * @param $Game The game to describe
- * @returns 'v=<digit> filled=<n> err=<n> empty=<n> undo=<bool>'
- */
-create or replace microflow Sudoku.TST_Describe (
-  $Game: Sudoku."Game"
-)
-returns string as $out
-folder 'Test'
-begin
-  declare $out string = '';
-  declare $v string = '';
-
-  retrieve $Cell from Sudoku."Cell"
-    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
-
-  set $v = '';
-  if $Cell != empty then
-    if $Cell/"Value" != empty then
-      set $v = toString($Cell/"Value");
-    end if;
-  end if;
-
-  set $out = 'v=' + $v
-    + ' filled=' + toString($Game/"FilledCount")
-    + ' err=' + toString($Game/"ErrorCount")
-    + ' empty=' + toString($Game/"EmptyCount")
-    + ' undo=' + toString($Game/"CanUndo");
-  return $out;
-end;
-/
-
-grant execute on microflow Sudoku.TST_Describe to Sudoku.User;
-/
-
-/**
  * Selects the first open square and plays a digit into it through the real
- * move microflows.
+ * move microflows, then hands back the board.
+ *
+ * Returning the Game rather than a summary string is what lets a test say
+ * what it means — `$result/ErrorCount = 1`, or
+ * `$result/Sudoku.Game_SelectedCell/Value = 5` — and get the observed value
+ * back when it fails. Before assertions could evaluate expressions, the only
+ * way to see side effects was to fold them into one string and compare it
+ * whole, which reported a whole board when one field was wrong.
  *
  * @param $Digit The digit to play
- * @returns The board state afterwards
+ * @returns The board after the move
  */
 create or replace microflow Sudoku.TST_Play (
   $Digit: integer
 )
-returns string as $out
+returns Sudoku."Game" as $Board
 folder 'Test'
 begin
-  declare $out string = '';
-
   $Game = call microflow Sudoku.TST_FixedGame();
   retrieve $Cell from Sudoku."Cell"
     where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
@@ -474,15 +444,9 @@ begin
   -- ACT_SelectCell sets the selection on the Game it retrieves from the
   -- cell, not on the handle held here, and that change is invisible to a
   -- stale one — ACT_ApplyValue read no selection and silently did nothing.
-  -- Re-retrieving through the same association yields a handle that sees
-  -- it. Worth doing rather than setting the association directly, because
-  -- selection is exactly what these tests are meant to exercise.
   retrieve $Board from $Cell/Sudoku."Cell_Game";
   call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = $Digit);
-
-  $d = call microflow Sudoku.TST_Describe(Game = $Board);
-  set $out = $d;
-  return $out;
+  return $Board;
 end;
 /
 
@@ -493,28 +457,15 @@ grant execute on microflow Sudoku.TST_Play to Sudoku.User;
  * Plays the correct digit, then runs one history or board action on it.
  *
  * @param $Action 'undo', 'redo', 'erase' or 'reset'
- * @returns The board state afterwards
+ * @returns The board afterwards
  */
 create or replace microflow Sudoku.TST_PlayThen (
   $Action: string
 )
-returns string as $out
+returns Sudoku."Game" as $Board
 folder 'Test'
 begin
-  declare $out string = '';
-
-  $Game = call microflow Sudoku.TST_FixedGame();
-  retrieve $Cell from Sudoku."Cell"
-    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
-  call microflow Sudoku.ACT_SelectCell(Cell = $Cell);
-  -- ACT_SelectCell sets the selection on the Game it retrieves from the
-  -- cell, not on the handle held here, and that change is invisible to a
-  -- stale one — ACT_ApplyValue read no selection and silently did nothing.
-  -- Re-retrieving through the same association yields a handle that sees
-  -- it. Worth doing rather than setting the association directly, because
-  -- selection is exactly what these tests are meant to exercise.
-  retrieve $Board from $Cell/Sudoku."Cell_Game";
-  call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = 5);
+  $Board = call microflow Sudoku.TST_Play(Digit = 5);
 
   if $Action = 'undo' then
     call microflow Sudoku.ACT_Undo(Game = $Board);
@@ -530,9 +481,7 @@ begin
     call microflow Sudoku.ACT_ResetBoard(Game = $Board);
   end if;
 
-  $d = call microflow Sudoku.TST_Describe(Game = $Board);
-  set $out = $d;
-  return $out;
+  return $Board;
 end;
 /
 
@@ -548,13 +497,12 @@ grant execute on microflow Sudoku.TST_PlayThen to Sudoku.User;
  * squares carrying no solution — the Mix's void corners in miniature — and
  * asserts the counter follows the board rather than the constant.
  *
- * @returns 'empty=<n> filled=<n>'
+ * @returns The refreshed board
  */
 create or replace microflow Sudoku.TST_RefreshCounters ()
-returns string as $out
+returns Sudoku."Game" as $Game
 folder 'Test'
 begin
-  declare $out string = '';
   declare $i integer = 0;
   declare $playable boolean = false;
 
@@ -584,12 +532,108 @@ begin
   end while;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
-
-  set $out = 'empty=' + toString($Game/"EmptyCount")
-    + ' filled=' + toString($Game/"FilledCount");
-  return $out;
+  return $Game;
 end;
 /
 
 grant execute on microflow Sudoku.TST_RefreshCounters to Sudoku.User;
+/
+
+/**
+ * Reveals one square through ACT_Hint.
+ *
+ * @returns The board after the hint
+ */
+create or replace microflow Sudoku.TST_Hint ()
+returns Sudoku."Game" as $Game
+folder 'Test'
+begin
+  $Game = call microflow Sudoku.TST_FixedGame();
+  call microflow Sudoku.ACT_Hint(Game = $Game);
+  return $Game;
+end;
+/
+
+grant execute on microflow Sudoku.TST_Hint to Sudoku.User;
+/
+
+/**
+ * Switches to notes mode and presses a digit, which must leave a pencil mark
+ * rather than an answer.
+ *
+ * @returns The board, whose selected cell carries the mark
+ */
+create or replace microflow Sudoku.TST_NoteMark ()
+returns Sudoku."Game" as $Board
+folder 'Test'
+begin
+  $Game = call microflow Sudoku.TST_FixedGame();
+  retrieve $Cell from Sudoku."Cell"
+    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
+  call microflow Sudoku.ACT_SelectCell(Cell = $Cell);
+  retrieve $Board from $Cell/Sudoku."Cell_Game";
+  call microflow Sudoku.ACT_ToggleNotes(Game = $Board);
+  call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = 5);
+  return $Board;
+end;
+/
+
+grant execute on microflow Sudoku.TST_NoteMark to Sudoku.User;
+/
+
+/**
+ * Deals a real board and validates the solution its Cell rows carry.
+ *
+ * ACT_DealGame had no test of its own: the generators were checked, but not
+ * the step that turns a generated grid into 81 rows. An off-by-one in the
+ * row/column arithmetic there would leave every generator test passing.
+ *
+ * @param $Variant Which board to deal
+ * @returns 'OK', or the first rule violation in the dealt board
+ */
+create or replace microflow Sudoku.TST_DealValid (
+  $Variant: enum Sudoku."Variant"
+)
+returns string as $verdict
+folder 'Test'
+begin
+  declare $verdict string = '';
+  declare $grid string = '';
+  declare $idx integer = 0;
+  declare $i integer = 0;
+
+  $Game = call microflow Sudoku.ACT_DealGame(
+    Level = Sudoku."Difficulty".Medium, TargetGivens = 40, Variant = $Variant);
+
+  set $i = 0;
+  while $i < 81
+  begin
+    set $grid = $grid + '0';
+    set $i = $i + 1;
+  end while;
+
+  -- Each square is placed at the index its OWN Row and Col say it occupies,
+  -- rather than trusting retrieval order. A deal that wrote a square to the
+  -- wrong coordinates therefore lands it in the wrong place here and the
+  -- grid stops validating, even though the generator that produced it was
+  -- perfectly fine.
+  retrieve $Cells from $Game/Sudoku."Cell_Game";
+  loop $C in $Cells
+  begin
+    set $idx = $C/"Row" * 9 + $C/"Col";
+    set $grid = substring($grid, 0, $idx)
+              + toString($C/"SolutionValue")
+              + substring($grid, $idx + 1, 80 - $idx);
+  end loop;
+
+  $v = call microflow Sudoku.SUB_ValidateGrid(
+    Grid = $grid,
+    Diagonal = $Variant = Sudoku."Variant".Diagonal,
+    Regions = '');
+  set $verdict = $v;
+  return $verdict;
+end;
+/
+
+grant execute on microflow Sudoku.TST_DealValid to Sudoku.User;
 /

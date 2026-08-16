@@ -395,36 +395,54 @@ $result = CALL MICROFLOW Sudoku.TST_RepairSolvesBack();
  * The move layer had no test at all. A board where every key wrote the
  * digit 5 passed 22/22.
  *
- * @test playing the right digit lands that digit and raises no conflict
- * @expect $result = 'v=5 filled=41 err=0 empty=40 undo=true'
+ * These assert on the board the helper returns rather than on a summary
+ * string it builds. Before `@expect` could evaluate expressions the only
+ * readable shape was one folded literal, which reported a whole board when
+ * a single field was wrong; now a failure names the field and shows the
+ * value that came back.
+ *
+ * @test playing the right digit lands that digit in the selected square
+ * @expect $result/Sudoku.Game_SelectedCell/Value = 5
  */
 $result = CALL MICROFLOW Sudoku.TST_Play(Digit = 5);
 /
 
 /**
+ * @test playing the right digit raises no conflict and advances the counters
+ * @expect $result/FilledCount = 41 and $result/ErrorCount = 0 and $result/EmptyCount = 40
+ */
+$result = CALL MICROFLOW Sudoku.TST_Play(Digit = 5);
+/
+
+/**
+ * The answer at that square is 5, so 3 must land and be counted wrong —
+ * the board records the move rather than rejecting it.
+ *
  * @test playing a wrong digit lands it and is counted as a conflict
- * @expect $result = 'v=3 filled=41 err=1 empty=40 undo=true'
+ * @expect $result/Sudoku.Game_SelectedCell/Value = 3 and $result/ErrorCount = 1
  */
 $result = CALL MICROFLOW Sudoku.TST_Play(Digit = 3);
 /
 
 /**
- * @test undo removes the digit and restores the counters
- * @expect $result = 'v= filled=40 err=0 empty=41 undo=false'
+ * @test undo removes the digit, restores the counters and empties the history
+ * @expect $result/Sudoku.Game_SelectedCell/Value = empty and $result/EmptyCount = 41 and $result/CanUndo = false
  */
 $result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'undo');
 /
 
 /**
  * @test redo puts it back
- * @expect $result = 'v=5 filled=41 err=0 empty=40 undo=true'
+ * @expect $result/Sudoku.Game_SelectedCell/Value = 5 and $result/EmptyCount = 40 and $result/CanUndo
  */
 $result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'redo');
 /
 
 /**
- * @test erase clears the selected square
- * @expect $result = 'v= filled=40 err=0 empty=41 undo=true'
+ * Erase clears the square but is itself a move, so it stays undoable.
+ *
+ * @test erase clears the selected square and remains undoable
+ * @expect $result/Sudoku.Game_SelectedCell/Value = empty and $result/EmptyCount = 41 and $result/CanUndo
  */
 $result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'erase');
 /
@@ -434,7 +452,7 @@ $result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'erase');
  * FINDINGS #43 was undo resurrecting a value reset had just erased.
  *
  * @test reset clears the board and drops the undo history
- * @expect $result = 'v= filled=40 err=0 empty=41 undo=false'
+ * @expect $result/EmptyCount = 41 and $result/FilledCount = 40 and $result/CanUndo = false
  */
 $result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'reset');
 /
@@ -445,7 +463,53 @@ $result = CALL MICROFLOW Sudoku.TST_PlayThen(Action = 'reset');
  * no solution, so a hardcoded 81 cannot produce the right answer.
  *
  * @test the empty count follows the board size, not a constant 81
- * @expect $result = 'empty=100 filled=0'
+ * @expect $result/EmptyCount = 100 and $result/FilledCount = 0
  */
 $result = CALL MICROFLOW Sudoku.TST_RefreshCounters();
+/
+
+/**
+ * ACT_Hint was untested. It reveals one square and charges a hint for it.
+ *
+ * @test a hint reveals exactly one square and is counted
+ * @expect $result/HintCount = 1 and $result/FilledCount = 41 and $result/EmptyCount = 40 and $result/ErrorCount = 0
+ */
+$result = CALL MICROFLOW Sudoku.TST_Hint();
+/
+
+/**
+ * In notes mode a digit must leave a pencil mark and NOT an answer. Both
+ * halves matter: a notes mode that also wrote the answer would look right
+ * on screen until the conflict counter moved.
+ *
+ * @test in notes mode a digit marks a candidate instead of answering
+ * @expect $result/Sudoku.Game_SelectedCell/N5 and $result/Sudoku.Game_SelectedCell/Value = empty
+ */
+$result = CALL MICROFLOW Sudoku.TST_NoteMark();
+/
+
+/**
+ * @test notes mode leaves the board counters untouched
+ * @expect $result/FilledCount = 40 and $result/EmptyCount = 41
+ */
+$result = CALL MICROFLOW Sudoku.TST_NoteMark();
+/
+
+/**
+ * ACT_DealGame turns a generated grid into 81 rows, and that step had no
+ * test: the generators were checked, the transcription was not. Each square
+ * is read back at the index its own Row and Col claim, so a deal that wrote
+ * a square to the wrong coordinates fails here.
+ *
+ * @test a dealt classic board transcribes to a valid grid
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_DealValid(Variant = Sudoku.Variant.Classic);
+/
+
+/**
+ * @test a dealt Sudoku X board is valid on both diagonals too
+ * @expect $result = 'OK'
+ */
+$result = CALL MICROFLOW Sudoku.TST_DealValid(Variant = Sudoku.Variant.Diagonal);
 /

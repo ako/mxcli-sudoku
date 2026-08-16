@@ -2870,6 +2870,64 @@ panel, reports the difference as if it mattered.
 
 ---
 
+## 48. `@verify` is vacuous — the same defect as #46, in the annotation PR 151 did not touch
+
+**New.** PR 151 fixed `@expect` thoroughly: it now compiles the whole
+annotation, evaluates any Mendix condition, and errors rather than passing on
+anything it cannot compile. `@verify` was left as it was, and it accepts
+everything.
+
+Found on `main` at `a8dc0835`, Mendix 11.13.0, `--local` runner.
+
+Every one of these passes, on a board with 81 `Cell` rows and 1 `Game`:
+
+| `@verify` | Should | Actual |
+|---|---|---|
+| `select count(*) from Sudoku.Game = 999999` | fail | **PASS** |
+| `select count(*) from Sudoku.Cell = 0` | fail | **PASS** |
+| `select count(*) from Sudoku.NoSuchEntity = 1` | error | **PASS** |
+| `select count(*) frm Sudoku.Cell = 1` (malformed) | error | **PASS** |
+| `this is not a query` | error | **PASS** |
+| `select count(*) from Sudoku.Cell = 81` | pass | PASS |
+
+No OQL, well-formed or not, true or not, against a real entity or an invented
+one, can make a `@verify` fail. The controls confirm the runner is otherwise
+healthy: `@throws` correctly fails when nothing throws, and `@expect` fails and
+reports the observed value.
+
+### Why this one matters more than its size suggests
+
+`@verify` is the annotation you reach for precisely when `@expect` cannot help —
+asserting on rows a microflow wrote rather than on what it returned. That is
+the hard half of testing a Mendix app, because most microflows are side
+effects. So the annotation covering the least testable surface is the one that
+cannot fail.
+
+It is also newly *more* dangerous than before PR 151. The documentation now
+describes an `@expect` that genuinely evaluates anything, which reasonably reads
+as "assertions work now", and `@verify` sits in the same table one row below.
+
+### The fix
+
+Same shape as #46, and the machinery already exists: run the OQL, compare, fail
+on mismatch, and make an unparseable or unresolvable query an `ERROR` counted
+separately from `PASS` — never a pass. `mxcli oql` already executes OQL against
+the running app, so this is wiring rather than new capability.
+
+Worth auditing `@cleanup` in the same pass. It was not tested here, but it is
+the remaining annotation whose failure mode would also be silent.
+
+### Consequence here
+
+None, and only by luck: this project's suite never adopted `@verify`. When the
+new features landed the intention *was* to use it to assert Cell and Game rows
+directly and drop several helper microflows. Canary-testing it first — a
+`@verify` written to be false — is what caught it. That habit is worth keeping:
+**a new assertion feature should be proved able to fail before any real test
+depends on it.**
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
