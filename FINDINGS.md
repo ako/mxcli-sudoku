@@ -2786,6 +2786,90 @@ aborting the run.
 
 ---
 
+## 47. `mxcli test` leaves the `.mpr` modified on every run
+
+**New. Small, and it undoes for the test path what PR 125 achieved for the
+script path.** Running the test suite dirties the project file, so `git status`
+reports a change after a run that changed nothing.
+
+Found on `main` at `54a013b4`, Mendix 11.13.0, `--local` runner.
+
+The runner injects an `MxTest` module, builds, runs, then restores the project —
+and the restore is very nearly perfect. Three consecutive runs against an
+untouched copy, tracking the transaction id, the `.mpr` bytes, and a hash over
+every `mprcontents/*.mxunit`:
+
+```
+state = txid / mpr-hash / mprcontents-hash
+initial  d764a6ef-0b78-4052-a2a9-e9f251368834  afc5bbd4  6beffdfc
+run 1    40f4fdcc-4f2a-4032-8aa5-f8acec150387  62a5ab55  6beffdfc
+run 2    aaaaf22e-6203-4a4f-81cc-125de0a7a844  bf15a620  6beffdfc
+run 3    eb49e655-4249-4b2f-813f-a0538530c8eb  168782fb  6beffdfc
+```
+
+`mprcontents` is byte-identical throughout — every generated unit is cleaned up
+exactly. The entire difference is one row in one SQLite table inside the `.mpr`:
+
+```sql
+select LastTransactionID from _Transaction;
+```
+
+A fresh GUID per run. Nothing else in any table differs.
+
+### It is specifically the test runner
+
+Worth stating because the obvious suspect is innocent. Each operation run
+against a clean copy, comparing the transaction id and file hash before and
+after:
+
+| Operation | Result |
+|---|---|
+| `mxcli -c 'SHOW MICROFLOWS IN …'` | unchanged |
+| `mxcli -c 'DESCRIBE MICROFLOW …'` | unchanged |
+| `mxcli lint` | unchanged |
+| `mxcli check … --references` | unchanged |
+| `mx check` — **Mendix's own validator** | unchanged |
+| `mxcli exec` of an already-applied script | unchanged |
+| `mxcli test … --local` | **rewrites the id** |
+
+That last contrast is the useful one. An idempotent `exec` now leaves the model
+byte-identical, which is exactly what PR 125 set out to deliver. `mxcli test`
+does not, so a project whose `.mpr` is committed shows a spurious modification
+after every test run — the same "changes appear in Studio Pro's changes panel
+for no reason" symptom, arriving through a different door.
+
+### Why it is worth fixing rather than tolerating
+
+It is one row, and it is genuinely harmless to the model. The cost is that
+nothing about it *looks* harmless:
+
+- A stop hook in this workspace flagged uncommitted changes, and establishing
+  that they were meaningless took opening both `.mpr` files as SQLite databases
+  and diffing every table. There is no cheaper way to tell a bookkeeping GUID
+  from a real model edit, because a `.mpr` diff is opaque.
+- Any CI step of the form "run the tests, then assert the tree is clean" fails,
+  and fails in a way that reads as a real change.
+- Committing it adds a meaningless diff to a pull request; discarding it is a
+  manual step someone has to know about.
+
+### The fix
+
+The restore path already puts `mprcontents` back perfectly, so it only needs to
+cover this row too — preserve `LastTransactionID` across the injection and write
+the original back, or snapshot the `.mpr` bytes before injecting and restore
+that file wholesale. Either makes a test run a genuine no-op on disk.
+
+Worth confirming the same holds for the Docker runner; only `--local` was
+measured here.
+
+**The generalisable lesson:** a tool that modifies a project to do its work owes
+the caller a restore that is byte-exact, not merely semantically equivalent.
+"Semantically identical" is invisible to version control, which compares bytes —
+and every consumer downstream of it, from `git status` to a reviewer's changes
+panel, reports the difference as if it mattered.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
