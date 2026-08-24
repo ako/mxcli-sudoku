@@ -2868,6 +2868,20 @@ the caller a restore that is byte-exact, not merely semantically equivalent.
 and every consumer downstream of it, from `git status` to a reviewer's changes
 panel, reports the difference as if it mattered.
 
+### Fixed — verified on `6485db6`
+
+Two consecutive full test runs against an untouched copy, tracking the same
+three values that showed the drift:
+
+```
+         txid                                   mpr-hash  mprcontents-hash
+initial  a38c2f92-a03e-4f22-b193-8ce5b33367ac   52cff7e3  3d0e08d9
+run 1    a38c2f92-a03e-4f22-b193-8ce5b33367ac   52cff7e3  3d0e08d9
+run 2    a38c2f92-a03e-4f22-b193-8ce5b33367ac   52cff7e3  3d0e08d9
+```
+
+A test run is now a genuine no-op on disk.
+
 ---
 
 ## 48. `@verify` is vacuous — the same defect as #46, in the annotation PR 151 did not touch
@@ -2925,6 +2939,112 @@ directly and drop several helper microflows. Canary-testing it first — a
 `@verify` written to be false — is what caught it. That habit is worth keeping:
 **a new assertion feature should be proved able to fail before any real test
 depends on it.**
+
+### Fixed — verified on `6485db6`, and it catches more than was asked for
+
+Every canary now behaves, and a wrong count reports what it found:
+
+```
+FAIL   W1 count certainly WRONG    expected select count(*) as n from Sudoku.Game = 999999, actual: 1
+ERROR  W3 nonexistent entity       OQL error: Can't find entity by name 'Sudoku.NoSuchEntity' …
+ERROR  V4 malformed OQL            the query has no FROM clause
+ERROR  V5 not a query at all       no comparison found — a @verify is an OQL query followed by
+                                   an expected value, e.g. `@verify select count(*) as n … = 1`
+```
+
+The unasked-for part is the best of it. A `@verify` on a test using the default
+`@cleanup rollback` is now refused outright:
+
+```
+ERROR  @verify …: this test uses @cleanup rollback (the default), so its writes are
+       undone before the query runs and it would assert against the pre-test state.
+       Add @cleanup none to the test
+```
+
+That is a whole class of test which would have looked meaningful and asserted
+nothing — the writes gone before the query reads them — caught by construction
+rather than by the author noticing. It is the shape of fix worth copying: not
+just "make the assertion able to fail", but "refuse the arrangements in which it
+cannot say anything".
+
+---
+
+## 49. MDL041 false-positives on integer arithmetic, and `exec` now refuses the model's own `describe` output
+
+**New, and a regression.** `exec` gained a good safeguard — it validates the
+whole script and writes nothing if anything fails, rather than applying
+statements until one breaks. That safeguard is now enforcing a lint rule that is
+wrong, which turns a false positive into a hard block.
+
+Found on `main` at `6485db6`, Mendix 11.13.0.
+
+`DESCRIBE MICROFLOW Sudoku.ACT_SolveGrid` emits the project's own working
+solver. Feeding that output straight back to `exec` — no edits — is refused:
+
+```
+✗ assigning a Decimal expression to Integer variable '$br2' — Mendix rejects
+  this with CE0117. Integer division ('div') and functions like
+  random()/secondsBetween() yield a Decimal.  [MDL041]
+    at Sudoku.ACT_SolveGrid
+2 issues: 2 errors, 0 warnings, 0 info
+Refusing to execute: 2 error(s) above. Nothing was written.
+```
+
+The line it objects to is `set $br2 = round(floor($bu div 3)) * 3;`. That
+microflow is in the model, and `mx check` — Mendix's own validator — reports
+**0 errors** on the project containing it. So the rule is rejecting code Mendix
+accepts.
+
+### The rule loses the type as soon as `round()` stops being outermost
+
+Each probe is the same expression in a different position:
+
+| Expression assigned to an Integer | MDL041 |
+|---|---|
+| `round(floor($bu div 3))` | accepted |
+| `round(floor($bu div 3)) * 3` | **error** |
+| `3 * round(floor($bu div 3))` | **error** |
+| `round(floor($bu div 3)) + 3` | **error** |
+| `round($bu div 3) * 3` | **error** |
+| `$bu * 3` | accepted |
+
+`round()` is recognised as producing an Integer when it is the whole
+right-hand side, and not when its result becomes an operand. The Decimal taint
+from the inner `div` propagates through `round()` into the surrounding
+arithmetic, which is precisely what `round()` is there to stop.
+
+The workaround is to wrap the arithmetic in a second, pointless `round()` —
+`round(round(floor($bu div 3)) * 3)` is accepted — which is what the error
+message suggests, and which no reviewer would understand the reason for.
+
+### Why the blast radius is larger than one rule
+
+`describe` → edit → `exec` is the normal way to change an existing microflow,
+and it is what this project's own tooling does. Any microflow containing
+integer arithmetic derived from `div` can now be read out of the model but not
+written back, so the round-trip is broken for exactly the code that had to work
+around CE0117 in the first place — the population this rule exists to serve.
+
+It also silently breaks anything built on that round-trip. The mutation-testing
+harness in this repo re-applies `describe` output with one line changed; three
+mutants came back "survived" and looked like a coverage regression, when in fact
+`exec` had refused to apply them and the run had tested an unmutated model.
+`run.sh` sent exec's output to `/dev/null`, so the refusal was invisible.
+
+### The fix
+
+Treat `round()`, `floor()` and `ceil()` as returning Integer wherever they
+appear, not only at the top of an assignment, and propagate that through
+arithmetic operators. A cheap partial improvement, if the inference is hard: do
+not let MDL041 *block* `exec`. It is a heuristic about a Mendix error, and
+Mendix disagrees with it here — a warning would have cost nothing, while an
+error stops work on code that builds.
+
+**The generalisable lesson:** making a checker authoritative — refuse-before-
+write — raises the cost of every false positive from an annoyance to a blocked
+workflow. The safeguard is right; it just needs the rules behind it to be at
+least as accurate as the tool they are protecting you from, and this one is
+demonstrably less accurate than `mx check`.
 
 ---
 
