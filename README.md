@@ -536,10 +536,20 @@ Three pieces do the work:
   back. An earlier version folded the whole board into one string because that
   was the only shape the runner could evaluate.
 
-`@verify` is deliberately unused: it accepts any OQL and passes
-unconditionally, including against entities that do not exist
-([FINDINGS.md](FINDINGS.md) #48). It was canary-tested before being adopted,
-which is why no test here depends on it.
+Run the suite with `--require-assertions` and all 44 still pass, with no test
+reporting "no assertions" — independent confirmation that every one of them
+genuinely asserts something:
+
+```bash
+mxcli test Sudoku/sudoku.test.mdl -p Sudoku/Sudoku.mpr --local --require-assertions
+```
+
+`@verify` is unused here for historical reasons: it accepted any OQL and passed
+unconditionally when these tests were written ([FINDINGS.md](FINDINGS.md) #48).
+It was canary-tested before adoption, which is why nothing depends on it. That
+is now fixed upstream, and it additionally refuses a `@verify` on a test using
+the default `@cleanup rollback`, where the writes would be undone before the
+query could read them.
 
 Beyond that the app was driven with Playwright:
 a board was dealt, a square selected, digits entered, erased and reset, and a
