@@ -3046,6 +3046,86 @@ workflow. The safeguard is right; it just needs the rules behind it to be at
 least as accurate as the tool they are protecting you from, and this one is
 demonstrably less accurate than `mx check`.
 
+### Fixed — verified on `00443a90`
+
+The round-trip works: `DESCRIBE MICROFLOW Sudoku.ACT_SolveGrid` fed straight
+back to `exec`, unmodified, now reports `Replaced microflow`.
+
+The fix corrected the inference rather than muting the rule, which is the part
+worth checking and the part that matters. Every form it used to reject is
+accepted, and the case it *should* catch still fails:
+
+| assigned to an Integer variable | before | now |
+|---|---|---|
+| `round(floor($bu div 3))` | accepted | accepted |
+| `round(floor($bu div 3)) * 3` | error | **accepted** |
+| `3 * round(floor($bu div 3))` | error | **accepted** |
+| `round(floor($bu div 3)) + 3` | error | **accepted** |
+| `round($bu div 3) * 3` | error | **accepted** |
+| `$bu div 3` — a real CE0117 | — | **still an error** |
+
+Confirmed downstream too: the mutation harness in this repo re-applies
+`describe` output with one line changed, and the three solver mutants that had
+to be rebased onto an MDL041-clean copy now apply directly and die as expected.
+That workaround is retired.
+
+---
+
+## 50. Status of the open items, retested on `00443a90`
+
+A running tally so a reader does not have to diff four findings to learn what
+is still true. Every row was re-run, not inferred.
+
+| Finding | Status on `00443a90` |
+|---|---|
+| 46 — `@expect` silently passed | fixed (PR 151); the suite passes under `--require-assertions` with no test reporting "no assertions" |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | **still open**, see below |
+| 47 — `.mpr` rewritten on every test run | fixed; two runs leave txid and bytes identical |
+| 48 — `@verify` vacuous | fixed; wrong counts fail, missing entities error, and the `@cleanup rollback` trap is refused |
+| 49 — MDL041 blocked `describe` → `exec` | fixed; inference corrected, real CE0117 still caught |
+
+### The one still open
+
+An assertion that is syntactically valid but only fails inside **mxbuild** still
+takes down the entire run rather than failing its own test:
+
+```
+@expect $nosuchvar = 'x'      -- undefined variable
+@expect $result = 3           -- String compared to a number, CE0117
+```
+
+```
+Error: local runtime: build failed: The project cannot be deployed, because it
+contains errors.
+```
+
+No test results at all, and a valid test in the same file never runs. This was
+confirmed pre-existing rather than introduced when first reported, and it is
+unchanged here. It is the same shape as #46 itself: the failure is not
+attributed to the assertion that caused it. Two things would close it — resolve
+`$vars` against the test's own bindings in the parse pass that now exists, and
+map an mxbuild error located in a generated `MxTest.Test_test_N` unit back to
+that test as an `ERROR` row.
+
+### Worth noting on the credit side
+
+Killing `mxcli run` with `kill -9` orphans its `mxbuild --serve` child, and the
+next start now says so precisely:
+
+```
+Error: port 6543 (mxbuild serve) is already in use.
+  A stale process is silently adopted otherwise, so edits appear to do nothing
+  (looks like a stale cache — it isn't).
+  Held by pid 10154: /root/.mxcli/mxbuild/…/mxbuild --serve --host=127.0.0.1 --port=6543 …
+  That is a leftover from an earlier run that did not shut down cleanly.
+    kill 10154
+```
+
+It names the holder, explains the cause, gives the command, and says what the
+old behaviour would have looked like from the outside. "Silently adopted, so
+edits appear to do nothing" is exactly the failure mode this document spent
+several findings chasing from the wrong end.
+
 ---
 
 ## Verification summary
