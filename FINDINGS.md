@@ -3071,18 +3071,26 @@ That workaround is retired.
 
 ---
 
-## 50. Status of the open items, retested on `00443a90`
+## 50. Status of the open items — a running tally
 
-A running tally so a reader does not have to diff four findings to learn what
-is still true. Every row was re-run, not inferred.
+So a reader does not have to diff five findings to learn what is still true.
+Every row is re-run against each build, not inferred.
 
-| Finding | Status on `00443a90` |
-|---|---|
-| 46 — `@expect` silently passed | fixed (PR 151); the suite passes under `--require-assertions` with no test reporting "no assertions" |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | **still open**, see below |
-| 47 — `.mpr` rewritten on every test run | fixed; two runs leave txid and bytes identical |
-| 48 — `@verify` vacuous | fixed; wrong counts fail, missing entities error, and the `@cleanup rollback` trap is refused |
-| 49 — MDL041 blocked `describe` → `exec` | fixed; inference corrected, real CE0117 still caught |
+Last retested on **`81595f63`** (2026-08-29). Previous columns kept so a
+regression would be visible rather than silently overwritten.
+
+| Finding | `00443a90` | `81595f63` |
+|---|---|---|
+| 46 — `@expect` silently passed | fixed | fixed; `--require-assertions` errors on an assertion-less test |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | **still open**, see below |
+| 47 — `.mpr` rewritten on every test run | fixed | fixed; two runs leave txid and bytes identical |
+| 48 — `@verify` vacuous | fixed | fixed; wrong counts fail, missing entities error, `@cleanup rollback` trap refused |
+| 49 — MDL041 blocked `describe` → `exec` | fixed | fixed; round-trip clean |
+| `mxcli --version` reported `-dirty` on a clean checkout | present | **fixed**; the build leaves the source tree clean, so the suffix now means what it says |
+
+Suite and mutation coverage re-run on `81595f63`: **44/44 tests** under
+`--require-assertions`, **13 of 13** deliberate defects caught, `mx check`
+0 errors.
 
 ### The one still open
 
@@ -3106,6 +3114,27 @@ attributed to the assertion that caused it. Two things would close it — resolv
 `$vars` against the test's own bindings in the parse pass that now exists, and
 map an mxbuild error located in a generated `MxTest.Test_test_N` unit back to
 that test as an `ERROR` row.
+
+### One thing that is not an mxcli defect but is worth writing down
+
+`scripts/run-app.sh` passes the tunnel-hub credential as `--hub-secret u:pass`,
+which puts it on the process command line where anything able to read `/proc`
+can see it:
+
+```
+mxcli run --hub https://hub.mxcli.org --hub-secret alice:s3cret --ensure-db …
+```
+
+There is no drop-in fix: mxcli does not read `MXCLI_HUB_SECRET` from the
+environment — the binary contains no reference to that name — so a script that
+wants hub registration has to pass the flag. `mxcli auth hub login` exists as an
+authenticated alternative that avoids the secret entirely, which is the right
+answer for an interactive machine; it is not obviously usable from a session-start
+hook that runs unattended.
+
+Either an env-var fallback for `--hub-secret`, or a documented non-interactive
+form of `auth hub login`, would close it. Recorded here rather than fixed,
+because the exposure is in this repo's own script and the remedy is mxcli's.
 
 ### Worth noting on the credit side
 
