@@ -3076,21 +3076,25 @@ That workaround is retired.
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`81595f63`** (2026-08-29). Previous columns kept so a
-regression would be visible rather than silently overwritten.
+Last retested on **`5333fbfb`** (2026-09-01). Previous columns kept so a
+regression would be visible rather than silently overwritten — which is exactly
+what happened this time, see #51.
 
-| Finding | `00443a90` | `81595f63` |
-|---|---|---|
-| 46 — `@expect` silently passed | fixed | fixed; `--require-assertions` errors on an assertion-less test |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | **still open**, see below |
-| 47 — `.mpr` rewritten on every test run | fixed | fixed; two runs leave txid and bytes identical |
-| 48 — `@verify` vacuous | fixed | fixed; wrong counts fail, missing entities error, `@cleanup rollback` trap refused |
-| 49 — MDL041 blocked `describe` → `exec` | fixed | fixed; round-trip clean |
-| `mxcli --version` reported `-dirty` on a clean checkout | present | **fixed**; the build leaves the source tree clean, so the suffix now means what it says |
+| Finding | `00443a90` | `81595f63` | `5333fbfb` |
+|---|---|---|---|
+| 46 — `@expect` silently passed | fixed | fixed | fixed |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open**, see below |
+| 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed |
+| 48 — `@verify` vacuous | fixed | fixed | fixed |
+| 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed |
+| `mxcli --version` reported `-dirty` on a clean checkout | present | fixed | fixed |
+| 51 — `mxcli test --local` boots against an empty deployment tree | — | worked | **BROKEN**, see #51 |
 
-Suite and mutation coverage re-run on `81595f63`: **44/44 tests** under
-`--require-assertions`, **13 of 13** deliberate defects caught, `mx check`
-0 errors.
+On `5333fbfb` the suite cannot run at all without a manual workaround. With
+the build output copied into the tree the runtime is pointed at, it is
+**44/44** under `--require-assertions` — so the tests themselves are
+unaffected; only the runner is. Mutation coverage was last measured at
+**13 of 13** on `81595f63` and is not re-measurable until #51 is fixed.
 
 ### The one still open
 
@@ -3154,6 +3158,88 @@ It names the holder, explains the cause, gives the command, and says what the
 old behaviour would have looked like from the outside. "Silently adopted, so
 edits appear to do nothing" is exactly the failure mode this document spent
 several findings chasing from the wrong end.
+
+---
+
+## 51. `mxcli test --local` is broken: the build and the runtime look at different deployment trees
+
+**New, and a hard regression — the command does not work at all.** Every local
+test run on a clean project dies during runtime boot:
+
+```
+Error: local runtime: runtime admin API did not come up: runtime process exited during startup
+Exception in thread "main" java.lang.IllegalArgumentException:
+  Path '…/Sudoku/.mxcli/deployment-test/model/bundles' cannot be resolved
+  in base path '…/Sudoku/.mxcli/deployment-test'.
+```
+
+Found on `main` at `5333fbfb`, Mendix 11.13.0. Introduced by
+`2c0aa8d2 fix(test): give a local test run its own deployment tree`.
+
+### Root cause: `DeployDir` reaches the runtime but not the build
+
+`localAppOptions` sets `DeployDir` to `.mxcli/deployment-test`, and the runtime
+boot honours it. The build step does not — it still writes to the project's
+default `deployment/`. After one run:
+
+```
+deployment-test/ : data
+deployment/      : build build.gradle build_core.xml data dojo-web log model
+                   native run sass settings.gradle tmp variables.gradle web
+```
+
+The runtime is pointed at a tree containing only `data/`, so there is no
+`model/bundles` for it to resolve, and it exits before the admin API comes up.
+
+Copying the build's output across is enough to make the suite pass, which
+isolates the cause to the directory mismatch and nothing else:
+
+```
+$ cp -r Sudoku/deployment/model Sudoku/deployment/web Sudoku/.mxcli/deployment-test/
+$ mxcli test Sudoku/sudoku.test.mdl -p Sudoku/Sudoku.mpr --local --require-assertions
+Total: 44  Passed: 44  Failed: 0  Skipped: 0  Time: 3.59s
+```
+
+Not contention with a running app: it fails identically with `mxcli run`
+stopped. Not stale state: it reproduces after `rm -rf` of both trees. And it is
+a regression — the same suite passed 44/44 on `81595f63`.
+
+### The change does not achieve its own purpose either
+
+The commit exists to stop a test run rebuilding the tree that a concurrent
+`mxcli run --local` serves the browser bundle from — the failure where the app
+answers HTTP 200 with a blank page and a 404 for `/dist/index.js`. But the build
+still writes to `deployment/`, which is exactly that tree. So the hazard it
+targets is untouched; only the runtime moved.
+
+### `--skip-build` now gives advice that cannot be followed
+
+The guard checks for `deployment-test/model`, which nothing ever creates:
+
+```
+Error: --skip-build has nothing to reuse: Sudoku/.mxcli/deployment-test does not exist yet.
+  … Run the suite once without --skip-build.
+```
+
+Running the suite without `--skip-build` populates `deployment/`, never
+`deployment-test/model`, so the instruction is circular. Worth noting because
+the message is otherwise a good one — it explains the reasoning and names the
+remedy; the remedy just cannot work while the build ignores `DeployDir`.
+
+### The fix
+
+Thread `DeployDir` through the build the same way it reaches the runtime, so
+both halves of a local test run agree on one tree. The existing test
+`localapp_options_deploydir_test.go` asserts the *option* is set and that
+`--skip-build` looks under `.mxcli/deployment-test/model`; neither asserts that
+a real build ever puts anything there, which is why unit tests pass while the
+command does not work.
+
+**The generalisable lesson:** a fix that redirects a consumer without
+redirecting the producer moves the failure rather than removing it, and unit
+tests written against the option rather than the artefact will not notice. The
+cheapest guard here is an end-to-end assertion that one `mxcli test --local`
+run leaves a `model/` directory where the runtime is told to look.
 
 ---
 
