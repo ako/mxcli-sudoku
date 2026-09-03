@@ -3076,24 +3076,26 @@ That workaround is retired.
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`a739d2e2`** (2026-09-01). Previous columns kept so a
+Last retested on **`191a0c99`** (2026-09-03). Previous columns kept so a
 regression would be visible rather than silently overwritten — which is exactly
 what caught #51, and then its fix trading one failure for another in #52.
 
-| Finding | `81595f63` | `5333fbfb` | `a739d2e2` |
+| Finding | `5333fbfb` | `a739d2e2` | `191a0c99` |
 |---|---|---|---|
 | 46 — `@expect` silently passed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open**, see below |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open** — seven builds, see below |
 | 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed |
 | 48 — `@verify` vacuous | fixed | fixed | fixed |
 | 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed |
 | `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed |
-| 51 — `mxcli test --local` boots against an empty tree | worked | **BROKEN** | **fixed** |
-| 52 — a test run briefly downs a running `run --local` | — | — | **new**, ~20s outage, see #52 |
+| 51 — `mxcli test --local` boots against an empty tree | **BROKEN** | fixed | fixed |
+| 52 — a test run briefly downs a running `run --local` | — | new, ~20s | **open**, ~24s warm |
 
-On `a739d2e2`: **44/44** under `--require-assertions` with no workaround, and
-with `--skip-build` too. Mutation coverage re-measured: **13 of 13**
-deliberate defects caught. `mx check` 0 errors.
+On `191a0c99`: **44/44** under `--require-assertions`, mutation coverage
+re-measured at **13 of 13** deliberate defects caught, `mx check` 0 errors.
+This build carried a large feature drop (project brain, message definitions,
+catalog indexing, OData typing), so every fixed finding above was re-run rather
+than carried forward on trust.
 
 ### The one still open
 
@@ -3279,6 +3281,22 @@ s34+    200    recovered on its own
 
 Roughly five seconds of blank page, then fifteen of nothing, then recovery. The
 suite itself passes 44/44 throughout; the damage is entirely to the other app.
+
+### Re-measured on `191a0c99` — unchanged, and a measurement trap worth naming
+
+Same phenomenon, same size:
+
+```
+warm run   s11–s34   404 then 000 then recovery      24 seconds
+cold run   s11–s64   404 then 000 then recovery      54 seconds
+```
+
+The cold figure is the trap. The first `mxcli test --local` of a session
+includes a cold mxbuild, and measuring *that* run makes the outage look like it
+has tripled since the previous build. It has not — the warm number is within
+noise of the ~20 seconds measured on `a739d2e2`. Anyone re-checking this should
+discard the session's first run, or they will report a regression that is not
+there. I nearly did.
 
 ### How this differs from the report that started it
 
