@@ -3076,25 +3076,26 @@ That workaround is retired.
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`5333fbfb`** (2026-09-01). Previous columns kept so a
+Last retested on **`191a0c99`** (2026-09-03). Previous columns kept so a
 regression would be visible rather than silently overwritten — which is exactly
-what happened this time, see #51.
+what caught #51, and then its fix trading one failure for another in #52.
 
-| Finding | `00443a90` | `81595f63` | `5333fbfb` |
+| Finding | `5333fbfb` | `a739d2e2` | `191a0c99` |
 |---|---|---|---|
 | 46 — `@expect` silently passed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open**, see below |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open** — seven builds, see below |
 | 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed |
 | 48 — `@verify` vacuous | fixed | fixed | fixed |
 | 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed |
-| `mxcli --version` reported `-dirty` on a clean checkout | present | fixed | fixed |
-| 51 — `mxcli test --local` boots against an empty deployment tree | — | worked | **BROKEN**, see #51 |
+| `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed |
+| 51 — `mxcli test --local` boots against an empty tree | **BROKEN** | fixed | fixed |
+| 52 — a test run briefly downs a running `run --local` | — | new, ~20s | **open**, ~24s warm |
 
-On `5333fbfb` the suite cannot run at all without a manual workaround. With
-the build output copied into the tree the runtime is pointed at, it is
-**44/44** under `--require-assertions` — so the tests themselves are
-unaffected; only the runner is. Mutation coverage was last measured at
-**13 of 13** on `81595f63` and is not re-measurable until #51 is fixed.
+On `191a0c99`: **44/44** under `--require-assertions`, mutation coverage
+re-measured at **13 of 13** deliberate defects caught, `mx check` 0 errors.
+This build carried a large feature drop (project brain, message definitions,
+catalog indexing, OData typing), so every fixed finding above was re-run rather
+than carried forward on trust.
 
 ### The one still open
 
@@ -3240,6 +3241,94 @@ redirecting the producer moves the failure rather than removing it, and unit
 tests written against the option rather than the artefact will not notice. The
 cheapest guard here is an end-to-end assertion that one `mxcli test --local`
 run leaves a `model/` directory where the runtime is told to look.
+
+### Fixed — verified on `a739d2e2`
+
+`mxcli test --local` works again on a clean project: **44/44**, and
+`--skip-build` works too, so the circular advice is gone with it. The fix is
+`2cff9ab7 fix(test): boot the local test run against the tree mxbuild writes`,
+with `1d5c9f77` adding the end-to-end guard this entry asked for — an assertion
+that the build populates the tree the runtime boots against.
+
+The direction taken was the opposite of the one suggested here. Rather than
+making the build write to the scratch tree, the runtime was pointed back at
+`deployment/`. `deployment-test` is gone entirely — zero occurrences in the
+binary. That resolves the crash and reintroduces the hazard the scratch tree
+existed for; see #52.
+
+---
+
+## 52. A local test run briefly takes down a running `mxcli run --local`
+
+**New, and the flip side of #51's fix.** Not a crash and not a data loss — a
+~20-second outage of the dev preview, which self-heals. Recorded because the
+codebase has now moved between two positions that each solve one half of the
+problem, and it is worth having the trade-off measured rather than rediscovered.
+
+Found on `main` at `a739d2e2`, Mendix 11.13.0.
+
+`mxcli test --local` now builds and boots against the project's `deployment/` —
+the same tree `mxcli run --local` serves the browser bundle from. Polling
+`/dist/index.js` once a second across a suite run, with the app healthy
+beforehand:
+
+```
+s1–13   200    healthy
+s14–18  404    bundle gone — the blank-page symptom
+s19–33  000    connection refused — the app is down
+s34+    200    recovered on its own
+```
+
+Roughly five seconds of blank page, then fifteen of nothing, then recovery. The
+suite itself passes 44/44 throughout; the damage is entirely to the other app.
+
+### Re-measured on `191a0c99` — unchanged, and a measurement trap worth naming
+
+Same phenomenon, same size:
+
+```
+warm run   s11–s34   404 then 000 then recovery      24 seconds
+cold run   s11–s64   404 then 000 then recovery      54 seconds
+```
+
+The cold figure is the trap. The first `mxcli test --local` of a session
+includes a cold mxbuild, and measuring *that* run makes the outage look like it
+has tripled since the previous build. It has not — the warm number is within
+noise of the ~20 seconds measured on `a739d2e2`. Anyone re-checking this should
+discard the session's first run, or they will report a regression that is not
+there. I nearly did.
+
+### How this differs from the report that started it
+
+Commit `2c0aa8d2` described something worse: "both apps went black while
+answering HTTP 200", persistently, with nothing reported at either end. What is
+measurable here is **transient and self-healing**, so this is a materially
+smaller problem than the one the scratch tree was built for — and worth saying
+plainly rather than filing it as a straight regression. A developer who reloads
+the tab after twenty seconds may never notice.
+
+It is still disruptive in two specific ways. A hub preview URL shared with
+someone else goes down mid-look with no explanation. And a Playwright run
+against the dev app that overlaps a test run fails on a dead server, which reads
+as a test failure rather than as infrastructure.
+
+### The option that satisfies both halves
+
+The two goals are not in tension: the test runtime needs a *populated* tree, and
+the dev app needs an *undisturbed* one. Writing the build to the scratch tree —
+finishing the direction `2c0aa8d2` started, rather than reverting it — gives
+both. The guard added in `1d5c9f77` is exactly what makes that safe to attempt
+now, since it fails loudly if the build and the runtime ever disagree again.
+
+Failing that, the honest cheap version is documentation: say that a local test
+run disturbs a concurrent `run --local` for about twenty seconds, so nobody
+spends an afternoon diagnosing a blank page that was never theirs.
+
+**The generalisable lesson:** when a fix trades one failure for another, the
+trade is worth measuring rather than assuming. This one turned out to be a good
+trade — a hard crash exchanged for a transient outage — but that was not
+knowable from the commit message, and the cost is now a number rather than a
+worry.
 
 ---
 
