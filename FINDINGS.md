@@ -3332,6 +3332,105 @@ worry.
 
 ---
 
+## 53. `DESCRIBE WIDGET` and `exec` disagree about which properties a widget has
+
+**New.** The new `DESCRIBE WIDGET` emits an MDL example it labels *"parses as
+written"*, and it does. But for two widgets the example names properties that
+mxcli's **own** `exec` validator then rejects, and since `exec` refuses before
+writing, one of them cannot be authored from MDL at all.
+
+Found on `main` at `41c55d09` plus PRs 396 and 397, Mendix 11.13.0.
+
+```
+✗ page …TST_W_barcodescanner: widget `widget1` has no property `useAllFormats`  [MDL-WIDGET01]
+✗ page …TST_W_image: widget `widget1` has no property `minHeight` — did you mean `height`?
+```
+
+Nine properties across two widgets:
+
+| Widget | rejected by `MDL-WIDGET01` |
+|---|---|
+| barcodescanner | `useAllFormats`, `widthUnit`, `heightUnit`, `detectionLogic`, `showMask` |
+| image | `minHeight`, `minHeightUnit`, `maxHeight`, `maxHeightUnit` |
+
+### `DESCRIBE WIDGET` is the one telling the truth
+
+All nine appear in this project's generated widget documentation, which is
+produced from the same widget definitions. Both widgets are `.mpk`-backed and
+present under `Sudoku/widgets/`, so this is not a built-in-versus-marketplace
+split. It is not a stale catalog either — the rejections survive
+`REFRESH CATALOG FULL` against a freshly deleted `.mxcli/`.
+
+### The catch-22
+
+For barcodescanner the two halves leave no legal spelling:
+
+- **include** the five properties → `exec` refuses, nothing is written
+- **omit** them → the page is written, and `mx check` then reports
+  `CE0463 "The definition of this widget has changed. Update this widget…"`
+
+So the widget cannot currently be placed from MDL in a state Mendix accepts.
+The other fifteen complete examples exec cleanly and leave `mx check` at 0
+errors.
+
+### What is NOT a defect here, having checked
+
+Worth separating, because a bare error count over-reports the problem badly:
+
+- `CE0642 "Property X is required"` on Slider, Switch, Rating, Range Slider,
+  Timeline, Tree node and Language selector is **correct**. The describe output
+  explicitly omits those with `-- omitted: … needs a name from your project`. A
+  generic example cannot invent an attribute name; this is inherent, not broken.
+- `CE6089 "Feedback is only supported on native documents"` was **my harness**
+  putting a native widget on a web page.
+- `MDL-WIDGET22` warning that the image example would fail mxbuild with "No
+  image selected" is a **good** catch — it names a real mxbuild rejection that
+  the example cannot avoid without a project image.
+
+Of 27 widgets, every example parsed; the substantive disagreement is these nine
+properties.
+
+### A smaller one alongside it: `check --references` under-reports
+
+Checking `01-domain-model.mdl` against a built project reports five statements
+that would fail on a re-run — three enumerations and two entities. `exec` then
+fails on a sixth, the association:
+
+```
+Error: association 'Sudoku.Cell_Game' already exists — use 'create or modify
+association ...' to update it in place, or 'drop association … ' first
+```
+
+Minor, but the point of the check is to tell you what a re-run will hit, and a
+statement missing from that list is one you only discover by running it.
+
+### PR 396 itself works
+
+The narrowing does what it claims. Combobox lists 20 hide-rules and the example
+contains only what survives them for the defaults it picked — `attributeBoolean`
+absent because it chose `optionsSourceType: 'association'`, the
+`customEditability*` pair absent because it chose `source: 'context'`. It is
+also honest about its limits, reporting "16 of 32 editor hide-rules recognized"
+rather than implying completeness.
+
+### The fix
+
+Point `MDL-WIDGET01` at the same property source `DESCRIBE WIDGET` reads. They
+are two code paths over the same `.mpk` and only one is current, so the useful
+guard is a test asserting that every property `DESCRIBE WIDGET` emits is one the
+validator accepts — over the project's installed widget set, which would have
+caught these nine.
+
+**The generalisable lesson, and it is the third time in this document:** when a
+tool both *generates* a thing and *validates* it, the two paths must share a
+source or they drift. #46 was a runner that could not evaluate what it accepted;
+#51 was a build and a runtime pointed at different directories; this is a
+describer and a validator reading different property lists. The failure is
+always the same shape — the tool contradicts itself, and the user is left
+holding output the same tool refuses.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
