@@ -3073,73 +3073,74 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
+> **Update, `41c55d09`:** the `#46` follow-up is fixed — see "The long-standing
+> one is closed" below. Finding #52 is the only item still open against `main`;
+> #53 is open against PR 396, whose command does not exist in `main`.
+
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`191a0c99`** (2026-09-03). Previous columns kept so a
+Last retested on **`41c55d09`** (2026-09-05). Previous columns kept so a
 regression would be visible rather than silently overwritten — which is exactly
 what caught #51, and then its fix trading one failure for another in #52.
 
-| Finding | `5333fbfb` | `a739d2e2` | `191a0c99` |
+| Finding | `a739d2e2` | `191a0c99` | `41c55d09` |
 |---|---|---|---|
 | 46 — `@expect` silently passed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open** — seven builds, see below |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **FIXED** — see below |
 | 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed |
 | 48 — `@verify` vacuous | fixed | fixed | fixed |
 | 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed |
 | `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed |
-| 51 — `mxcli test --local` boots against an empty tree | **BROKEN** | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | — | new, ~20s | **open**, ~24s warm |
+| 51 — `mxcli test --local` boots against an empty tree | fixed | fixed | fixed |
+| 52 — a test run briefly downs a running `run --local` | new, ~20s | open, ~24s | **open**, ~30s and variable |
+| 53 — `DESCRIBE WIDGET` vs the validator | — | — | **open on PR 396**; the command is not in main |
 
-On `191a0c99`: **44/44** under `--require-assertions`, mutation coverage
+On `41c55d09`: **44/44** under `--require-assertions`, mutation coverage
 re-measured at **13 of 13** deliberate defects caught, `mx check` 0 errors.
-This build carried a large feature drop (project brain, message definitions,
-catalog indexing, OData typing), so every fixed finding above was re-run rather
-than carried forward on trust.
+Every row above was re-run against this build rather than carried forward.
+
+Two qualifications on that table. #52's figure is from two samples that
+disagreed (41 and 32 disrupted seconds), so "~30s and variable" is the honest
+reading rather than a worsening against `191a0c99` — a single sample is not a
+trend, which is the trap the entry itself warns about. And #53 does not apply to
+`main` at all: `DESCRIBE WIDGET` returns *"no describable document named
+WIDGET"* there, because the command only exists on PR 396.
+
+### The long-standing one is closed
+
+The `#46` follow-up — an `@expect` that is syntactically valid but only fails
+inside mxbuild — is **fixed on `41c55d09`**, after seven builds open. It was the
+oldest item in this document.
+
+Both cases now fail their own test, and the diagnosis names the assertion that
+caused it rather than arriving as ~200 lines of mxbuild JSON:
+
+```
+ERROR  G1
+       the assertion could not be built: CE0109: Undefined variable 'nosuchvar'.
+       (at Decision '$nosuchvar = 'x''); CE0109: Undefined variable 'nosuchvar'.
+       (at Change variable activity 'Change variable Verdict')
+SKIP   G1 companion — valid, must still run
+       not run: another test in this run failed to build
+```
+
+That is exactly what the entry asked for: the mxbuild error mapped back to the
+generated test unit it came from. `$result = 3` on a String behaves the same
+way.
+
+One honest qualification. The valid test in the same file is reported `SKIP`,
+not run — every test in a run builds into one project, so a build failure still
+stops all of them. That is inherent rather than a shortfall, and saying so out
+loud ("not run: another test in this run failed to build") is the right
+treatment: the run is no longer silently truncated, and nothing is passed off as
+having succeeded.
 
 ### The one still open
 
-An assertion that is syntactically valid but only fails inside **mxbuild** still
-takes down the entire run rather than failing its own test:
-
-```
-@expect $nosuchvar = 'x'      -- undefined variable
-@expect $result = 3           -- String compared to a number, CE0117
-```
-
-```
-Error: local runtime: build failed: The project cannot be deployed, because it
-contains errors.
-```
-
-No test results at all, and a valid test in the same file never runs. This was
-confirmed pre-existing rather than introduced when first reported, and it is
-unchanged here. It is the same shape as #46 itself: the failure is not
-attributed to the assertion that caused it. Two things would close it — resolve
-`$vars` against the test's own bindings in the parse pass that now exists, and
-map an mxbuild error located in a generated `MxTest.Test_test_N` unit back to
-that test as an `ERROR` row.
-
-### One thing that is not an mxcli defect but is worth writing down
-
-`scripts/run-app.sh` passes the tunnel-hub credential as `--hub-secret u:pass`,
-which puts it on the process command line where anything able to read `/proc`
-can see it:
-
-```
-mxcli run --hub https://hub.mxcli.org --hub-secret alice:s3cret --ensure-db …
-```
-
-There is no drop-in fix: mxcli does not read `MXCLI_HUB_SECRET` from the
-environment — the binary contains no reference to that name — so a script that
-wants hub registration has to pass the flag. `mxcli auth hub login` exists as an
-authenticated alternative that avoids the secret entirely, which is the right
-answer for an interactive machine; it is not obviously usable from a session-start
-hook that runs unattended.
-
-Either an env-var fallback for `--hub-secret`, or a documented non-interactive
-form of `auth hub login`, would close it. Recorded here rather than fixed,
-because the exposure is in this repo's own script and the remedy is mxcli's.
+Finding #52: a local test run still takes the dev preview down for around thirty
+seconds. It self-heals, and the trade it came from is a good one (#51's crash
+for this outage), but it is the remaining open item against `main`.
 
 ### Worth noting on the credit side
 
