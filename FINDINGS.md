@@ -3791,8 +3791,12 @@ Worth recording alongside the problems:
   duplicate variables, undeclared return variables, missing entities.
 - `create or replace` on microflows and pages makes iteration fast; most of this
   app was rebuilt many times without touching Studio Pro.
-- `describe entity` / `describe page` round-trip well and were the fastest way to
-  confirm what mxcli had actually written (e.g. finding the `CreatedDate` rename).
+- `describe entity` was the fastest way to confirm what mxcli had actually
+  written (e.g. finding the `CreatedDate` rename). `describe page` earns the same
+  credit for *reading* — it is legible and complete enough to review a page from
+  — but the claim that it round-trips did not survive being tested, and the
+  qualified version is #54: 15 of 20 pages come back parseable, and two widget
+  cases come back quietly incomplete.
 - The `.ai-context/skills/` docs are unusually good; every issue above is an
   exception against a large body of accurate guidance.
 - The MDL error messages that *do* carry a line and column (parse errors) are
