@@ -3073,73 +3073,94 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
+> **Update, `41c55d09` + PR 396 `64055caaf`:** the `#46` follow-up is fixed — see
+> "The long-standing one is closed" below. Finding #52 is still the only item
+> open against `main` alone. Against PR 396: #53 is unchanged, and #54 and #55
+> are new.
+
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`191a0c99`** (2026-09-03). Previous columns kept so a
-regression would be visible rather than silently overwritten — which is exactly
-what caught #51, and then its fix trading one failure for another in #52.
+Last retested on **`41c55d09` + PR 396 at `64055caaf`** (2026-09-05). Previous
+columns kept so a regression would be visible rather than silently overwritten —
+which is exactly what caught #51, and then its fix trading one failure for
+another in #52.
 
-| Finding | `5333fbfb` | `a739d2e2` | `191a0c99` |
-|---|---|---|---|
-| 46 — `@expect` silently passed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **still open** — seven builds, see below |
-| 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed |
-| 48 — `@verify` vacuous | fixed | fixed | fixed |
-| 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed |
-| `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed |
-| 51 — `mxcli test --local` boots against an empty tree | **BROKEN** | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | — | new, ~20s | **open**, ~24s warm |
+| Finding | `a739d2e2` | `191a0c99` | `41c55d09` | `+396 @ 64055caaf` |
+|---|---|---|---|---|
+| 46 — `@expect` silently passed | fixed | fixed | fixed | fixed |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **FIXED** — see below | fixed |
+| 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed | fixed |
+| 48 — `@verify` vacuous | fixed | fixed | fixed | fixed |
+| 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed | fixed |
+| `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed | fixed |
+| 51 — `mxcli test --local` boots against an empty tree | fixed | fixed | fixed | fixed |
+| 52 — a test run briefly downs a running `run --local` | new, ~20s | open, ~24s | **open**, ~30s and variable | open |
+| 53 — `DESCRIBE WIDGET` vs the validator | — | — | open on PR 396 | **open**, 33 properties / 4 widgets, cause pinned |
+| 53 sub — `ValueAttribute` alias false positive | — | — | — | **FIXED** (`0bf264293`) |
+| 53 sub — object-list item counted as a CE0495 duplicate | — | — | — | **FIXED** (`5b2f808b4`) |
+| 54 — `DESCRIBE PAGE` does not round-trip | — | — | — | **new**, 5/20 pages unparseable + 2 silent deletions |
+| 55 — `check` rejects `create entity if not exists` | — | — | present | **open** |
 
-On `191a0c99`: **44/44** under `--require-assertions`, mutation coverage
-re-measured at **13 of 13** deliberate defects caught, `mx check` 0 errors.
-This build carried a large feature drop (project brain, message definitions,
-catalog indexing, OData typing), so every fixed finding above was re-run rather
-than carried forward on trust.
+On `41c55d09` + `64055caaf`: **44/44** under `--require-assertions`, `lint` 0
+errors (428 warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21
+anchors / 19 resolved. Every row above was re-run against this build rather than
+carried forward.
 
-### The one still open
+One correction to method, recorded because it nearly became a false all-clear.
+The first sweep of #54 reported all 20 pages clean. That was a harness bug: the
+loop stripped the first line of `describe` output to drop a banner that was
+already going to stderr, so every file started mid-page, and the counter only
+matched semantic `✗` errors and not the `line N:M` syntax errors the parser
+actually emits. Both mistakes pointed the same way — toward "no problem". The
+numbers above come from the corrected sweep, which counts both error shapes and
+strips nothing.
 
-An assertion that is syntactically valid but only fails inside **mxbuild** still
-takes down the entire run rather than failing its own test:
+Two qualifications on that table. #52's figure is from two samples that
+disagreed (41 and 32 disrupted seconds), so "~30s and variable" is the honest
+reading rather than a worsening against `191a0c99` — a single sample is not a
+trend, which is the trap the entry itself warns about. And #53 does not apply to
+`main` at all: `DESCRIBE WIDGET` returns *"no describable document named
+WIDGET"* there, because the command only exists on PR 396.
+
+### The long-standing one is closed
+
+The `#46` follow-up — an `@expect` that is syntactically valid but only fails
+inside mxbuild — is **fixed on `41c55d09`**, after seven builds open. It was the
+oldest item in this document.
+
+Both cases now fail their own test, and the diagnosis names the assertion that
+caused it rather than arriving as ~200 lines of mxbuild JSON:
 
 ```
-@expect $nosuchvar = 'x'      -- undefined variable
-@expect $result = 3           -- String compared to a number, CE0117
+ERROR  G1
+       the assertion could not be built: CE0109: Undefined variable 'nosuchvar'.
+       (at Decision '$nosuchvar = 'x''); CE0109: Undefined variable 'nosuchvar'.
+       (at Change variable activity 'Change variable Verdict')
+SKIP   G1 companion — valid, must still run
+       not run: another test in this run failed to build
 ```
 
-```
-Error: local runtime: build failed: The project cannot be deployed, because it
-contains errors.
-```
+That is exactly what the entry asked for: the mxbuild error mapped back to the
+generated test unit it came from. `$result = 3` on a String behaves the same
+way.
 
-No test results at all, and a valid test in the same file never runs. This was
-confirmed pre-existing rather than introduced when first reported, and it is
-unchanged here. It is the same shape as #46 itself: the failure is not
-attributed to the assertion that caused it. Two things would close it — resolve
-`$vars` against the test's own bindings in the parse pass that now exists, and
-map an mxbuild error located in a generated `MxTest.Test_test_N` unit back to
-that test as an `ERROR` row.
+One honest qualification. The valid test in the same file is reported `SKIP`,
+not run — every test in a run builds into one project, so a build failure still
+stops all of them. That is inherent rather than a shortfall, and saying so out
+loud ("not run: another test in this run failed to build") is the right
+treatment: the run is no longer silently truncated, and nothing is passed off as
+having succeeded.
 
-### One thing that is not an mxcli defect but is worth writing down
+### The ones still open
 
-`scripts/run-app.sh` passes the tunnel-hub credential as `--hub-secret u:pass`,
-which puts it on the process command line where anything able to read `/proc`
-can see it:
+Finding #52: a local test run still takes the dev preview down for around thirty
+seconds. It self-heals, and the trade it came from is a good one (#51's crash
+for this outage).
 
-```
-mxcli run --hub https://hub.mxcli.org --hub-secret alice:s3cret --ensure-db …
-```
-
-There is no drop-in fix: mxcli does not read `MXCLI_HUB_SECRET` from the
-environment — the binary contains no reference to that name — so a script that
-wants hub registration has to pass the flag. `mxcli auth hub login` exists as an
-authenticated alternative that avoids the secret entirely, which is the right
-answer for an interactive machine; it is not obviously usable from a session-start
-hook that runs unattended.
-
-Either an env-var fallback for `--hub-secret`, or a documented non-interactive
-form of `auth hub login`, would close it. Recorded here rather than fixed,
-because the exposure is in this repo's own script and the remedy is mxcli's.
+Finding #55 is open against `main` too, and was simply not looked for before —
+`check --references` rejects `create entity if not exists`, which is the form
+the domain model now uses to stay re-runnable.
 
 ### Worth noting on the credit side
 
@@ -3332,6 +3353,397 @@ worry.
 
 ---
 
+## 53. `DESCRIBE WIDGET` and `exec` disagree about which properties a widget has
+
+**New.** The new `DESCRIBE WIDGET` emits an MDL example it labels *"parses as
+written"*, and it does. But for two widgets the example names properties that
+mxcli's **own** `exec` validator then rejects, and since `exec` refuses before
+writing, one of them cannot be authored from MDL at all.
+
+Found on `main` at `41c55d09` plus PRs 396 and 397, Mendix 11.13.0.
+
+```
+✗ page …TST_W_barcodescanner: widget `widget1` has no property `useAllFormats`  [MDL-WIDGET01]
+✗ page …TST_W_image: widget `widget1` has no property `minHeight` — did you mean `height`?
+```
+
+Nine properties across two widgets:
+
+| Widget | rejected by `MDL-WIDGET01` |
+|---|---|
+| barcodescanner | `useAllFormats`, `widthUnit`, `heightUnit`, `detectionLogic`, `showMask` |
+| image | `minHeight`, `minHeightUnit`, `maxHeight`, `maxHeightUnit` |
+
+### `DESCRIBE WIDGET` is the one telling the truth
+
+All nine appear in this project's generated widget documentation, which is
+produced from the same widget definitions. Both widgets are `.mpk`-backed and
+present under `Sudoku/widgets/`, so this is not a built-in-versus-marketplace
+split. It is not a stale catalog either — the rejections survive
+`REFRESH CATALOG FULL` against a freshly deleted `.mxcli/`.
+
+### The catch-22
+
+For barcodescanner the two halves leave no legal spelling:
+
+- **include** the five properties → `exec` refuses, nothing is written
+- **omit** them → the page is written, and `mx check` then reports
+  `CE0463 "The definition of this widget has changed. Update this widget…"`
+
+So the widget cannot currently be placed from MDL in a state Mendix accepts.
+The other fifteen complete examples exec cleanly and leave `mx check` at 0
+errors.
+
+### What is NOT a defect here, having checked
+
+Worth separating, because a bare error count over-reports the problem badly:
+
+- `CE0642 "Property X is required"` on Slider, Switch, Rating, Range Slider,
+  Timeline, Tree node and Language selector is **correct**. The describe output
+  explicitly omits those with `-- omitted: … needs a name from your project`. A
+  generic example cannot invent an attribute name; this is inherent, not broken.
+- `CE6089 "Feedback is only supported on native documents"` was **my harness**
+  putting a native widget on a web page.
+- `MDL-WIDGET22` warning that the image example would fail mxbuild with "No
+  image selected" is a **good** catch — it names a real mxbuild rejection that
+  the example cannot avoid without a project image.
+
+Of 27 widgets, every example parsed; the substantive disagreement is these nine
+properties.
+
+### A smaller one alongside it: `check --references` under-reports
+
+Checking `01-domain-model.mdl` against a built project reports five statements
+that would fail on a re-run — three enumerations and two entities. `exec` then
+fails on a sixth, the association:
+
+```
+Error: association 'Sudoku.Cell_Game' already exists — use 'create or modify
+association ...' to update it in place, or 'drop association … ' first
+```
+
+Minor, but the point of the check is to tell you what a re-run will hit, and a
+statement missing from that list is one you only discover by running it.
+
+### PR 396 itself works
+
+The narrowing does what it claims. Combobox lists 20 hide-rules and the example
+contains only what survives them for the defaults it picked — `attributeBoolean`
+absent because it chose `optionsSourceType: 'association'`, the
+`customEditability*` pair absent because it chose `source: 'context'`. It is
+also honest about its limits, reporting "16 of 32 editor hide-rules recognized"
+rather than implying completeness.
+
+### The fix
+
+Point `MDL-WIDGET01` at the same property source `DESCRIBE WIDGET` reads. They
+are two code paths over the same `.mpk` and only one is current, so the useful
+guard is a test asserting that every property `DESCRIBE WIDGET` emits is one the
+validator accepts — over the project's installed widget set, which would have
+caught these nine.
+
+### Retested on PR 396 at `bca5466e` — not fixed, and now wider
+
+The PR moved on substantially (`2b5aa2fc` → `bca5466e`, "a widget and its body
+are named by the definition", plus "the validator knows what a widget is"). The
+property disagreement is unchanged, and with more examples now reaching `exec`
+it is visible on four widgets rather than two:
+
+| Widget | properties `MDL-WIDGET01` rejects |
+|---|---|
+| combobox | 17, including **`source`** — which `DESCRIBE WIDGET` marks *required* |
+| gallery | 7 |
+| barcodescanner | 5 |
+| image | 4 |
+
+Not a regression within the PR: combobox and gallery were in the
+placeholder group last time and were never exec-tested, so this is wider
+observation rather than wider breakage. `DESCRIBE WIDGET` is still the correct
+side — every one of these appears in the project's generated widget
+documentation.
+
+Combobox is now the sharpest case. Its own describe output calls `source`
+required, and its own validator says the widget has no such property.
+
+### What the PR *did* bring, and it is worth having
+
+Three things, all verified:
+
+- **A widget can be named by its definition.** The example is now
+  `badge widget1 ( type: 'badge' )` rather than
+  `pluggablewidget 'com.mendix.widget.custom.badge.Badge' widget1 (…)`. It
+  execs. That is a real ergonomic gain — the full id was the least memorable
+  part of placing a widget.
+- **Much richer validation.** `MDL-WIDGET08` checks enumeration values on
+  nested items, `MDL-WIDGET10` warns that a property will be ignored because
+  another property hides it, and `MDL-WIDGET06` is admirably honest:
+  *"recognized but not yet persisted by mxcli — a non-default value will be
+  dropped; set it in Studio Pro if needed"*.
+- **All 27 examples still parse.**
+
+### But the generator and the validator disagree about hide-rules too
+
+`MDL-WIDGET10` is the narrowing PR 396 added to the *generator*, now also
+implemented in the *validator* — and they do not agree. Across six widgets,
+**14 of 14** hidden-property warnings name a property the example itself
+emitted:
+
+```
+videoplayer example:  heightUnit: 'aspectRatio',  …  height: 500
+validator:            property `height` is hidden when `heightUnit` is
+                      "aspectRatio" — the value will be ignored
+```
+
+The generator chose `heightUnit: 'aspectRatio'` and then emitted the `height`
+its own rule hides. `MDL-WIDGET08` compounds it from the other direction: the
+example emits `'…'` as a placeholder for nested item values, and the validator
+rejects `'…'` as an invalid enumeration member.
+
+So the same output is simultaneously the tool's recommended starting point and
+something the tool reports four different complaints about.
+
+**The generalisable lesson, and it is the third time in this document:** when a
+tool both *generates* a thing and *validates* it, the two paths must share a
+source or they drift. #46 was a runner that could not evaluate what it accepted;
+#51 was a build and a runtime pointed at different directories; this is a
+describer and a validator reading different property lists. The failure is
+always the same shape — the tool contradicts itself, and the user is left
+holding output the same tool refuses.
+
+### Retested on PR 396 at `64055caaf` — unchanged, and the cause is now pinned
+
+Nine new commits since `bca5466e`, three of them aimed squarely at this entry
+(`fix(check): accept a widget property's documented alias, not only its schema
+key`, `fix(describe): emit a widget's property keys verbatim, not PascalCased`,
+`fix(describe): emit the widget's own name, and stop losing its body silently`).
+Re-ran the same four widgets. Byte-identical result:
+
+```
+barcodescanner   5 rejected     combobox   17 rejected
+image            4 rejected     gallery     7 rejected
+```
+
+Not a stale build: the three commits are in the tree the binary was built from,
+and the binary was minutes old.
+
+**What the cause is.** The two sides read genuinely different files, and this
+build makes that easy to demonstrate. `DESCRIBE WIDGET barcodescanner` reports
+`Source: project .mpk` and lists **13** properties — which is right, all of them
+are declared in `BarcodeScanner.xml` inside the installed `.mpk`. The validator's
+allowed set is built from `modelsdk/widgets/definitions/barcodescanner.def.json`
+in the mxcli repo, which contains exactly **one** property mapping:
+
+```json
+{ "propertyKey": "datasource", "source": "Attribute", "operation": "attribute" }
+```
+
+So the number of properties `check` will accept is not a property of the widget
+at all — it is the length of a hand-maintained list in mxcli's source. Ten of
+the thirteen have no entry, five of which the example emits. The same holds for
+the other three widgets; the rejected properties span `boolean`, `enumeration`,
+`integer` and `textTemplate`, sit in the same `propertyGroup`s as accepted ones,
+and are structurally indistinguishable from their accepted neighbours in the
+`.mpk` XML — `heightUnit` is accepted on Image and `minHeightUnit`, four lines
+below it in the same group, is not.
+
+That also explains why the alias fix did not move these. `MdlAliases` resolves a
+*documented alternative spelling* of a mapping that already exists in the
+def.json; it cannot conjure a mapping for a property the def.json never listed.
+
+**The alias fix itself is real, and worth recording.** It closes a separate
+false positive on exactly the case its commit message names — a chart's
+`ValueAttribute`:
+
+```
+piechart p1 (DataSource: DATABASE Sudoku.Cell, ValueAttribute: SolutionValue, …)
+
+previous build:  ✗ widget `p1` (piechart) has no property `ValueAttribute`  [MDL-WIDGET01]
+64055caaf:       Check passed!  →  exec writes it  →  describe reads it back
+```
+
+`5b2f808b4` ("an object-list item is not a widget, so it cannot be a CE0495
+duplicate") also verifies: a page carrying a `dynamictext g1` alongside an
+`accordion` whose group is also named `g1` was a reference error before and
+passes now — correctly, since object-list items carry no name in the model at
+all (checked: neither `g1` nor `group1` appears in the page's `.mxunit`).
+
+`a2463b858` verifies too — describe now emits `seriesValueAttribute` and
+`seriesSortOrder` verbatim rather than PascalCased.
+
+`ae2b2b89d` (`sum()` over an unresolvable argument) is not exercised by anything
+in this project; no claim either way.
+
+The suggested fix from the original entry is unchanged and is now sharper: a
+test asserting that every property `DESCRIBE WIDGET` emits is one the validator
+accepts, run over the installed widget set, would fail today on 33 properties
+across four widgets and would keep the def.jsons honest as widgets are upgraded.
+
+---
+
+## 54. `DESCRIBE PAGE` does not round-trip: 5 of 20 pages emit MDL that will not parse, and two things vanish silently
+
+**New.** `describe` → `exec` is the documented way to read an existing page,
+edit it, and write it back. Run over every page in this project on `main`
+(`41c55d09`) + PR 396 (`64055caaf`), it fails on a quarter of them, and on two
+of the pages it *appears* to succeed while deleting model content.
+
+### A. Five pages describe to MDL that does not parse
+
+```
+Administration.Account_Edit          3 syntax errors
+FeedbackModule.PopupSuccess          4
+FeedbackModule.PopupSuccess_Logo     4
+FeedbackModule.ShareFeedback         3
+FeedbackModule.ShareFeedback_Logo    3
+```
+
+Two distinct causes, both in the emitter.
+
+**A widget emitted with no name.** `statictext` comes back nameless, and the
+grammar requires a name:
+
+```
+statictext (Content: 'Mendix AppCloud users are provisioned by …')
+           ^ line 13:21 extraneous input '(' expecting the start of a statement
+```
+
+**An explanatory comment emitted in value position.** Where the describer cannot
+express something, it writes the explanation as an inline `--` comment *inside a
+property list*. The comment then swallows the closing comma and everything after
+it on the line, and the next four lines parse as garbage:
+
+```mdl
+actionbutton actionButton2 (
+  Caption: 'View your feedback',
+  Action: -- open_link with a dynamic address (…) — MDL cannot author this; the button is left as-is,
+  ButtonStyle: Primary,          <-- line 27:25 extraneous input ':'
+  Class: 'd-block center-block'
+)
+```
+
+The prose is the right instinct — it is honest about a limit. It just has to be
+on its own line, or the whole statement is lost. Note that the pages affected
+are all stock marketplace-module pages authored in Studio Pro, which is the
+"read an app you did not write" case this command exists for. Every page I
+authored *from* MDL describes back parseably.
+
+### B. `textTemplate` properties are dropped, and `exec` then deletes them
+
+Confirmed on two widgets, in both directions — the value is in the `.mpr`, and
+`describe` does not emit it:
+
+| widget | property | type | in `.mxunit`? | in `describe`? |
+|---|---|---|---|---|
+| fieldset | `legend: 'Board settings'` | textTemplate | yes | **no** |
+| piechart | `seriesName: 'Digits'` | textTemplate | yes | **no** |
+
+Every `boolean`, `enumeration`, `integer`, `datasource` and `attribute` property
+on the same two widgets survives. Because the emitted statement is
+`create or modify page …`, feeding it back is destructive, not merely lossy:
+
+```
+exec fieldset-with-legend.mdl     →  grep 'Board settings' mprcontents  →  1 hit
+describe … > rt.mdl ; exec rt.mdl →  grep 'Board settings' mprcontents  →  0 hits
+```
+
+### C. `fieldset` loses its entire body
+
+Same shape, larger blast radius. A fieldset containing a `template` slot with a
+`dynamictext` describes as a bare widget:
+
+```mdl
+-- written, exec'd, and present in the .mxunit:
+fieldset fs1 (legend: 'Board settings') {
+  template slot1 { dynamictext dt1 (content: 'hello') }
+}
+
+-- what DESCRIBE PAGE returns:
+fieldset fs1
+```
+
+Round-tripping that removes both the legend and the `dynamictext` from the
+model. It reproduces on a clean copy of the project, and it is not the
+textTemplate bug cascading — adding a `Class` so the widget has a surviving
+scalar property still loses the body.
+
+**This is narrow, and worth saying so precisely.** Of five container-bearing
+widgets tested, only `fieldset` does it:
+
+| widget | body kind | round-trips? |
+|---|---|---|
+| gallery (`content`) | child slot | yes — the Sudoku board survives intact |
+| piechart (`playground`) | child slot | yes |
+| treenode (`children`, `headercontent`) | child slot | yes |
+| accordion (`groups`) | object list | yes |
+| **fieldset (`content`)** | child slot | **no — body dropped** |
+
+So `0e9232567` ("reconstruct a pluggable widget's containers instead of dropping
+them") did land; fieldset is a remaining hole in it rather than the general case.
+
+### Why this one matters more than its size suggests
+
+Findings #45 and #24 are the same shape: an operation that looks idempotent and
+is not. Here the trap is worse, because the *symptom of success* is what invites
+the second step. `check` on the describe output of a fieldset page reports
+`Check passed!`, `exec` reports `Replaced page …`, and the content is gone. There
+is nothing in either output to notice.
+
+**Suggested fix:** a round-trip property test — for every page in a fixture
+project, `describe`, `exec` into a scratch copy, `describe` again, and assert the
+two describes are equal *and* that the page's widget count did not change. The
+first assertion catches A; the second catches B and C, which an
+equal-describes-in-and-out test would miss entirely, since describe is blind to
+what it dropped.
+
+---
+
+## 55. `check --references` rejects `create entity if not exists` — the idempotency form mxcli's own error message recommends
+
+**New. Blocks a CI gate on this project.** `01-domain-model.mdl` was rewritten
+to be re-runnable (see the header comment in that file, and #24 for why
+`create or modify` is wrong for these entities). `exec` handles it exactly as
+intended:
+
+```
+Entity Sudoku.Game already exists — skipped
+Entity Sudoku.Cell already exists — skipped
+Association Sudoku.Cell_Game already exists — skipped
+```
+
+`check --references` on the same file against the same project fails it:
+
+```
+Reference errors:
+  statement 5: entity already exists in project: Sudoku.Game — to add or change
+    a member use 'alter entity Sudoku.Game add attribute ...' …
+  statement 6: entity already exists in project: Sudoku.Cell — …
+✗ 2 reference error(s) found
+```
+
+The `if not exists` qualifier is ignored. `02-domain-refinements.mdl` fails the
+same way on `Sudoku.Move`. Nine of the eleven `mdlsource/` scripts pass; the two
+that fail are the two that were deliberately made idempotent.
+
+Note the direction: the association on the very next line uses
+`create association if not exists` and is *not* flagged, so this is specific to
+`create entity if not exists`.
+
+Present on both builds tested (`41c55d09` and `64055caaf`) — not a regression,
+but newly visible here because the domain model only started using the form
+recently. It is the mirror of #49: there `exec` refused what `describe` produced;
+here `check` refuses what `exec` accepts. Either way the two halves of the tool
+disagree, and the half that runs first is the one that is wrong.
+
+**Workaround:** none that keeps both properties. Dropping `if not exists` makes
+`check` pass and `exec` fail on the second run; keeping it makes `exec` right and
+`check` unusable as a gate. Currently the file is kept correct and `check` is
+run per-file with the two known failures noted.
+
+**Suggested fix:** teach the reference checker the `if not exists` qualifier —
+an existing target is the expected case for that form, not an error.
+
+---
+
 ## Verification summary
 
 Build under test: `main` (`2a4494ac`) + PRs #26, #27, #28, #29 → `6f976d95`.
@@ -3379,8 +3791,12 @@ Worth recording alongside the problems:
   duplicate variables, undeclared return variables, missing entities.
 - `create or replace` on microflows and pages makes iteration fast; most of this
   app was rebuilt many times without touching Studio Pro.
-- `describe entity` / `describe page` round-trip well and were the fastest way to
-  confirm what mxcli had actually written (e.g. finding the `CreatedDate` rename).
+- `describe entity` was the fastest way to confirm what mxcli had actually
+  written (e.g. finding the `CreatedDate` rename). `describe page` earns the same
+  credit for *reading* — it is legible and complete enough to review a page from
+  — but the claim that it round-trips did not survive being tested, and the
+  qualified version is #54: 15 of 20 pages come back parseable, and two widget
+  cases come back quietly incomplete.
 - The `.ai-context/skills/` docs are unusually good; every issue above is an
   exception against a large body of accurate guidance.
 - The MDL error messages that *do* carry a line and column (parse errors) are
