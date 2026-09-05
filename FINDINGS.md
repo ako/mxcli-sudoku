@@ -3073,38 +3073,43 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `41c55d09` + PR 396 `64055caaf`:** the `#46` follow-up is fixed — see
-> "The long-standing one is closed" below. Finding #52 is still the only item
-> open against `main` alone. Against PR 396: #53 is unchanged, and #54 and #55
-> are new.
+> **Update, `41c55d09` + PR 396 `d9c11cdd8`:** **#53 is fixed** — the validator
+> now reads the `.mpk`, and 33 property rejections across four widgets went to
+> zero. #52 and #55 remain open against `main`; #54 and the new #56 are open
+> against PR 396.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`41c55d09` + PR 396 at `64055caaf`** (2026-09-05). Previous
+Last retested on **`41c55d09` + PR 396 at `d9c11cdd8`** (2026-09-05). Previous
 columns kept so a regression would be visible rather than silently overwritten —
 which is exactly what caught #51, and then its fix trading one failure for
 another in #52.
 
-| Finding | `a739d2e2` | `191a0c99` | `41c55d09` | `+396 @ 64055caaf` |
+| Finding | `191a0c99` | `41c55d09` | `+396 @ 64055caaf` | `+396 @ d9c11cdd8` |
 |---|---|---|---|---|
 | 46 — `@expect` silently passed | fixed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | still open | **FIXED** — see below | fixed |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | **FIXED** — see below | fixed | fixed |
 | 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed | fixed |
 | 48 — `@verify` vacuous | fixed | fixed | fixed | fixed |
 | 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed | fixed |
 | `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed | fixed |
 | 51 — `mxcli test --local` boots against an empty tree | fixed | fixed | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | new, ~20s | open, ~24s | **open**, ~30s and variable | open |
-| 53 — `DESCRIBE WIDGET` vs the validator | — | — | open on PR 396 | **open**, 33 properties / 4 widgets, cause pinned |
-| 53 sub — `ValueAttribute` alias false positive | — | — | — | **FIXED** (`0bf264293`) |
-| 53 sub — object-list item counted as a CE0495 duplicate | — | — | — | **FIXED** (`5b2f808b4`) |
-| 54 — `DESCRIBE PAGE` does not round-trip | — | — | — | **new**, 5/20 pages unparseable + 2 silent deletions |
-| 55 — `check` rejects `create entity if not exists` | — | — | present | **open** |
+| 52 — a test run briefly downs a running `run --local` | open, ~24s | **open**, ~30s and variable | open | open |
+| 53 — `DESCRIBE WIDGET` vs the validator | — | open on PR 396 | open, 33 properties / 4 widgets | **FIXED** (`668ad9ae3`) — 0 of 43 |
+| 53 sub — `ValueAttribute` alias false positive | — | — | **FIXED** (`0bf264293`) | fixed |
+| 53 sub — object-list item counted as a CE0495 duplicate | — | — | **FIXED** (`5b2f808b4`) | fixed |
+| 53 sub — example emits properties its own rules hide | — | — | open, 14 of 14 | **FIXED** (`a3e561e78`) — 0 of 43 |
+| 53 sub — `'…'` emitted, then rejected as an enum value | — | — | open | **FIXED** (`63d161404`) |
+| widgets nested in an object-list item not in the catalog | — | — | present | **FIXED** (`d8294e7c6`) |
+| 54 — `DESCRIBE PAGE` does not round-trip | — | — | **new**, 5/20 unparseable + 2 silent deletions | open, unchanged |
+| 55 — `check` rejects `create entity if not exists` | — | present | **open** | open, unchanged |
+| 56 — written widget nodes build to CE0463 | — | — | — | **new**, 7 widget types |
 
-On `41c55d09` + `64055caaf`: **44/44** under `--require-assertions`, `lint` 0
+On `41c55d09` + `d9c11cdd8`: **44/44** under `--require-assertions`, `lint` 0
 errors (428 warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21
-anchors / 19 resolved. Every row above was re-run against this build rather than
+anchors / 19 resolved, and the nine app scripts `03`–`09` check clean (`01`/`02`
+fail on #55 only). Every row above was re-run against this build rather than
 carried forward.
 
 One correction to method, recorded because it nearly became a false all-clear.
@@ -3161,6 +3166,15 @@ for this outage).
 Finding #55 is open against `main` too, and was simply not looked for before —
 `check --references` rejects `create entity if not exists`, which is the form
 the domain model now uses to stay re-runnable.
+
+### And one closed that had been open across five builds
+
+Finding #53 — the describer and the validator reading different property lists —
+is **fixed** by `668ad9ae3`, which points the validator at the `.mpk`. That was
+the fix the entry asked for, and it took three of the entry's four
+self-contradictions with it. What is left, #56, is a different defect that the
+fix made visible rather than caused: the widget nodes mxcli *writes* are still
+partial, and seven widget types build to CE0463.
 
 ### Worth noting on the credit side
 
@@ -3354,6 +3368,12 @@ worry.
 ---
 
 ## 53. `DESCRIBE WIDGET` and `exec` disagree about which properties a widget has
+
+> **FIXED on PR 396 at `d9c11cdd8`** by `668ad9ae3` *"read a widget's properties
+> from its .mpk, not a hand-written list"* — which is the fix this entry asked
+> for. All 33 rejections are gone, across all 43 widgets. Two companion
+> disagreements closed with it. See "Retested at `d9c11cdd8`" at the end. What
+> remains is downstream of it and is now filed separately as **#56**.
 
 **New.** The new `DESCRIBE WIDGET` emits an MDL example it labels *"parses as
 written"*, and it does. But for two widgets the example names properties that
@@ -3578,6 +3598,54 @@ test asserting that every property `DESCRIBE WIDGET` emits is one the validator
 accepts, run over the installed widget set, would fail today on 33 properties
 across four widgets and would keep the def.jsons honest as widgets are upgraded.
 
+### Retested at `d9c11cdd8` — fixed, and two neighbours with it
+
+`668ad9ae3` *"read a widget's properties from its .mpk, not a hand-written
+list"* removes the disagreement at its source. Re-ran the sweep over the whole
+installed widget set rather than the four known cases — **43 widgets, 43
+examples, generated fresh from this build**:
+
+| | `64055caaf` | `d9c11cdd8` |
+|---|---|---|
+| `MDL-WIDGET01` "has no property" | 33, on 4 widgets | **0** |
+| `MDL-WIDGET10` hidden-property contradictions | 14 of 14 | **0** |
+| `MDL-WIDGET08` `'…'` rejected as an enum value | present | **0** |
+| examples that parse | 27 of 27 | 43 of 43 |
+| examples `exec` writes | — | **42 of 43** |
+
+The 33 rejections became 40 `MDL-WIDGET06` warnings — *"recognized but not yet
+persisted by mxcli"* — which is the honest classification for them, and the
+count went up only because more properties are now recognized at all.
+
+The one example `exec` still refuses is `image`, on `MDL-WIDGET22` ("shows an
+image from an image collection but names no image — mxbuild rejects the build
+with *No image selected*"). This entry already called that a **good** catch: it
+names a real mxbuild rejection the generic example cannot avoid without a
+project image.
+
+Two things this fix also closed, both of which this entry had recorded as
+separate self-contradictions:
+
+- **`a3e561e78`** — the example no longer emits properties its own configuration
+  hides. That was the "14 of 14" figure above: every hidden-property warning
+  named a property the generator itself had just written. Now zero across 43.
+- **`63d161404`** — an object-list item gets a value the checker accepts. The
+  accordion example emits `group item1 (headerRenderMode: 'text')` instead of
+  `headerRenderMode: '…'`.
+
+**`d8294e7c6`** (*"index the widgets inside an object-list item"*) also verifies,
+and needed a control to say so. A page whose accordion group contains a
+`dynamictext`:
+
+```
+mxcli-v3, catalog deleted first:  SHOW WIDGETS lists 2  (a1, c1)
+mxcli-v4, catalog deleted first:  SHOW WIDGETS lists 4  (+ cs1, insideGroup)
+```
+
+The first attempt at that control read 4 on both builds — the old binary was
+reading the cache the new one had just written. Deleting `.mxcli/` between runs
+is what makes it a control.
+
 ---
 
 ## 54. `DESCRIBE PAGE` does not round-trip: 5 of 20 pages emit MDL that will not parse, and two things vanish silently
@@ -3741,6 +3809,86 @@ run per-file with the two known failures noted.
 
 **Suggested fix:** teach the reference checker the `if not exists` qualifier —
 an existing target is the expected case for that form, not an error.
+
+Still open at `d9c11cdd8`, along with #54 — neither is touched by PR 396's
+current commits, and both were filed after the head it was last verified at.
+
+---
+
+## 56. The widget nodes mxcli writes are incomplete: seven widget types build to CE0463
+
+**New, and it is what is left of #53 once that entry's own defect was fixed.**
+`check` now accepts every property `DESCRIBE WIDGET` emits, and `exec` writes 42
+of 43 examples. But mxcli persists only the properties it has a write path for —
+`MDL-WIDGET06` says so honestly, *"recognized but not yet persisted by mxcli"* —
+and for seven widget types the node that reaches the `.mpr` is incomplete enough
+that mxbuild rejects the project.
+
+Found on `main` (`41c55d09`) + PR 396 at `d9c11cdd8`, Mendix 11.13.0.
+
+`mx check` over a project carrying all 42 written examples:
+
+| code | count | what it is |
+|---|---|---|
+| CE0642 "property is required" | 18 | **inherent** — the example omits what needs a name from your project, and says so |
+| **CE0463 "definition of this widget has changed"** | **8** | **the defect** |
+| CE0488 gallery has no entity | 1 | inherent — needs a data source |
+| CE6089 Feedback is native-only | 1 | my harness, a native widget on a web page |
+
+The eight CE0463s are seven distinct widgets — Accessibility helper, Barcode
+Scanner, Combo box, Data grid 2 (twice, since the `datagrid` and `datagrid2`
+keywords both produce it), Feedback, Maps, Pop-up menu.
+
+### The minimal case rules out anything I wrote
+
+This is not the example being ambitious. A barcode scanner with nothing but a
+valid data source, on which `check` reports no error and **no warning at all**:
+
+```mdl
+dataview dv1 (DataSource: MICROFLOW Sudoku.ACT_NewEasy) {
+  barcodescanner widget1 (Attribute: Message)
+}
+```
+
+```
+mxcli check   →  Check passed!
+mxcli exec    →  Created page Sudoku.TSTW_bs2
+mx check      →  [error] [CE0463] "The definition of this widget has changed.
+                 Update this widget by right-clicking it and selecting
+                 'Update widget'…" at Barcode Scanner 'widget1'
+```
+
+So it is the widget node itself, not the properties the author chose. The
+BarcodeScanner `.mpk` declares thirteen properties; mxcli writes the one it has a
+mapping for.
+
+### Why this is worth its own entry rather than a footnote on #56's warning
+
+`MDL-WIDGET06`'s wording is the right instinct and undersells the consequence.
+*"A non-default value will be dropped; set it in Studio Pro if needed"* describes
+losing a value you chose. What actually happens for these seven is that the
+project does not build, whether or not you set any of those properties — the
+"if needed" is not optional, and the repair is not a value but a Studio Pro
+**Update widget** on a widget you never opened.
+
+Also note the direction of travel, which is good: at `64055caaf` a barcode
+scanner could not be written at all, so this was the *second* horn of a
+catch-22. Now only one horn is left, and it is a build error with a named remedy
+rather than a refusal with none.
+
+### The fix
+
+Persist the full property set from the `.mpk` when writing a pluggable widget,
+defaulting anything the author did not name — which is what Studio Pro's "Update
+widget" does, and is now possible because `668ad9ae3` already made the `.mpk`
+the source of truth for reading them. Until then, `MDL-WIDGET06` would be more
+useful as an error on the widgets where the omission is not survivable, since
+`mxcli check` currently passes a page that cannot be built.
+
+**Suggested guard:** the sweep behind this entry is cheap and reusable — exec
+every `DESCRIBE WIDGET` example into a scratch project and run `mx check`. The
+inherent CE0642/CE0488 cases are stable and can be allow-listed by code; any
+CE0463 is a real regression.
 
 ---
 
