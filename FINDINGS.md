@@ -3421,6 +3421,66 @@ guard is a test asserting that every property `DESCRIBE WIDGET` emits is one the
 validator accepts — over the project's installed widget set, which would have
 caught these nine.
 
+### Retested on PR 396 at `bca5466e` — not fixed, and now wider
+
+The PR moved on substantially (`2b5aa2fc` → `bca5466e`, "a widget and its body
+are named by the definition", plus "the validator knows what a widget is"). The
+property disagreement is unchanged, and with more examples now reaching `exec`
+it is visible on four widgets rather than two:
+
+| Widget | properties `MDL-WIDGET01` rejects |
+|---|---|
+| combobox | 17, including **`source`** — which `DESCRIBE WIDGET` marks *required* |
+| gallery | 7 |
+| barcodescanner | 5 |
+| image | 4 |
+
+Not a regression within the PR: combobox and gallery were in the
+placeholder group last time and were never exec-tested, so this is wider
+observation rather than wider breakage. `DESCRIBE WIDGET` is still the correct
+side — every one of these appears in the project's generated widget
+documentation.
+
+Combobox is now the sharpest case. Its own describe output calls `source`
+required, and its own validator says the widget has no such property.
+
+### What the PR *did* bring, and it is worth having
+
+Three things, all verified:
+
+- **A widget can be named by its definition.** The example is now
+  `badge widget1 ( type: 'badge' )` rather than
+  `pluggablewidget 'com.mendix.widget.custom.badge.Badge' widget1 (…)`. It
+  execs. That is a real ergonomic gain — the full id was the least memorable
+  part of placing a widget.
+- **Much richer validation.** `MDL-WIDGET08` checks enumeration values on
+  nested items, `MDL-WIDGET10` warns that a property will be ignored because
+  another property hides it, and `MDL-WIDGET06` is admirably honest:
+  *"recognized but not yet persisted by mxcli — a non-default value will be
+  dropped; set it in Studio Pro if needed"*.
+- **All 27 examples still parse.**
+
+### But the generator and the validator disagree about hide-rules too
+
+`MDL-WIDGET10` is the narrowing PR 396 added to the *generator*, now also
+implemented in the *validator* — and they do not agree. Across six widgets,
+**14 of 14** hidden-property warnings name a property the example itself
+emitted:
+
+```
+videoplayer example:  heightUnit: 'aspectRatio',  …  height: 500
+validator:            property `height` is hidden when `heightUnit` is
+                      "aspectRatio" — the value will be ignored
+```
+
+The generator chose `heightUnit: 'aspectRatio'` and then emitted the `height`
+its own rule hides. `MDL-WIDGET08` compounds it from the other direction: the
+example emits `'…'` as a placeholder for nested item values, and the validator
+rejects `'…'` as an invalid enumeration member.
+
+So the same output is simultaneously the tool's recommended starting point and
+something the tool reports four different complaints about.
+
 **The generalisable lesson, and it is the third time in this document:** when a
 tool both *generates* a thing and *validates* it, the two paths must share a
 source or they drift. #46 was a runner that could not evaluate what it accepted;
