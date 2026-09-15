@@ -3143,13 +3143,21 @@ None of that is evidence about the upstream repository. It is what a depth-1
 clone always looks like, on every hop, and it says only that this clone does not
 hold the ancestry — not that the ancestry does not exist.
 
-What does survive scrutiny: `git diff --stat` between the two reports **808 files
-changed, 77750 insertions, 9014 deletions**, and that number is real, because
-`diff` compares trees and needs no ancestry. For eleven days of work that
-includes removing most of an engine, it is large but unremarkable. The PR numbers
-in the two merge commits (#1039 then #484) do go backwards, which is odd and
-which I cannot explain from inside this environment — but one unexplained detail
-is not a rewrite, and leaning on it was the error.
+Settled since, by unshallowing the checkout:
+
+```
+git fetch --unshallow origin main
+git merge-base --is-ancestor 41c55d098 origin/main   →  YES
+git merge-base            41c55d098 origin/main      →  41c55d098 itself
+git rev-list --count      41c55d098..origin/main     →  376
+```
+
+`41c55d098` is a straight ancestor of `0dd7f51a0`, 376 commits back. **There was
+no rewrite.** The 808-file diff is real — `diff` compares trees and needs no
+ancestry — and unremarkable for 376 commits that include removing most of an
+engine. The PR numbers in the two merge commits (#1039 then #484) do go
+backwards, which remains odd and unexplained; one unexplained detail was never
+enough to carry the claim, and leaning on it was the error.
 
 **The practical rule is unchanged, only its reason is.** Commit ranges and
 `merge-base` are not usable for comparing builds *here*, because the clone is
@@ -3157,8 +3165,12 @@ shallow by design. Every row in the table above was therefore established by
 running the two binaries side by side rather than by reading commit messages —
 which is the right method regardless, and is how PR 396's widget work was
 confirmed present in the new `main` (#53 stays fixed) without needing it to be an
-ancestor. To get ranges back, deepen the checkout: `git -C /opt/mxcli-src fetch
---unshallow origin main`.
+ancestor.
+
+To get ranges back, deepen the checkout first: `git -C /opt/mxcli-src fetch
+--unshallow origin main`. That is worth doing at the start of any retest meant to
+attribute a change — it is what made it possible to bisect #57 to one commit and
+read the comment that explains it.
 
 One correction to method, recorded because it nearly became a false all-clear.
 The first sweep of #54 reported all 20 pages clean. That was a harness bug: the
@@ -4051,6 +4063,80 @@ own test project may well have only flat entities.
 Worth saying plainly: the rule is a good addition. It caught
 `Sudoku.Cell_Game/…` on an Account, which every earlier build passed. This entry
 is about the hole, not the idea.
+
+### The change that caused it, bisected
+
+`3aa2ee0e4` *"feat(check): resolve member names inside widgets — XPath steps and
+template params"* (2026-09-05, for upstream mendixlabs/mxcli#1049). Established
+by building the commit and its parent, not by reading:
+
+```
+1ebebc3ef (parent)   check inh.mdl  →  Check passed!
+3aa2ee0e4            check inh.mdl  →  ✗ 1 reference error(s) found
+0dd7f51a0 (main)     check inh.mdl  →  ✗ 1 reference error(s) found
+```
+
+### And the cause is a contract inverted by a second caller
+
+The lookup the new rule leans on is `associationTargetFrom`, added one commit
+earlier in `1ebebc3ef`. It matches the start entity against the association's two
+ends by **exact equality**:
+
+```go
+switch fromEntityQN {
+case from: return to, to != ""
+case to:   return from, from != ""
+}
+return "", false
+```
+
+`System.UserRoles` runs `System.User` → `System.UserRole`; `Administration.Account`
+is neither, so it returns `false`. That behaviour is deliberate, and the function
+says so in its own doc comment:
+
+> *A start entity that matches neither end returns false rather than guessing.
+> That happens when the starting variable is a SPECIALISATION of the end, which
+> this deliberately does not chase: the cost of being wrong is a false error on a
+> working script, and the cost of being silent is one unchecked member.*
+
+That reasoning is sound **for the caller it was written for**. In
+`resolveMemberOnEntity`, `false` means *could not establish* and the result is
+silence. `3aa2ee0e4` then called the same helper from `noteQualified`, where
+`false` means *report an error*. The precise case the comment says it declines to
+chase is now the case that produces a finding — the helper's stated trade is
+inverted by the new call site, and the "cost of being wrong" it was protecting
+against is exactly what ships.
+
+The near-miss is instructive. `noteQualified` **does** carry a three-valued
+guard, with a comment naming the right principle:
+
+```go
+// This is the same three-valued discipline the bare-member path gets from
+// resolveMemberOnEntity: could-not-establish is silence, not a finding.
+if cur == "" || !v.model.IsEntity(cur) { return }
+```
+
+But it tests whether the *base entity* is known, and `Administration.Account` is
+known. The discipline was applied to the wrong axis: unknown-entity is handled,
+unchased-generalization is not.
+
+That is also the whole explanation of why inherited attributes are fine and
+inherited associations are not. `resolveMemberOnEntity` loops on
+`entity.GeneralizationRef` until it runs out of parents;
+`associationTargetFrom` does one flat comparison against two names.
+
+**So the fix is a choice between two honest options,** and the second is smaller:
+either chase the generalization chain in `associationTargetFrom` (and check
+whether `resolveMemberOnEntity`'s callers want the same), or have
+`noteQualified` distinguish *no such association anywhere* from *association
+exists but this entity is not literally an end of it*, and report only the first.
+
+**The generalisable lesson:** a helper whose documented contract is "returns
+false when it cannot establish the answer" is safe only while every caller treats
+false as silence. The moment one caller treats it as evidence, the comment
+promising restraint becomes the specification of a false positive. Reusing it was
+right; what was missing is that a boolean cannot carry "no" and "don't know"
+to two callers that need to tell them apart.
 
 ---
 
