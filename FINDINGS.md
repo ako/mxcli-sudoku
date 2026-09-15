@@ -3073,44 +3073,63 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `41c55d09` + PR 396 `d9c11cdd8`:** **#53 is fixed** — the validator
-> now reads the `.mpk`, and 33 property rejections across four widgets went to
-> zero. #52 and #55 remain open against `main`; #54 and the new #56 are open
-> against PR 396.
+> **Update, `main` at `0dd7f51a0`** (the build with most of the legacy engine
+> removed): **#55 is fixed**, #53 stays fixed, #56 is one widget narrower, #54 is
+> unchanged, and there is one **regression** — the new constraint checker, #57.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`41c55d09` + PR 396 at `d9c11cdd8`** (2026-09-05). Previous
-columns kept so a regression would be visible rather than silently overwritten —
-which is exactly what caught #51, and then its fix trading one failure for
-another in #52.
+Last retested on **`main` at `0dd7f51a0`** (2026-09-15). Previous columns kept so
+a regression would be visible rather than silently overwritten — which is exactly
+what caught #51, then its fix trading one failure for another in #52, and now
+#57.
 
-| Finding | `191a0c99` | `41c55d09` | `+396 @ 64055caaf` | `+396 @ d9c11cdd8` |
+| Finding | `41c55d09` | `+396 @ 64055caaf` | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` |
 |---|---|---|---|---|
 | 46 — `@expect` silently passed | fixed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | still open | **FIXED** — see below | fixed | fixed |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | **FIXED** | fixed | fixed | fixed |
 | 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed | fixed |
 | 48 — `@verify` vacuous | fixed | fixed | fixed | fixed |
 | 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed | fixed |
 | `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed | fixed |
 | 51 — `mxcli test --local` boots against an empty tree | fixed | fixed | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | open, ~24s | **open**, ~30s and variable | open | open |
-| 53 — `DESCRIBE WIDGET` vs the validator | — | open on PR 396 | open, 33 properties / 4 widgets | **FIXED** (`668ad9ae3`) — 0 of 43 |
-| 53 sub — `ValueAttribute` alias false positive | — | — | **FIXED** (`0bf264293`) | fixed |
-| 53 sub — object-list item counted as a CE0495 duplicate | — | — | **FIXED** (`5b2f808b4`) | fixed |
-| 53 sub — example emits properties its own rules hide | — | — | open, 14 of 14 | **FIXED** (`a3e561e78`) — 0 of 43 |
-| 53 sub — `'…'` emitted, then rejected as an enum value | — | — | open | **FIXED** (`63d161404`) |
-| widgets nested in an object-list item not in the catalog | — | — | present | **FIXED** (`d8294e7c6`) |
-| 54 — `DESCRIBE PAGE` does not round-trip | — | — | **new**, 5/20 unparseable + 2 silent deletions | open, unchanged |
-| 55 — `check` rejects `create entity if not exists` | — | present | **open** | open, unchanged |
-| 56 — written widget nodes build to CE0463 | — | — | — | **new**, 7 widget types |
+| 52 — a test run briefly downs a running `run --local` | **open**, ~30s | open | open | not re-measured |
+| 53 — `DESCRIBE WIDGET` vs the validator | open on PR 396 | open, 33 properties / 4 widgets | **FIXED** (`668ad9ae3`) | fixed, 0 of 43 |
+| 53 sub — `ValueAttribute` alias false positive | — | **FIXED** (`0bf264293`) | fixed | fixed |
+| 53 sub — object-list item counted as a CE0495 duplicate | — | **FIXED** (`5b2f808b4`) | fixed | fixed |
+| 53 sub — example emits properties its own rules hide | — | open, 14 of 14 | **FIXED** (`a3e561e78`) | fixed, 0 of 43 |
+| 53 sub — `'…'` emitted, then rejected as an enum value | — | open | **FIXED** (`63d161404`) | fixed |
+| widgets nested in an object-list item not in the catalog | — | present | **FIXED** (`d8294e7c6`) | fixed |
+| 54 — `DESCRIBE PAGE` does not round-trip | — | **new**, 5/20 unparseable + 2 silent deletions | open | open, unchanged |
+| 55 — `check` rejects `create entity if not exists` | present | **open** | open | **FIXED** |
+| 56 — written widget nodes build to CE0463 | — | — | **new**, 7 widget types | open, **6 types** |
+| 57 — constraint checker ignores generalization | — | — | — | **new regression** |
 
-On `41c55d09` + `d9c11cdd8`: **44/44** under `--require-assertions`, `lint` 0
-errors (428 warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21
-anchors / 19 resolved, and the nine app scripts `03`–`09` check clean (`01`/`02`
-fail on #55 only). Every row above was re-run against this build rather than
-carried forward.
+On `0dd7f51a0`: **44/44** under `--require-assertions` (and faster — 3.1s against
+4.5s), `lint` 0 errors (428 warnings, 89 info — unchanged), `brain check` OK at
+17 entries / 21 anchors / 19 resolved, all 50 Sudoku microflows `describe` →
+`check` clean, and the full `mdlsource/` pipeline replays to **`mx check` 0
+errors**. Every row above was re-run against this build rather than carried
+forward.
+
+### On this build in particular
+
+Most of the legacy engine is gone, and `--engine` is kept as a deprecated no-op —
+*"Deprecated and ignored: there is one model engine. Kept so scripts pinning the
+old one keep running."* `--engine legacy` still runs rather than failing, which
+is the right call for anyone with it baked into a script. This project never used
+it, so there was nothing here to migrate; the replay to 0 `mx check` errors is
+the evidence that the removal did not take anything with it.
+
+One thing to know before comparing builds: **`main`'s history was rewritten
+between `41c55d09` and `0dd7f51a0`**. The two commits have no merge base, PR
+numbers restarted, and a diff between them reports 808 files changed — so a
+commit range is not a usable summary of what changed, and per-commit attribution
+of a fix is not available for this hop. Every row above was therefore established
+by behaviour against the two binaries side by side rather than by reading commit
+messages. PR 396's widget work is present in the new `main` by behaviour (#53
+stays fixed) even though the PR is not an ancestor of it.
 
 One correction to method, recorded because it nearly became a false all-clear.
 The first sweep of #54 reported all 20 pages clean. That was a harness bug: the
@@ -3159,13 +3178,17 @@ having succeeded.
 
 ### The ones still open
 
-Finding #52: a local test run still takes the dev preview down for around thirty
+Finding #52: a local test run takes the dev preview down for around thirty
 seconds. It self-heals, and the trade it came from is a good one (#51's crash
-for this outage).
+for this outage). Not re-measured on `0dd7f51a0` — the measurement requires
+downing a running preview, and the one open here was needed; the entry's own
+warning about single samples applies either way.
 
-Finding #55 is open against `main` too, and was simply not looked for before —
-`check --references` rejects `create entity if not exists`, which is the form
-the domain model now uses to stay re-runnable.
+Findings #54 and #56 are open and unchanged in kind, and #57 is a new regression
+on this build.
+
+Finding #55 closed here: the `if not exists` qualifier is honoured, so the
+re-runnable domain script passes `check` as well as `exec`.
 
 ### And one closed that had been open across five builds
 
@@ -3767,6 +3790,12 @@ what it dropped.
 
 ## 55. `check --references` rejects `create entity if not exists` — the idempotency form mxcli's own error message recommends
 
+> **FIXED on `main` at `0dd7f51a0`.** `01-domain-model.mdl` now checks clean —
+> `create entity if not exists` and `create association if not exists` are both
+> honoured. `02-domain-refinements.mdl` still reports four, but those are
+> correct: that file uses bare `create persistent entity` / `create association`,
+> so it is finding #10 rather than this one.
+
 **New. Blocks a CI gate on this project.** `01-domain-model.mdl` was rewritten
 to be re-runnable (see the header comment in that file, and #24 for why
 `create or modify` is wrong for these entities). `exec` handles it exactly as
@@ -3812,6 +3841,8 @@ an existing target is the expected case for that form, not an error.
 
 Still open at `d9c11cdd8`, along with #54 — neither is touched by PR 396's
 current commits, and both were filed after the head it was last verified at.
+**Closed at `0dd7f51a0`:** the qualifier is honoured, and the nine remaining
+`mdlsource/` scripts plus `01` all check clean.
 
 ---
 
@@ -3889,6 +3920,108 @@ useful as an error on the widgets where the omission is not survivable, since
 every `DESCRIBE WIDGET` example into a scratch project and run `mx check`. The
 inherent CE0642/CE0488 cases are stable and can be allow-listed by code; any
 CE0463 is a real regression.
+
+### Retested on `main` at `0dd7f51a0` — narrower by one, still open
+
+Re-ran the whole sweep. 43 widgets, 43 examples, 42 written, `mx check` over all
+of them:
+
+| | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` |
+|---|---|---|
+| CE0463 — the defect | 8, on 7 widget types | **7, on 6** |
+| CE0642 — inherent | 18 | 19 |
+| `MDL-WIDGET06` warnings | 40 | **35** |
+
+Combo box moved out of the defect column and into the inherent one: its error is
+now `CE0642 "Property 'Entity' is required"`, which a generic example cannot
+satisfy — it has no project association to name. Five more properties are
+persisted than before, which is what the `MDL-WIDGET06` drop measures.
+
+The minimal case is unchanged, and still the cleanest statement of the defect:
+
+```
+barcodescanner widget1 (Attribute: Message)   -- inside a microflow-sourced dataview
+
+mxcli check   →  Check passed!   (no error, no warning)
+mx check      →  [error] [CE0463] … at Barcode Scanner 'widget1'
+```
+
+Six types remain: Accessibility helper, Barcode Scanner, Data grid 2, Feedback,
+Maps, Pop-up menu.
+
+---
+
+## 57. A new constraint checker does not follow generalization for associations
+
+**New, and a regression** — this rule did not exist at `d9c11cdd8`. `main` at
+`0dd7f51a0` added a check that a data-source constraint only names members the
+entity actually has, and it is a genuinely useful rule: it catches a bogus
+association that every previous build let through. But it resolves members on the
+entity alone, so **every inherited association is a false positive**.
+
+The stock `Administration.Account_Overview` page is enough to show it — a page
+shipped in the Administration module, in a project `mx check` reports zero errors
+on:
+
+```
+✗ page Administration.Account_Overview: datagrid "dataGrid21": the constraint on
+  Administration.Account names "System.UserRoles", which is neither an attribute
+  nor an association of it — mxbuild reports this as CE1613 "The selected
+  association 'System.UserRoles' no longer exists"
+```
+
+`Administration.Account extends System.User`, and `System.UserRoles` is declared
+`from System.User`. So it *is* an association of it, by inheritance. And mxbuild
+does not report CE1613 — the message names a build error that does not happen.
+
+### Minimal repro, and the control that settles it
+
+```mdl
+datagrid dg1 (
+  DataSource: DATABASE Administration.Account
+              where [not(System.UserRoles/System.UserRole)]
+) { column Name (Attribute: Name, Caption: 'Name') }
+```
+
+```
+mxcli 0dd7f51a0  check   →  ✗ 1 reference error(s) found
+mxcli d9c11cdd8  check   →  Check passed!
+mxcli 0dd7f51a0  exec    →  Created page Sudoku.TST_Inh
+mx check                 →  The app contains: 0 errors.
+```
+
+The build is the arbiter, and the build is clean.
+
+### It is specifically associations, and specifically inherited ones
+
+Four constraints on `Administration.Account`, same build:
+
+| constraint | verdict | correct? |
+|---|---|---|
+| `Name != empty` — inherited **attribute** | passes | yes |
+| `System.UserRoles/System.UserRole/Name != empty` — inherited **association** | rejected | **no** |
+| `not(System.UserRoles/System.UserRole)` — inherited **association** | rejected | **no** |
+| `Sudoku.Cell_Game/Sudoku.Game/Status = 'Solved'` — not on this entity at all | rejected | yes |
+
+And on `Sudoku.Cell`, whose `Cell_Game` is its own rather than inherited, the
+same shape passes. So the resolver already walks the generalization chain for
+attributes; associations were left out of that walk.
+
+### Why it matters more than one page
+
+The false positive lands on a marketplace module almost every Mendix app has, so
+the cost is not one project's one page — it is that `check` stops being usable as
+a gate for anyone whose entities inherit, which is the normal case for anything
+extending `System.User`, `System.Image` or `System.FileDocument`.
+
+**Suggested fix:** resolve constraint members through the generalization chain,
+the way attribute resolution already does. **Suggested guard:** a fixture entity
+with a generalization and a constraint on an inherited association — the rule's
+own test project may well have only flat entities.
+
+Worth saying plainly: the rule is a good addition. It caught
+`Sudoku.Cell_Game/…` on an Account, which every earlier build passed. This entry
+is about the hole, not the idea.
 
 ---
 
