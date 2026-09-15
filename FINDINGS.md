@@ -3122,14 +3122,43 @@ is the right call for anyone with it baked into a script. This project never use
 it, so there was nothing here to migrate; the replay to 0 `mx check` errors is
 the evidence that the removal did not take anything with it.
 
-One thing to know before comparing builds: **`main`'s history was rewritten
-between `41c55d09` and `0dd7f51a0`**. The two commits have no merge base, PR
-numbers restarted, and a diff between them reports 808 files changed — so a
-commit range is not a usable summary of what changed, and per-commit attribution
-of a fix is not available for this hop. Every row above was therefore established
-by behaviour against the two binaries side by side rather than by reading commit
-messages. PR 396's widget work is present in the new `main` by behaviour (#53
-stays fixed) even though the PR is not an ancestor of it.
+One thing to know before comparing builds, **corrected**: an earlier version of
+this paragraph said `main`'s history had been rewritten between `41c55d09` and
+`0dd7f51a0`. That was wrong, and the mistake is worth keeping because it is a
+trap anyone retesting here will walk into.
+
+`scripts/setup-tools.sh` maintains the mxcli checkout with `git clone --depth 1`
+/ `git fetch --depth 1`. In a shallow clone every fetched tip is a **graft
+point** with its parents cut off, so:
+
+```
+git merge-base 41c55d098 0dd7f51a0   →  (nothing, exit 1)
+git rev-list --max-parents=0 41c55d098 0dd7f51a0
+                                     →  both listed: each is its own root
+git log --oneline 41c55d098..origin/main
+                                     →  1
+```
+
+None of that is evidence about the upstream repository. It is what a depth-1
+clone always looks like, on every hop, and it says only that this clone does not
+hold the ancestry — not that the ancestry does not exist.
+
+What does survive scrutiny: `git diff --stat` between the two reports **808 files
+changed, 77750 insertions, 9014 deletions**, and that number is real, because
+`diff` compares trees and needs no ancestry. For eleven days of work that
+includes removing most of an engine, it is large but unremarkable. The PR numbers
+in the two merge commits (#1039 then #484) do go backwards, which is odd and
+which I cannot explain from inside this environment — but one unexplained detail
+is not a rewrite, and leaning on it was the error.
+
+**The practical rule is unchanged, only its reason is.** Commit ranges and
+`merge-base` are not usable for comparing builds *here*, because the clone is
+shallow by design. Every row in the table above was therefore established by
+running the two binaries side by side rather than by reading commit messages —
+which is the right method regardless, and is how PR 396's widget work was
+confirmed present in the new `main` (#53 stays fixed) without needing it to be an
+ancestor. To get ranges back, deepen the checkout: `git -C /opt/mxcli-src fetch
+--unshallow origin main`.
 
 One correction to method, recorded because it nearly became a false all-clear.
 The first sweep of #54 reported all 20 pages clean. That was a harness bug: the
