@@ -3073,54 +3073,71 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `0dd7f51a0`** (the build with most of the legacy engine
-> removed): **#55 is fixed**, #53 stays fixed, #56 is one widget narrower, #54 is
-> unchanged, and there is one **regression** — the new constraint checker, #57.
+> **Update, `main` at `254c85068`** (the build where the legacy engine is
+> *gone*, not just unused): **#57 is fixed**, one day after it was reported.
+> #53 and #55 stay fixed, #54 and #56 are unchanged, and there is one new
+> entry — **#58**, `check` rejecting the `MxTest` module it generates itself.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `0dd7f51a0`** (2026-09-15). Previous columns kept so
+Last retested on **`main` at `254c85068`** (2026-09-16). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
-what caught #51, then its fix trading one failure for another in #52, and now
+what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `41c55d09` | `+396 @ 64055caaf` | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` |
+| Finding | `+396 @ 64055caaf` | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` | `main @ 254c85068` |
 |---|---|---|---|---|
 | 46 — `@expect` silently passed | fixed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | **FIXED** | fixed | fixed | fixed |
-| 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed | fixed |
+| 46 follow-up — an `@expect` that only fails inside mxbuild | fixed | fixed | fixed | fixed |
+| 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed | fixed, **byte-identical** |
 | 48 — `@verify` vacuous | fixed | fixed | fixed | fixed |
 | 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed | fixed |
 | `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed | fixed |
 | 51 — `mxcli test --local` boots against an empty tree | fixed | fixed | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | **open**, ~30s | open | open | not re-measured |
-| 53 — `DESCRIBE WIDGET` vs the validator | open on PR 396 | open, 33 properties / 4 widgets | **FIXED** (`668ad9ae3`) | fixed, 0 of 43 |
-| 53 sub — `ValueAttribute` alias false positive | — | **FIXED** (`0bf264293`) | fixed | fixed |
-| 53 sub — object-list item counted as a CE0495 duplicate | — | **FIXED** (`5b2f808b4`) | fixed | fixed |
-| 53 sub — example emits properties its own rules hide | — | open, 14 of 14 | **FIXED** (`a3e561e78`) | fixed, 0 of 43 |
-| 53 sub — `'…'` emitted, then rejected as an enum value | — | open | **FIXED** (`63d161404`) | fixed |
-| widgets nested in an object-list item not in the catalog | — | present | **FIXED** (`d8294e7c6`) | fixed |
-| 54 — `DESCRIBE PAGE` does not round-trip | — | **new**, 5/20 unparseable + 2 silent deletions | open | open, unchanged |
-| 55 — `check` rejects `create entity if not exists` | present | **open** | open | **FIXED** |
-| 56 — written widget nodes build to CE0463 | — | — | **new**, 7 widget types | open, **6 types** |
-| 57 — constraint checker ignores generalization | — | — | — | **new regression** |
+| 52 — a test run briefly downs a running `run --local` | open | open | not re-measured | not re-measured |
+| 53 — `DESCRIBE WIDGET` vs the validator | open, 33 properties / 4 widgets | **FIXED** (`668ad9ae3`) | fixed, 0 of 43 | fixed, 0 of 43 |
+| 53 sub — `ValueAttribute` alias false positive | **FIXED** (`0bf264293`) | fixed | fixed | fixed |
+| 53 sub — object-list item counted as a CE0495 duplicate | **FIXED** (`5b2f808b4`) | fixed | fixed | fixed |
+| 53 sub — example emits properties its own rules hide | open, 14 of 14 | **FIXED** (`a3e561e78`) | fixed, 0 of 43 | fixed, 0 of 43 |
+| 53 sub — `'…'` emitted, then rejected as an enum value | open | **FIXED** (`63d161404`) | fixed | fixed |
+| widgets nested in an object-list item not in the catalog | present | **FIXED** (`d8294e7c6`) | fixed | fixed |
+| 54 — `DESCRIBE PAGE` does not round-trip | **new**, 5/20 unparseable + 2 silent deletions | open | open | open, unchanged |
+| 55 — `check` rejects `create entity if not exists` | **open** | open | **FIXED** | fixed |
+| 56 — written widget nodes build to CE0463 | — | **new**, 7 widget types | open, **6 types** | open, 6 types |
+| 57 — constraint checker ignores generalization | — | — | **new regression** | **FIXED** (`bdb8fabd1`) |
+| 58 — `check` rejects the `MxTest` module it generates | — | — | parse errors instead | **new** |
+| `MDL-RETRIEVE01` — `LIMIT 1` used as a list | — | — | missed it | **new rule, verified both ways** |
 
-On `0dd7f51a0`: **44/44** under `--require-assertions` (and faster — 3.1s against
-4.5s), `lint` 0 errors (428 warnings, 89 info — unchanged), `brain check` OK at
-17 entries / 21 anchors / 19 resolved, all 50 Sudoku microflows `describe` →
-`check` clean, and the full `mdlsource/` pipeline replays to **`mx check` 0
-errors**. Every row above was re-run against this build rather than carried
-forward.
+On `254c85068`: **44/44** under `--require-assertions`, `lint` 0 errors (428
+warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21 anchors / 19
+resolved, all 50 Sudoku microflows `describe` → `check` clean, the full
+`mdlsource/` pipeline replays to **`mx check` 0 errors**, and the running app
+still serves 200. Every row above was re-run against this build rather than
+carried forward.
 
-### On this build in particular
+### On this build in particular: the legacy engine is gone
 
-Most of the legacy engine is gone, and `--engine` is kept as a deprecated no-op —
-*"Deprecated and ignored: there is one model engine. Kept so scripts pinning the
-old one keep running."* `--engine legacy` still runs rather than failing, which
-is the right call for anyone with it baked into a script. This project never used
-it, so there was nothing here to migrate; the replay to 0 `mx check` errors is
-the evidence that the removal did not take anything with it.
+Not merely unused — `7b7a54870 "Delete sdk/mpr — the legacy engine is gone"`
+removes the tree, and `ls sdk/mpr` is a no-such-directory. `--engine` survives as
+a deprecated no-op, exactly as its help text promises: *"Deprecated and ignored:
+there is one model engine. Kept so scripts pinning the old one keep running."*
+
+```
+--engine legacy    → (10 modules)
+--engine modelsdk  → (10 modules)
+--engine bogus     → (10 modules)
+```
+
+Accepting any string is the consistent reading of "ignored", and an unrecognised
+value silently doing the right thing is the correct trade for a flag whose only
+job is not to break old scripts.
+
+This project never used the legacy engine, so there was nothing here to migrate.
+The evidence the removal took nothing with it is the list above — in particular
+the full pipeline replay to 0 `mx check` errors and 50 of 50 microflows
+round-tripping, both of which run entirely through the model layer that was
+rebuilt.
 
 One thing to know before comparing builds, **corrected**: an earlier version of
 this paragraph said `main`'s history had been rewritten between `41c55d09` and
@@ -3221,15 +3238,25 @@ having succeeded.
 
 Finding #52: a local test run takes the dev preview down for around thirty
 seconds. It self-heals, and the trade it came from is a good one (#51's crash
-for this outage). Not re-measured on `0dd7f51a0` — the measurement requires
+for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-Findings #54 and #56 are open and unchanged in kind, and #57 is a new regression
-on this build.
+Findings #54 and #56 are open and unchanged in kind. #58 is new on
+`254c85068`.
 
-Finding #55 closed here: the `if not exists` qualifier is honoured, so the
-re-runnable domain script passes `check` as well as `exec`.
+Findings #55 and #57 closed: the `if not exists` qualifier is honoured, and
+constraint associations resolve through the generalization chain.
+
+### Fastest turnaround in this document
+
+#57 was reported against `0dd7f51a0` on 2026-09-15 and is fixed in
+`254c85068` on 2026-09-16 — one day, by `bdb8fabd1`, taking the first of the two
+options the entry offered. Worth contrasting with the #46 follow-up, which took
+seven builds. The difference was not severity: it was that #57 arrived with a
+minimal repro, a bisect to the commit, and a named line of code, because the
+checkout had been unshallowed. That is an argument for `fetch --unshallow` being
+the first step of a retest rather than an afterthought.
 
 ### And one closed that had been open across five builds
 
@@ -3994,6 +4021,11 @@ Maps, Pop-up menu.
 
 ## 57. A new constraint checker does not follow generalization for associations
 
+> **FIXED on `main` at `254c85068`** by `bdb8fabd1` *"resolve constraint
+> associations through the generalization chain"* — one day after it was
+> reported, and it is the smaller of the two fixes this entry suggested. The
+> rule still catches what it was built for; see the retest at the end.
+
 **New, and a regression** — this rule did not exist at `d9c11cdd8`. `main` at
 `0dd7f51a0` added a check that a data-source constraint only names members the
 entity actually has, and it is a genuinely useful rule: it catches a bogus
@@ -4137,6 +4169,126 @@ false as silence. The moment one caller treats it as evidence, the comment
 promising restraint becomes the specification of a false positive. Reusing it was
 right; what was missing is that a boolean cannot carry "no" and "don't know"
 to two callers that need to tell them apart.
+
+### Retested on `main` at `254c85068` — fixed, and the rule still bites
+
+`bdb8fabd1` took the first of the two options: the chain is chased. The control
+that matters is the last two rows — a fix that simply stopped reporting would
+also clear the first three:
+
+| constraint on `Administration.Account` | `0dd7f51a0` | `254c85068` | correct? |
+|---|---|---|---|
+| `Name != empty` — inherited attribute | passes | passes | yes |
+| `System.UserRoles/System.UserRole/Name != empty` — inherited assoc | **rejected** | passes | now yes |
+| `not(System.UserRoles/System.UserRole)` — inherited assoc | **rejected** | passes | now yes |
+| `Sudoku.Cell_Game/Sudoku.Game/Status = 'Solved'` — not on this entity | rejected | **rejected** | yes |
+| `System.UserRoles/System.NoSuchThing != empty` — bogus hop *after* a valid inherited one | — | **rejected** | yes |
+
+The fifth row was added for this retest and is the stronger control: the walk
+follows the inherited association through to `System.UserRole` and then still
+catches a bad step on the far side, so the generalization chase did not turn into
+"give up after the first hop". The stock `Administration.Account_Overview` page
+describes and checks clean again, and the page sweep is back to the five failures
+of #54 with nothing extra.
+
+---
+
+## 58. `check` now parses a `.test.mdl`, then rejects the module it generated itself
+
+**New, and it fails a CI gate.** `64b192a00` *"parse a .test.mdl file as the
+microflow bodies it is"* fixes a real gap — on `0dd7f51a0`, `mxcli check
+sudoku.test.mdl` was a wall of parse errors, because the file is a set of
+microflow bodies rather than statements and nothing taught the parser that:
+
+```
+0dd7f51a0:  line 514:54 extraneous input '=' expecting the start of a statement
+            line 514:62 extraneous input '.' expecting …          (and more)
+```
+
+It parses now. But the reference pass then reports, once per test:
+
+```
+254c85068:  Reference errors:
+              statement 1: module not found: MxTest
+              …
+              statement 44: module not found: MxTest
+            ✗ 44 reference error(s) found        (exit 1)
+```
+
+44 errors for 44 tests, and **the word `MxTest` appears zero times in the source
+file** — `grep -c MxTest sudoku.test.mdl` → 0. So `check` synthesizes each test
+into a microflow in a generated `MxTest` module, hands the result to a reference
+pass that does not know that module is about to be created, and fails the file on
+it. The same shape as #46, #51 and #53: one tool, two paths over the same thing,
+and only one of them knows what the other did.
+
+`MxTest` is real and is the runner's, not an invention of mine — a test run
+leaves `deployment/run/bin/mxtest/actions/RegisterTestEndpoint.class` behind (in
+gitignored build output, harmlessly).
+
+### The runner is fine — it is only `check` that disagrees
+
+Same file, same build:
+
+```
+mxcli test sudoku.test.mdl -p "$PWD/Sudoku.mpr" --local --require-assertions
+  →  Total: 44  Passed: 44  Failed: 0   All tests passed.
+```
+
+So this is not a broken test file. It is `check` refusing a file that runs.
+
+**Impact here:** `mxcli check` over the repo cannot include `sudoku.test.mdl`
+without failing, which is exactly the file a test-focused gate most wants to
+check. Before `64b192a00` it failed too, on parse errors, so this is not a
+regression — it is a fix that moved the failure one stage later without clearing
+it.
+
+**Suggested fix:** the reference pass already skips references to objects created
+within the same script ("Note: References to objects created within the script
+are skipped" is printed on every run). The generated `MxTest` module belongs in
+that same set — it *is* created by the script the checker just built.
+
+**Suggested guard:** run `check` over the project's own `.test.mdl` in CI and
+require exit 0. A fixture would not have caught this one, because the defect only
+appears when the generated module is the thing being resolved.
+
+### Worth recording on the credit side
+
+`d3418fa4a` *"say what mxbuild rejected, and leave nothing behind"* verifies, and
+closes the loop on #47 from the other end. After a full 44-test run against a
+scratch copy:
+
+```
+cmp Sudoku.mpr <pristine copy>   →  IDENTICAL
+SHOW MODULES | grep -c MxTest    →  0
+```
+
+The `.mpr` is byte-identical and the generated module is gone from the model. The
+only residue is three `.class` files under the gitignored `deployment/` tree.
+
+### And a new rule that earns its place
+
+`e31b0eadf` adds `MDL-RETRIEVE01`, and it was worth canary-testing in both
+directions rather than assuming:
+
+```mdl
+retrieve $cells from $Game/Sudoku.Cell_Game limit 1;
+$n = count($cells);
+```
+
+```
+0dd7f51a0:  Check passed!          <- the defect shipped
+254c85068:  ✗ $cells was retrieved with LIMIT 1, which binds a single object
+              rather than a one-element list, so COUNT() cannot take it —
+              mxbuild rejects this with CE0097 "The selected 'cells' variable
+              must be of type List."  [MDL-RETRIEVE01]
+            → Drop the LIMIT to retrieve a list and keep COUNT(), or keep
+              LIMIT 1 and use $cells as the object it already is.
+```
+
+And the same retrieve used as a single object passes, so the rule reads the
+*use*, not the `limit`. Message, code and remedy are all there. Nothing in this
+project trips it.
 
 ---
 
