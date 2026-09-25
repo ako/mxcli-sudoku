@@ -3073,48 +3073,78 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `254c85068`** (the build where the legacy engine is
-> *gone*, not just unused): **#57 is fixed**, one day after it was reported.
-> #53 and #55 stay fixed, #54 and #56 are unchanged, and there is one new
-> entry — **#58**, `check` rejecting the `MxTest` module it generates itself.
+> **Update, `main` at `0a821cf` (+ PR 661)**, 379 commits on: **#54's two silent
+> deletions are fixed** and #56 is narrower again, with its flagship repro clean.
+> #54A and #58 are unchanged. Two new entries: **#59**, a describe→exec cycle
+> that corrupts a stock marketplace page while every stage but the build says it
+> passed — and **#60**, `DESCRIBE WIDGET` calling an installed widget unknown.
+> **PR 661 (`layout flows`) verified on 51 real flows** and is good work.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `254c85068`** (2026-09-16). Previous columns kept so
+Last retested on **`main` at `0a821cf`** (2026-09-24). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `+396 @ 64055caaf` | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` | `main @ 254c85068` |
+| Finding | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` | `main @ 254c85068` | `main @ 0a821cf` |
 |---|---|---|---|---|
-| 46 — `@expect` silently passed | fixed | fixed | fixed | fixed |
-| 46 follow-up — an `@expect` that only fails inside mxbuild | fixed | fixed | fixed | fixed |
-| 47 — `.mpr` rewritten on every test run | fixed | fixed | fixed | fixed, **byte-identical** |
-| 48 — `@verify` vacuous | fixed | fixed | fixed | fixed |
-| 49 — MDL041 blocked `describe` → `exec` | fixed | fixed | fixed | fixed |
-| `mxcli --version` reported `-dirty` on a clean checkout | fixed | fixed | fixed | fixed |
-| 51 — `mxcli test --local` boots against an empty tree | fixed | fixed | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | open | open | not re-measured | not re-measured |
-| 53 — `DESCRIBE WIDGET` vs the validator | open, 33 properties / 4 widgets | **FIXED** (`668ad9ae3`) | fixed, 0 of 43 | fixed, 0 of 43 |
-| 53 sub — `ValueAttribute` alias false positive | **FIXED** (`0bf264293`) | fixed | fixed | fixed |
-| 53 sub — object-list item counted as a CE0495 duplicate | **FIXED** (`5b2f808b4`) | fixed | fixed | fixed |
-| 53 sub — example emits properties its own rules hide | open, 14 of 14 | **FIXED** (`a3e561e78`) | fixed, 0 of 43 | fixed, 0 of 43 |
-| 53 sub — `'…'` emitted, then rejected as an enum value | open | **FIXED** (`63d161404`) | fixed | fixed |
-| widgets nested in an object-list item not in the catalog | present | **FIXED** (`d8294e7c6`) | fixed | fixed |
-| 54 — `DESCRIBE PAGE` does not round-trip | **new**, 5/20 unparseable + 2 silent deletions | open | open | open, unchanged |
-| 55 — `check` rejects `create entity if not exists` | **open** | open | **FIXED** | fixed |
-| 56 — written widget nodes build to CE0463 | — | **new**, 7 widget types | open, **6 types** | open, 6 types |
-| 57 — constraint checker ignores generalization | — | — | **new regression** | **FIXED** (`bdb8fabd1`) |
-| 58 — `check` rejects the `MxTest` module it generates | — | — | parse errors instead | **new** |
-| `MDL-RETRIEVE01` — `LIMIT 1` used as a list | — | — | missed it | **new rule, verified both ways** |
+| 46 / 47 / 48 / 49 / 51 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 52 — a test run briefly downs a running `run --local` | open | not re-measured | not re-measured | not re-measured |
+| 53 — `DESCRIBE WIDGET` vs the validator (and its four sub-items) | **FIXED** | fixed | fixed | fixed, 43 of 43 |
+| 54A — `DESCRIBE PAGE` emits unparseable MDL | **new**, 5 of 20 | open | open | open, 5 of 20 |
+| 54B — a `textTemplate` is dropped | **new** | open | open | **FIXED** (`95c1841f`) |
+| 54C — a fieldset's body is dropped | **new** | open | open | **no longer silent** — now MDL-WIDGET26 |
+| 55 — `check` rejects `create entity if not exists` | open | **FIXED** | fixed | fixed |
+| 56 — written widget nodes build to CE0463 | **new**, 7 types | 6 types | 6 types | **5 types**, flagship repro clean |
+| 57 — constraint checker ignores generalization | — | **new regression** | **FIXED** (`bdb8fabd1`) | fixed |
+| 58 — `check` rejects the `MxTest` module it generates | — | — | **new** | open, unchanged |
+| `MDL-RETRIEVE01` — `LIMIT 1` used as a list | — | — | **new rule**, verified | holds |
+| 59 — describe drops an inherited association's qualifier | — | — | — | **new**, 0 → 5 build errors |
+| 60 — `DESCRIBE WIDGET` calls an installed widget unknown | — | — | present | **new** (not a regression) |
 
-On `254c85068`: **44/44** under `--require-assertions`, `lint` 0 errors (428
+On `0a821cf`: **44/44** under `--require-assertions`, `lint` 0 errors (428
 warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21 anchors / 19
-resolved, all 50 Sudoku microflows `describe` → `check` clean, the full
-`mdlsource/` pipeline replays to **`mx check` 0 errors**, and the running app
-still serves 200. Every row above was re-run against this build rather than
-carried forward.
+resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
+`mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
+re-run against this build rather than carried forward.
+
+### PR 661 — `mxcli layout flows`, verified on 51 real flows
+
+A new command that re-arranges microflows and nanoflows on their canvas. Run over
+this project's whole `Sudoku` module — 51 flows, none of them written with
+`@position`, several with nested loops and error handlers:
+
+```
+layout flows --module Sudoku --dry-run  →  30 would change, 21 already laid out, 0 skipped
+layout flows --module Sudoku            →  30 laid out, 21 already laid out, 0 skipped
+layout flows --module Sudoku            →   0 laid out, 51 already laid out, 0 skipped
+mx check                                →  The app contains: 0 errors.
+mxcli test … --require-assertions       →  Total: 44  Passed: 44
+```
+
+Every claim in its help text holds:
+
+- **"0 skipped"** is the one that matters most. The help says a flow whose
+  description does not rebuild into the same graph is skipped rather than laid
+  out by guesswork — so a high skip count would mean the command declining to
+  work on real code. It declined on none of 51.
+- **Idempotent.** The third line above: a second run moves nothing.
+- **"Only positions change."** Checked by describing all 50 microflows before and
+  after and diffing with coordinates normalised away. Across 50 flows the only
+  differences are 81 `@anchor(to: …)` lines — sequence-flow anchors, which the
+  help explicitly lists as in scope — and **one** annotation in `ACT_SolveGrid`
+  that came back as `@annotation 'text'` instead of
+  `@annotation(text: 'text', position: (27160, 100))`. The text is intact; the
+  explicit position is not. Worth a look, since a free-floating annotation that
+  loses its position on a canvas where everything else moved may not land
+  usefully. Everything else — activities, decisions, loops, error handlers,
+  element IDs — is byte-identical.
+
+The dry-run reporting is well judged too: `"51 of 70 objects and 2 flows would
+move"` per flow, and `"already laid out"` rather than `"0 objects would move"`,
+so the no-op case reads as a state rather than an absence.
 
 ### On this build in particular: the legacy engine is gone
 
@@ -3242,11 +3272,28 @@ for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-Findings #54 and #56 are open and unchanged in kind. #58 is new on
-`254c85068`.
+Findings #54A, #56 and #58 are open. #59 and #60 are new on `0a821cf`.
 
-Findings #55 and #57 closed: the `if not exists` qualifier is honoured, and
-constraint associations resolve through the generalization chain.
+Findings #55 and #57 closed earlier: the `if not exists` qualifier is honoured,
+and constraint associations resolve through the generalization chain. #54B closed
+on `0a821cf`, and #54C stopped being destructive.
+
+### A third near-miss on the same axis, recorded as method
+
+I nearly filed "the widget keyword list dropped from 43 to 11" as a regression.
+It was a cold-container artifact: `mxcli widget init` had not been run, and its
+output lives in gitignored `.mxcli/`. Building `254c85068` and running both
+binaries against the same cold project showed 11 on each.
+
+That is the third time a cache has nearly produced a false result here — the
+`d8294e7c6` control that "passed" on both builds off one shared catalog, the
+shallow clone that looked like a rewritten history, and now this. All three
+pointed at a **conclusion about a build** that was really a fact about the
+**environment**. The standing rule that came out of it: before comparing two
+builds, delete the caches (`.mxcli/`), and when a result looks like a big
+regression, run the *old* binary against the *same* cold state before writing it
+down. The finding that survived (#60) is a real defect, just not the one the
+first measurement suggested.
 
 ### Fastest turnaround in this document
 
@@ -3854,6 +3901,52 @@ first assertion catches A; the second catches B and C, which an
 equal-describes-in-and-out test would miss entirely, since describe is blind to
 what it dropped.
 
+### Retested on `main` at `0a821cf` — B and C fixed, A unchanged, and the guard above turned out to be necessary
+
+**B is closed.** A `textTemplate` now survives, and the round-trip is provably
+lossless rather than merely plausible — mxcli says so itself:
+
+```
+describe TST_Pie > rt.mdl ; exec rt.mdl   →  Unchanged page Sudoku.TST_Pie
+describe TST_Pie | grep seriesName        →  seriesName: 'Digits'
+```
+
+`95c1841f`/`839e6c28` (#575) did it, and "Unchanged page" is a genuinely useful
+outcome to report — it distinguishes a lossless round-trip from one that merely
+did not crash.
+
+**C is no longer destructive, but the round-trip still fails.** The fieldset's
+body and legend both come back now:
+
+```mdl
+fieldset fs1 (legend: 'Board settings') {
+  content content1 { dynamictext dt1 (Content: 'hello') }
+}
+```
+
+Feeding that back is refused rather than silently applied:
+
+```
+✗ page Sudoku.TST_RT: `content` is not a container of `fieldset` —
+  it declares: template   [MDL-WIDGET26]
+Refusing to execute: 1 error(s) above. Nothing was written.
+```
+
+The describer emits the container under its **schema key** (`content`, from
+`4236a62b`/`938b389b`) and the validator still wants the **MDL keyword**
+(`template`). Same family as #53 — two readers of one `.mpk` disagreeing — moved
+from properties to container names. What matters is the change in failure mode:
+silent deletion became a refusal with the right word in it. The remaining fix is
+to make one of the two spellings canonical, or accept both.
+
+**A is unchanged.** Same five pages, same two causes — a nameless `statictext`,
+and an explanatory `--` comment in property-value position.
+
+**And the suggested guard above earned its keep.** Running the sweep on the whole
+project found the equal-describes test passing while the model broke, exactly as
+predicted: 15 of 20 pages write back, all 15 re-describe **byte-identically**,
+and `mx check` goes from 0 errors to 5. That is #59.
+
 ---
 
 ## 55. `check --references` rejects `create entity if not exists` — the idempotency form mxcli's own error message recommends
@@ -4016,6 +4109,27 @@ mx check      →  [error] [CE0463] … at Barcode Scanner 'widget1'
 
 Six types remain: Accessibility helper, Barcode Scanner, Data grid 2, Feedback,
 Maps, Pop-up menu.
+
+### Retested on `main` at `0a821cf` — narrower again, and the flagship repro is clean
+
+| | `main @ 0dd7f51a0` | `main @ 0a821cf` |
+|---|---|---|
+| CE0463 — the defect | 7, on 6 widget types | **6, on 5** |
+| CE0642 — inherent | 19 | 20 |
+| `MDL-WIDGET06` warnings | 35 | 35 |
+
+Barcode Scanner is out, and it was the case this entry led with. The minimal
+repro — a barcode scanner with nothing but a valid data source, which passed
+`check` and then failed the build — now goes all the way through:
+
+```
+mxcli check   →  Check passed!
+mxcli exec    →  Created page Sudoku.TSTW_bs2
+mx check      →  The app contains: 0 errors.
+```
+
+Five types remain: Accessibility helper, Data grid 2, Feedback, Maps, Pop-up
+menu.
 
 ---
 
@@ -4289,6 +4403,166 @@ $n = count($cells);
 And the same retrieve used as a single object passes, so the rule reads the
 *use*, not the `limit`. Message, code and remedy are all there. Nothing in this
 project trips it.
+
+### Still open at `0a821cf`
+
+Unchanged: 44 errors for 44 tests, exit 1, and `MxTest` still appears zero times
+in the source. `02053281 "diagnose a test file on the text the parser was given"`
+improved the diagnosis side; the generated module is still not in the set the
+reference pass treats as created-by-this-script.
+
+---
+
+## 59. `DESCRIBE PAGE` drops the module qualifier on an inherited association, and `exec` then writes a dangling reference
+
+**New, and the most damaging round-trip defect in this document so far**, because
+every stage before the build says it is fine.
+
+Found on `main` at `0a821cf`, Mendix 11.13.0.
+
+### One stock page, one cycle, three build errors
+
+`Administration.Account_New` ships with the Administration module. The project is
+**0 errors** pristine.
+
+```
+mxcli -c "DESCRIBE PAGE Administration.Account_New" > an.mdl
+mxcli check an.mdl --references   →  Check passed
+mxcli exec  an.mdl                →  Replaced page Administration.Account_New
+mx check                          →  The app contains: 3 errors.
+
+[CE1613] "The selected association 'Administration.UserRoles' no longer exists."     at Combo box 'comboBox1'
+[CE1613] "The selected association 'Administration.User_Language' no longer exists." at Combo box 'comboBox3'
+[CE1613] "The selected association 'Administration.User_TimeZone' no longer exists." at Combo box 'comboBox2'
+```
+
+Over all 20 pages the project goes from **0 errors to 5**.
+
+### The cause is one missing qualifier
+
+`Administration.Account extends System.User`, and the three associations are
+declared on `System.User`. `DESCRIBE PAGE` emits the binding **unqualified**:
+
+```mdl
+combobox comboBox1 (Label: 'User role(s)', Attribute: UserRoles, …)
+```
+
+`exec` then resolves the bare name in the page's own module and writes
+`Administration.UserRoles`, which does not exist. Confirmed by repair rather than
+by reading — qualifying the three by hand in the same describe output:
+
+```
+Attribute: System.UserRoles / System.User_Language / System.User_TimeZone
+  →  exec  →  mx check: 3 × CE1613 gone
+```
+
+So the qualified form is legal MDL and produces a correct model. The loss is in
+the describer.
+
+### Four stages, and only the last one notices
+
+| stage | verdict |
+|---|---|
+| `DESCRIBE PAGE` | emits `Attribute: UserRoles` |
+| `check --references` | **Check passed** — a bare name looks like a plain attribute |
+| `exec` | **Replaced page** — resolves it in the wrong module, writes it |
+| `mx check` | CE1613 |
+
+And the obvious regression test does not see it either. describe → exec →
+describe is **byte-identical on all 15 pages that write back**, because describe
+re-emits the same unqualified name it wrote. This is precisely the blind spot
+#54's suggested guard warned about, now demonstrated rather than predicted: an
+equal-describes test passes while the model breaks.
+
+### A second, smaller loss on the same page
+
+Once the CE1613s are repaired, one error remains:
+
+```
+[CE0642] "Property 'Caption' is required." at Combo box 'comboBox2'
+```
+
+The pristine page satisfies CE0642, so the caption exists and describe drops it —
+`comboBox1` and `comboBox3` come back with `CaptionAttribute:` and `comboBox2`
+comes back with none. Distinct defect, normally masked because CE1613 fires
+first.
+
+### Why it matters
+
+This is the same generalization blind spot as #57, moved from the checker to the
+writer. #57 was a false error on a working model — noisy but safe. This is a
+silent corruption of a working model, and the corruption is in a marketplace
+module every Mendix app has.
+
+**Suggested fix:** emit the declaring module's qualifier whenever a binding
+resolves through the generalization chain rather than on the entity itself. The
+resolver that #57's fix (`bdb8fabd1`) taught to walk the chain already knows
+which module that is.
+
+**Suggested guard:** the round-trip test from #54, with `mx check` as the
+assertion instead of a describe comparison. Describe-equality cannot catch this
+class and never will.
+
+---
+
+## 60. `DESCRIBE WIDGET` calls an installed widget "unknown", and both remedies it suggests fail
+
+**New.** On a freshly cloned project, 32 of the 43 widgets sitting in
+`Sudoku/widgets/*.mpk` are not describable:
+
+```
+mxcli -p Sudoku.mpr -c "DESCRIBE WIDGET fieldset"
+Error: unknown widget "fieldset" — use an MDL keyword (barcodescanner, combobox,
+datagrid, datagrid2, datefilter, dropdownfilter, dropdownsort, gallery, image,
+numberfilter, textfilter) or a full widget id (com.mendix.widget…).
+Run `mxcli widget list` to see all
+```
+
+`com.mendix.widget.web.fieldset.Fieldset` is installed — the `.mpk` is right
+there, and `SHOW WIDGETS` lists 46 pluggable instances already on pages. The
+keyword list has 11 entries, and `widget list` reports "Total: 9 definitions".
+
+### Both suggested remedies fail
+
+- **"use an MDL keyword"** — `fieldset` *is* the MDL keyword; page authoring
+  accepts it, and `DESCRIBE PAGE` emits it.
+- **"or a full widget id"** — does not parse:
+
+```
+mxcli -c "DESCRIBE WIDGET com.mendix.widget.web.fieldset.Fieldset"
+Parse error: line 1:47 extraneous input '.' expecting the start of a statement
+```
+
+### The actual remedy, which nothing mentions
+
+```
+mxcli widget init -p Sudoku.mpr
+  →  Generated 42 widget docs …
+DESCRIBE WIDGET zzz  →  keyword list now has 44 entries
+DESCRIBE WIDGET fieldset  →  Widget: Fieldset (fieldset), ID: com…Fieldset
+```
+
+`widget init` writes 33 definitions into `Sudoku/.mxcli/widgets/`, which is
+**gitignored**. So a clone, a fresh CI container or a new dev machine starts in
+the degraded state, and the error message points away from the one command that
+fixes it.
+
+### Not a regression — and the check that established that is the point
+
+The keyword list is 11 on `254c85068` too, with `.mxcli/` absent. My earlier
+sweeps read 43 because a previous session had run `widget init` in a
+long-lived container. Measured against both binaries on the same cold project
+rather than inferred:
+
+```
+mxcli-254c85068   keywords=11   fieldset-unknown=1
+mxcli-0a821cf     keywords=11   fieldset-unknown=1
+```
+
+**Suggested fix:** discover the project's `.mpk` widgets on demand, or have the
+error say *"run `mxcli widget init` first"* — it is the one remedy that works and
+the only one not offered. **Suggested guard:** the widget sweep must delete
+`.mxcli/` before it runs, or it measures the cache rather than the build.
 
 ---
 
