@@ -4709,6 +4709,8 @@ called unknown — which is what the fix addressed.
 
 ## 61. An excluded page cannot be round-tripped when its data source names a document that does not exist
 
+> Reported as [ako/mxcli#680](https://github.com/ako/mxcli/issues/680).
+
 **New.** `864440db` *"excluded page's dangling action references no longer block
 exec"* allows an excluded page to keep action references to documents the project
 does not have. The same allowance does not extend to **data sources**, so one
@@ -4726,7 +4728,9 @@ $ mxcli -c "SHOW PAGES" | grep ShareFeedback_Logo
                                                           ^ excluded
 
 $ mxcli check d/FeedbackModule.ShareFeedback_Logo.mdl -p Sudoku.mpr --references
-  - nanoflow not found: FeedbackModule.ACT_TriggerScreenshotMode     <- tolerated (864440db)
+  page '…ShareFeedback_Logo' is excluded, so its unresolved references do not
+  block (Mendix does not validate excluded documents):
+  - nanoflow not found: FeedbackModule.ACT_TriggerScreenshotMode     <- tolerated
   - nanoflow not found: FeedbackModule.ACT_UploadImage               <- tolerated
   - nanoflow not found: FeedbackModule.ACT_ClearImage                <- tolerated
   - nanoflow not found: FeedbackModule.ACT_ClearForm                 <- tolerated
@@ -4736,8 +4740,12 @@ Reference errors:
   - nanoflow not found: FeedbackModule.DS_FeedbackForm (data source)  <- blocks
 ```
 
-The four actions pass and the one data source stops it, which is the shape of a
-fix that covered one reference kind.
+**The output states the rule and then contradicts it two lines later.** The
+tolerated group is annotated with the reason — *"Mendix does not validate
+excluded documents"* — and the blocking one is on the same excluded page. The
+four missing nanoflows and the one missing nanoflow are equally missing; only
+the slot they sit in differs. That is the shape of a fix that covered one
+reference kind.
 
 ### It is the writer, not only the checker
 
