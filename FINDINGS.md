@@ -3073,42 +3073,57 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `0a821cf` (+ PR 661)**, 379 commits on: **#54's two silent
-> deletions are fixed** and #56 is narrower again, with its flagship repro clean.
-> #54A and #58 are unchanged. Two new entries: **#59**, a describe→exec cycle
-> that corrupts a stock marketplace page while every stage but the build says it
-> passed — and **#60**, `DESCRIBE WIDGET` calling an installed widget unknown.
-> **PR 661 (`layout flows`) verified on 51 real flows** and is good work.
+> **Update, `main` at `2a723ec7`:** **all three findings I filed upstream are
+> fixed** — #59 ([#662](https://github.com/ako/mxcli/issues/662)) and #60
+> ([#663](https://github.com/ako/mxcli/issues/663)) closed, and #54A closed at the
+> source. #58 ([#677](https://github.com/ako/mxcli/issues/677)) and #56 are open
+> and unchanged; **#61** is new and is the last page in the project that will not
+> round-trip. PR 661 (`layout flows`) is merged.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `0a821cf`** (2026-09-24). Previous columns kept so
+Last retested on **`main` at `2a723ec7`** (2026-09-25). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `+396 @ d9c11cdd8` | `main @ 0dd7f51a0` | `main @ 254c85068` | `main @ 0a821cf` |
+| Finding | `main @ 0dd7f51a0` | `main @ 254c85068` | `main @ 0a821cf` | `main @ 2a723ec7` |
 |---|---|---|---|---|
 | 46 / 47 / 48 / 49 / 51 and the `-dirty` version string | fixed | fixed | fixed | fixed |
-| 52 — a test run briefly downs a running `run --local` | open | not re-measured | not re-measured | not re-measured |
-| 53 — `DESCRIBE WIDGET` vs the validator (and its four sub-items) | **FIXED** | fixed | fixed | fixed, 43 of 43 |
-| 54A — `DESCRIBE PAGE` emits unparseable MDL | **new**, 5 of 20 | open | open | open, 5 of 20 |
-| 54B — a `textTemplate` is dropped | **new** | open | open | **FIXED** (`95c1841f`) |
-| 54C — a fieldset's body is dropped | **new** | open | open | **no longer silent** — now MDL-WIDGET26 |
-| 55 — `check` rejects `create entity if not exists` | open | **FIXED** | fixed | fixed |
-| 56 — written widget nodes build to CE0463 | **new**, 7 types | 6 types | 6 types | **5 types**, flagship repro clean |
-| 57 — constraint checker ignores generalization | — | **new regression** | **FIXED** (`bdb8fabd1`) | fixed |
-| 58 — `check` rejects the `MxTest` module it generates | — | — | **new** | open, unchanged |
-| `MDL-RETRIEVE01` — `LIMIT 1` used as a list | — | — | **new rule**, verified | holds |
-| 59 — describe drops an inherited association's qualifier | — | — | — | **new**, 0 → 5 build errors |
-| 60 — `DESCRIBE WIDGET` calls an installed widget unknown | — | — | present | **new** (not a regression) |
+| 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
+| 53 — `DESCRIBE WIDGET` vs the validator (+ 4 sub-items) | fixed | fixed | fixed | fixed |
+| 54A — `DESCRIBE PAGE` emits unparseable MDL | open, 5 of 20 | open | open | **FIXED** (`c7ffc0fe` + `95eb07ea`) — 0 of 20 |
+| 54B — a `textTemplate` is dropped | open | open | **FIXED** (`95c1841f`) | fixed |
+| 54C — a fieldset's body is dropped | open | open | no longer silent — MDL-WIDGET26 | unchanged in kind |
+| 55 — `check` rejects `create entity if not exists` | **FIXED** | fixed | fixed | fixed |
+| 56 — written widget nodes build to CE0463 | 6 types | 6 types | **5 types** | open, 5 types |
+| 57 — constraint checker ignores generalization | **new** | **FIXED** (`bdb8fabd1`) | fixed | fixed |
+| 58 — `check` rejects the `MxTest` module it generates | — | **new** | open | **open** ([#677](https://github.com/ako/mxcli/issues/677)) |
+| 59 — describe drops an inherited association's qualifier | — | — | **new**, 0 → 5 build errors | **FIXED** (`618c6004`, [#662](https://github.com/ako/mxcli/issues/662)) |
+| 59 sub — a ComboBox's caption is dropped (CE0642) | — | — | **new** | **FIXED** (`ccbfa268`, split out as #664) |
+| 60 — `DESCRIBE WIDGET` calls an installed widget unknown | — | present | **new** | **FIXED** (`3baa7097`, [#663](https://github.com/ako/mxcli/issues/663)) |
+| 61 — an excluded page's data source blocks round-trip | — | — | — | **new**, 1 of 20 pages |
 
-On `0a821cf`: **44/44** under `--require-assertions`, `lint` 0 errors (428
+On `2a723ec7`: **44/44** under `--require-assertions`, `lint` 0 errors (428
 warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
-re-run against this build rather than carried forward.
+re-run against this build rather than carried forward, on a project with
+`.mxcli/` deleted first — see the cache rule below.
+
+### The page round-trip, which is what this build moved
+
+The single number worth tracking across these builds, because it is the one an
+app author feels — describe every page, exec it back, then ask mxbuild:
+
+| | `0a821cf` | `2a723ec7` |
+|---|---|---|
+| pages that emit parseable MDL | 15 of 20 | **20 of 20** |
+| pages that write back | 15 | **19** |
+| `mx check` after the replay | **5 errors** | **0 errors** |
+
+The remaining page is #61.
 
 ### PR 661 — `mxcli layout flows`, verified on 51 real flows
 
@@ -3145,6 +3160,44 @@ Every claim in its help text holds:
 The dry-run reporting is well judged too: `"51 of 70 objects and 2 flows would
 move"` per flow, and `"already laid out"` rather than `"0 objects would move"`,
 so the no-op case reads as a state rather than an absence.
+
+### Applied to this project, and graded by mxcli's own linter
+
+Taken on `c865b992` and committed. The lint tally is the measurement that
+settles whether the command is worth running, and it is the one I would not have
+thought to take without `mxcli lint` already carrying both rules:
+
+| rule | before | after |
+|---|---|---|
+| **MPR011** — activity outside the loop that contains it | 67 | **13** |
+| **MPR008** — overlapping activities | 0 | **4** |
+
+MPR011 is the serious one — *"renders wrong in Studio Pro; mx check does not
+detect this."* 54 gone. These flows were authored from MDL without `@position`,
+so they had carried whatever the writer produced since the project began.
+
+The 4 new MPR008s are a real cost and all four involve a **merge node** within
+5–115px of its neighbour, at the same y, on the main path:
+
+```
+'(merge)' (2355,80)   and '(merge)' (2360,80)       ACT_DealGame
+'(merge)' (5635,330)  and '(merge)' (5580,330)      ACT_Refresh
+```
+
+Reported as [ako/mxcli#684](https://github.com/ako/mxcli/issues/684), together
+with the `ACT_SolveGrid` annotation that loses its explicit position and the 13
+MPR011s that survive.
+
+**Checked that this was the layout and not the newer binary** — the pristine
+project linted with the *same* build gives 517/428, so the 50-warning drop is the
+layout's doing. That is the cache rule applied to a different axis: attribute a
+change to the thing that changed, having held everything else still.
+
+**The generalisable point:** a tool that both generates a thing and lints it can
+grade itself. `layout flows` writes positions; `MPR008` and `MPR011` are computed
+from positions. Running the linter across the layouter in CI would have caught
+both the win and the regression without anyone designing a new assertion — which
+is the guard the issue suggests.
 
 ### On this build in particular: the legacy engine is gone
 
@@ -3272,7 +3325,26 @@ for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-Findings #54A, #56 and #58 are open. #59 and #60 are new on `0a821cf`.
+Findings #56 and #58 are open; #61 is new on `2a723ec7`. #54A, #59 and #60
+closed there — all three were filed upstream as
+[#662](https://github.com/ako/mxcli/issues/662),
+[#663](https://github.com/ako/mxcli/issues/663) and, for #58 which is still open,
+[#677](https://github.com/ako/mxcli/issues/677).
+
+### What reporting them changed, and what it says about writing them up
+
+#662 and #663 were both fixed within a day, and #662's fix went further than the
+report asked: the "probably separate" second defect I mentioned at the bottom of
+it was split into its own issue (#664) and fixed alongside. #54A was fixed twice
+over — the nameless widget by making the widget authorable, the unparseable
+comment by removing the limitation the comment was apologising for — rather than
+by making either one parse.
+
+That is the same pattern as #57's one-day turnaround, and the same cause: each
+report carried a minimal repro, the exact observed output, and a statement of
+which stage was wrong. The one still open, #58, is the one whose fix is a
+judgement call about set membership rather than a defect with a single right
+answer — which is probably the honest reason it is still open, not the write-up.
 
 Findings #55 and #57 closed earlier: the `if not exists` qualifier is honoured,
 and constraint associations resolve through the generalization chain. #54B closed
@@ -3947,6 +4019,42 @@ project found the equal-describes test passing while the model broke, exactly as
 predicted: 15 of 20 pages write back, all 15 re-describe **byte-identically**,
 and `mx check` goes from 0 errors to 5. That is #59.
 
+### Retested on `main` at `2a723ec7` — A is fixed, and at the source
+
+Both causes are gone, and neither was papered over.
+
+**The nameless `statictext`** is now a named `label`, because the widget it was
+standing in for can be authored: `c7ffc0fe` *"author Studio Pro's Label widget;
+describe emits it named"*.
+
+```mdl
+statictext (Content: 'Mendix AppCloud users are provisioned by …')   -- 0a821cf, unparseable
+label label4 (…)                                                     -- 2a723ec7
+```
+
+**The explanatory comment in value position** is gone because the limitation it
+was explaining is gone. `95eb07ea` *"author open_link with a dynamic address
+($currentObject/Attr)"* means there is nothing left to apologise for:
+
+```mdl
+Action: -- open_link with a dynamic address (…) — MDL cannot author this, …   -- 0a821cf
+Action: open_link $currentObject/URL,                                          -- 2a723ec7
+```
+
+`f38696f4` *"keep comment entries in a widget property list parseable"* covers
+the general case for comments that do still need emitting.
+
+That is the better of the two available fixes in both cases: the round-trip works
+because the describer can now say what the model holds, not because the
+unsayable part was made to parse.
+
+**Result:** 0 of 20 pages emit unparseable MDL, against 5. With #59 fixed too,
+19 of 20 round-trip to `mx check` 0 errors; the twentieth is #61.
+
+**C is unchanged in kind** — describe still emits the fieldset container as
+`content` and the validator still wants `template` (MDL-WIDGET26), so the
+round-trip is refused rather than silently destructive.
+
 ---
 
 ## 55. `check --references` rejects `create entity if not exists` — the idempotency form mxcli's own error message recommends
@@ -4309,6 +4417,9 @@ of #54 with nothing extra.
 
 ## 58. `check` now parses a `.test.mdl`, then rejects the module it generated itself
 
+> **Open at `2a723ec7`**, unchanged. Reported as
+> [ako/mxcli#677](https://github.com/ako/mxcli/issues/677).
+
 **New, and it fails a CI gate.** `64b192a00` *"parse a .test.mdl file as the
 microflow bodies it is"* fixes a real gap — on `0dd7f51a0`, `mxcli check
 sudoku.test.mdl` was a wall of parse errors, because the file is a set of
@@ -4415,6 +4526,12 @@ reference pass treats as created-by-this-script.
 
 ## 59. `DESCRIBE PAGE` drops the module qualifier on an inherited association, and `exec` then writes a dangling reference
 
+> **FIXED on `main` at `2a723ec7`** by `618c6004` *"qualify inherited associations
+> with their declaring module (#662)"*. Reported as
+> [ako/mxcli#662](https://github.com/ako/mxcli/issues/662); the second loss this
+> entry flagged as "probably separate" was split out as #664 and fixed too
+> (`ccbfa268`). Retest at the end.
+
 **New, and the most damaging round-trip defect in this document so far**, because
 every stage before the build says it is fine.
 
@@ -4503,9 +4620,39 @@ which module that is.
 assertion instead of a describe comparison. Describe-equality cannot catch this
 class and never will.
 
+### Retested on `main` at `2a723ec7` — fixed, and the whole path with it
+
+`618c6004` emits the declaring module's qualifier, which is the fix this entry
+suggested:
+
+```console
+$ mxcli -c "DESCRIBE PAGE Administration.Account_New" | grep Attribute:.*User
+              Attribute: System.UserRoles,
+              Attribute: System.User_Language,
+              Attribute: System.User_TimeZone,
+
+$ mxcli exec an.mdl -p Sudoku.mpr  &&  mx check Sudoku.mpr
+Replaced page Administration.Account_New
+The app contains: 0 errors.
+```
+
+Zero, not one: the `CE0642` caption loss this entry flagged as "probably
+separate" was split out as #664 and fixed alongside by `ccbfa268` *"keep a
+ComboBox's expression caption"*. Splitting it was the right call — it was a
+different mechanism with the same symptom.
+
+Measured the way the entry asked for, on `mx check` rather than on a describe
+comparison: replaying **19 of 20 pages** now leaves the project at **0 errors**,
+against 5 on `0a821cf`. The twentieth is #61.
+
 ---
 
 ## 60. `DESCRIBE WIDGET` calls an installed widget "unknown", and both remedies it suggests fail
+
+> **FIXED on `main` at `2a723ec7`** by `3baa7097` *"DESCRIBE WIDGET and widget
+> list see installed widgets without widget init (#663)"*, with `ad3cc3c6` doing
+> the same for the LSP. Reported as
+> [ako/mxcli#663](https://github.com/ako/mxcli/issues/663). Retest at the end.
 
 **New.** On a freshly cloned project, 32 of the 43 widgets sitting in
 `Sudoku/widgets/*.mpk` are not describable:
@@ -4563,6 +4710,107 @@ mxcli-0a821cf     keywords=11   fieldset-unknown=1
 error say *"run `mxcli widget init` first"* — it is the one remedy that works and
 the only one not offered. **Suggested guard:** the widget sweep must delete
 `.mxcli/` before it runs, or it measures the cache rather than the build.
+
+### Retested on `main` at `2a723ec7` — fixed, on the harder of the two options
+
+`3baa7097` took the discover-on-demand route rather than the cheap one. On a
+project with `.mxcli/` **deleted**, which is the state the entry is about:
+
+```console
+$ mxcli -p Sudoku.mpr -c "DESCRIBE WIDGET fieldset"
+Widget: Fieldset (fieldset)
+  ID:      com.mendix.widget.web.fieldset.Fieldset
+  Source:  project .mpk
+
+$ mxcli widget list -p Sudoku.mpr | tail -1
+Total: 42 definitions          (was 9)
+```
+
+The error message is rewritten too, and is now true where the old one was not —
+*"no widget by that name is installed in this project's widgets/"*, followed by
+all 43 keywords.
+
+One correction to my own report while I am here. I wrote that the "full widget
+id" remedy *"does not parse"*. It parses fine — it needs **quoting**, and I had
+not quoted it. The new message says so explicitly, and it works:
+
+```console
+$ mxcli -c "DESCRIBE WIDGET 'com.mendix.widget.web.fieldset.Fieldset'"
+Widget: Fieldset (fieldset)
+```
+
+So one of the two remedies in the old message was real and I mis-reported it as
+broken. The finding stands on the other half — a widget that *is* installed being
+called unknown — which is what the fix addressed.
+
+---
+
+## 61. An excluded page cannot be round-tripped when its data source names a document that does not exist
+
+> Reported as [ako/mxcli#680](https://github.com/ako/mxcli/issues/680).
+
+**New.** `864440db` *"excluded page's dangling action references no longer block
+exec"* allows an excluded page to keep action references to documents the project
+does not have. The same allowance does not extend to **data sources**, so one
+page in this project still cannot be written back.
+
+Found on `main` at `2a723ec7`, Mendix 11.13.0.
+
+`FeedbackModule.ShareFeedback_Logo` ships excluded — it is the
+`Examples/WithCompanyLogo` variant of a marketplace module, and the nanoflows it
+names are genuinely absent:
+
+```console
+$ mxcli -c "SHOW PAGES" | grep ShareFeedback_Logo
+| FeedbackModule.ShareFeedback_Logo | FeedbackModule | … | true | Examples/WithCompanyLogo/Pages | …
+                                                          ^ excluded
+
+$ mxcli check d/FeedbackModule.ShareFeedback_Logo.mdl -p Sudoku.mpr --references
+  page '…ShareFeedback_Logo' is excluded, so its unresolved references do not
+  block (Mendix does not validate excluded documents):
+  - nanoflow not found: FeedbackModule.ACT_TriggerScreenshotMode     <- tolerated
+  - nanoflow not found: FeedbackModule.ACT_UploadImage               <- tolerated
+  - nanoflow not found: FeedbackModule.ACT_ClearImage                <- tolerated
+  - nanoflow not found: FeedbackModule.ACT_ClearForm                 <- tolerated
+Reference errors:
+  statement 1: page '…ShareFeedback_Logo' is excluded, but a data source or
+    entity it names does not exist:
+  - nanoflow not found: FeedbackModule.DS_FeedbackForm (data source)  <- blocks
+```
+
+**The output states the rule and then contradicts it two lines later.** The
+tolerated group is annotated with the reason — *"Mendix does not validate
+excluded documents"* — and the blocking one is on the same excluded page. The
+four missing nanoflows and the one missing nanoflow are equally missing; only
+the slot they sit in differs. That is the shape of a fix that covered one
+reference kind.
+
+### It is the writer, not only the checker
+
+`--no-check` does not get past it:
+
+```console
+$ mxcli exec …ShareFeedback_Logo.mdl -p Sudoku.mpr --no-check
+Error: failed to build page: failed to build widget: failed to build datasource:
+       failed to resolve nanoflow: nanoflow not found: FeedbackModule.DS_FeedbackForm
+```
+
+So the builder insists on resolving a data source that the page, being excluded,
+will never run.
+
+### The build is the arbiter and it does not care
+
+`mx check` on the pristine project — this page present and excluded, those
+nanoflows absent — reports **0 errors**. mxbuild does not compile excluded
+documents, which is the whole point of the exclusion.
+
+**Impact:** small but exact. It is the only one of 20 pages that will not
+round-trip on this build, and it is the last thing between `DESCRIBE PAGE` →
+`exec` and a clean sweep of the whole project.
+
+**Suggested fix:** apply `864440db`'s allowance to data sources and entities on
+an excluded document, in the builder as well as the checker — a placeholder or a
+left-as-stored reference rather than a hard resolve.
 
 ---
 
