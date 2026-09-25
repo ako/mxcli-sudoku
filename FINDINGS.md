@@ -3161,6 +3161,44 @@ The dry-run reporting is well judged too: `"51 of 70 objects and 2 flows would
 move"` per flow, and `"already laid out"` rather than `"0 objects would move"`,
 so the no-op case reads as a state rather than an absence.
 
+### Applied to this project, and graded by mxcli's own linter
+
+Taken on `c865b992` and committed. The lint tally is the measurement that
+settles whether the command is worth running, and it is the one I would not have
+thought to take without `mxcli lint` already carrying both rules:
+
+| rule | before | after |
+|---|---|---|
+| **MPR011** — activity outside the loop that contains it | 67 | **13** |
+| **MPR008** — overlapping activities | 0 | **4** |
+
+MPR011 is the serious one — *"renders wrong in Studio Pro; mx check does not
+detect this."* 54 gone. These flows were authored from MDL without `@position`,
+so they had carried whatever the writer produced since the project began.
+
+The 4 new MPR008s are a real cost and all four involve a **merge node** within
+5–115px of its neighbour, at the same y, on the main path:
+
+```
+'(merge)' (2355,80)   and '(merge)' (2360,80)       ACT_DealGame
+'(merge)' (5635,330)  and '(merge)' (5580,330)      ACT_Refresh
+```
+
+Reported as [ako/mxcli#684](https://github.com/ako/mxcli/issues/684), together
+with the `ACT_SolveGrid` annotation that loses its explicit position and the 13
+MPR011s that survive.
+
+**Checked that this was the layout and not the newer binary** — the pristine
+project linted with the *same* build gives 517/428, so the 50-warning drop is the
+layout's doing. That is the cache rule applied to a different axis: attribute a
+change to the thing that changed, having held everything else still.
+
+**The generalisable point:** a tool that both generates a thing and lints it can
+grade itself. `layout flows` writes positions; `MPR008` and `MPR011` are computed
+from positions. Running the linter across the layouter in CI would have caught
+both the win and the regression without anyone designing a new assertion — which
+is the guard the issue suggests.
+
 ### On this build in particular: the legacy engine is gone
 
 Not merely unused — `7b7a54870 "Delete sdk/mpr — the legacy engine is gone"`
