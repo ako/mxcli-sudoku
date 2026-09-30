@@ -3103,6 +3103,7 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 61 — an excluded page's data source blocks round-trip | — | — | **new**, 1 of 20 | **FIXED** ([#680](https://github.com/ako/mxcli/issues/680)) |
 | `layout flows` introduces 4 MPR008 overlaps | — | — | **new** | **open** ([#684](https://github.com/ako/mxcli/issues/684)) |
 | 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | — | **new and MIGRATED**, 182 → 0 |
+| 63 — `MDL-DEPR081`'s replacement silently rebinds the expression | — | — | — | **new**, documented not filed |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3335,7 +3336,9 @@ downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
 Findings #58 and the `layout flows` overlaps are open. **#62 was new on
-`5ccbd480` and is done** — the `mdl 2` migration is applied and proven. #56 is resolved
+`5ccbd480` and is done** — the `mdl 2` migration is applied and proven — and
+**#63** came out of doing it: the one deprecation whose promised replacement
+changes behaviour. #63 is recorded here rather than filed upstream. #56 is resolved
 by tooling rather than in the writer, and #61 is fixed. #54A, #59 and #60
 closed there — all three were filed upstream as
 [#662](https://github.com/ako/mxcli/issues/662),
@@ -4376,10 +4379,8 @@ The correct migration writes the binding out, which is exactly how
 182 edits were this, and a naive pass would have changed the behaviour of every
 notes-mode cell on the board.
 
-**This is worth reporting upstream.** `MDL-DEPR081`'s message says *"same
-meaning"*, and for an expression that names an attribute of the context object it
-is not — the canonical form needs `$currentObject/` prepended, which the message
-does not mention.
+That is a defect in the deprecation message rather than in this project, and it
+has its own entry: **#63**. Recorded here, not filed upstream.
 
 ### How the migration was proven rather than asserted
 
@@ -4419,6 +4420,76 @@ diff isolates the migration from both.
 
 Both are #10-class (the scripts are not fully idempotent) and belong in their own
 change.
+
+### And one thing to know before rebuilding from source
+
+**A source replay resets the flow layout.** The `layout flows` pass from
+`6fa2aaa` lives in the *model*; `mdlsource/` has no `@position` annotations, so
+re-running the scripts puts every flow back to whatever the writer produces.
+Measured: after a full replay, `lint` returns to 67 `MPR011` from 13. Anyone
+rebuilding this app from `mdlsource/` should re-run
+`mxcli layout flows --module Sudoku` afterwards. Not a defect — positions are
+model state, and the scripts deliberately do not carry them — but it is the one
+step a from-scratch rebuild needs that the scripts do not encode.
+
+---
+
+## 63. `MDL-DEPR081` says "same meaning", and for a context-object attribute it is not
+
+**New, and recorded rather than filed** — the one deprecation of the eleven in #62
+whose stated replacement is wrong.
+
+Found on `main` at `5ccbd480`, Mendix 11.13.0.
+
+Every `MDL-DEPRnnn` message ends *"— same meaning. Refused from `mdl 2`"*, and for
+ten of the eleven codes this project hit, it is true: the substitution is
+mechanical and the model comes out identical. `MDL-DEPR081` is the exception.
+
+```
+`Visible: [<expression>] / Editable: [<expression>]` (visible) is deprecated;
+write `Visible: <expression> / Editable: <expression>` — same meaning.
+```
+
+Follow that literally and the expression changes meaning, because the bracket form
+carries an implicit binding the bare form does not: inside the brackets, a bare
+attribute name resolves **against the widget's context object**.
+
+| written | what the model ends up holding |
+|---|---|
+| `visible: ["N1"]` | `Visible: $currentObject/N1` — an attribute of the row |
+| `visible: "N1"` | `Visible: [N1]` — not an attribute reference at all |
+| `visible: ["Value" != empty]` | `Visible: $currentObject/Value != empty` |
+| `visible: "Value" != empty` | `Visible: Value != empty` — unbound |
+
+Nothing complains. `check --deprecations=error` goes to zero, the script execs,
+`mx check` reports 0 errors, and the 44 microflow tests pass — they exercise the
+engine, not page visibility. The only signal is the model itself.
+
+### Why it is worth an entry even though nothing failed
+
+This is the fourth shape of the same problem in this document — a tool that is
+confidently wrong in a way no gate catches. #46 was a runner that could not
+evaluate what it accepted; #59 was a describer dropping a qualifier that `check`
+and `exec` both waved through; here it is a deprecation telling you to make an
+edit that silently rebinds an expression. In each case the honest-looking output
+is the trap.
+
+What caught it was the replay-vs-replay diff in #62, not a build gate: describing
+66 documents after replaying the old source and the new source, and requiring
+zero differences. That test exists because #54's guard asked for it, and it is the
+only thing in this project's toolkit that would have noticed.
+
+**The correct replacement**, which the message should name, is the form
+`DESCRIBE PAGE` already emits:
+
+```mdl
+visible: $currentObject/N1
+visible: $currentObject/Value != empty
+```
+
+**Suggested fix:** have `MDL-DEPR081` emit the context-qualified form when the
+bracketed expression names a bare member — the describer already knows how to
+render it — or drop "same meaning" from this one code and say what changes.
 
 ---
 
