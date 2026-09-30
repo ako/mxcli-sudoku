@@ -3073,37 +3073,33 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `5ccbd480`** (494 commits on): **#61 is fixed, and with it
-> the page round-trip is clean end to end** — 20 of 20 pages write back, 9 of them
-> reported `Unchanged`, `mx check` 0 errors. **#56 is resolved** by a new command,
-> `mxcli fix widgets`. #58 ([#677](https://github.com/ako/mxcli/issues/677)) and
-> the `layout flows` overlaps ([#684](https://github.com/ako/mxcli/issues/684)) are
-> open and unchanged. **#62 is new and is the project's own homework**: every
-> `mdlsource/` script uses spellings `mdl 2` will refuse.
+> **Update, `main` at `dfccef55c`:** a 2-commit hop, and every row re-ran
+> unchanged — the page round-trip still 20 of 20 to `mx check` 0 errors, the
+> migrated `mdlsource/` still 0 deprecations. What the pass did turn up is two
+> corrections to my own write-ups: **`mxcli fmt --upgrade` does the whole #62
+> migration in one command** and I had missed it, and **#63 is narrower than I
+> said** — that tool performs the deprecation correctly, so only its message is
+> wrong.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `5ccbd480`** (2026-09-30). Previous columns kept so
+Last retested on **`main` at `dfccef55c`** (2026-09-30). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 254c85068` | `main @ 0a821cf` | `main @ 2a723ec7` | `main @ 5ccbd480` |
+| Finding | `main @ 0a821cf` | `main @ 2a723ec7` | `main @ 5ccbd480` | `main @ dfccef55c` |
 |---|---|---|---|---|
-| 46 / 47 / 48 / 49 / 51 / 53 / 55 / 57 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46–53, 55, 57, 59, 60 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54A — `DESCRIBE PAGE` emits unparseable MDL | open, 5 of 20 | open | **FIXED** | fixed, 0 of 20 |
-| 54B — a `textTemplate` is dropped | open | **FIXED** | fixed | fixed |
-| 54C — a fieldset's body is dropped | open | no longer silent | unchanged in kind | fixed — body round-trips |
-| 56 — written widget nodes build to CE0463 | 6 types | **5 types** | 5 types | **RESOLVED** by `mxcli fix widgets` |
-| 58 — `check` rejects the `MxTest` module it generates | **new** | open | open | **open** ([#677](https://github.com/ako/mxcli/issues/677)) |
-| 59 — describe drops an inherited association's qualifier | — | **new**, 0 → 5 errors | **FIXED** ([#662](https://github.com/ako/mxcli/issues/662)) | fixed |
-| 60 — `DESCRIBE WIDGET` calls an installed widget unknown | present | **new** | **FIXED** ([#663](https://github.com/ako/mxcli/issues/663)) | fixed |
-| 61 — an excluded page's data source blocks round-trip | — | — | **new**, 1 of 20 | **FIXED** ([#680](https://github.com/ako/mxcli/issues/680)) |
-| `layout flows` introduces 4 MPR008 overlaps | — | — | **new** | **open** ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | — | **new and MIGRATED**, 182 → 0 |
-| 63 — `MDL-DEPR081`'s replacement silently rebinds the expression | — | — | — | **new**, documented not filed |
+| 54 — `DESCRIBE PAGE` round-trip (A, B, C) | open, 5 of 20 unparseable | A and B fixed | **closed** | closed, 20 of 20 |
+| 56 — written widget nodes build to CE0463 | 5 types | 5 types | **RESOLVED** by `fix widgets` | resolved; 6 CE0463 without it |
+| 58 — `check` rejects the `MxTest` module it generates | open | open | open | **open**, 44 errors ([#677](https://github.com/ako/mxcli/issues/677)) |
+| 61 — an excluded page's data source blocks round-trip | — | **new** | **FIXED** ([#680](https://github.com/ako/mxcli/issues/680)) | fixed |
+| `layout flows` introduces 4 MPR008 overlaps | — | **new** | open | **open**, still 4 ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | **new and MIGRATED**, 182 → 0 | 0, and `fmt --upgrade` would have done it |
+| 63 — `MDL-DEPR081`'s message misnames the replacement | — | — | **new** | open, **narrowed to the message** |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3115,7 +3111,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | **9** |
 | `mx check` after the replay | **5 errors** | 0 | **0** |
 
-On `5ccbd480`: **44/44** under `--require-assertions`, `lint` 0 errors (378
+On `dfccef55c`: **44/44** under `--require-assertions`, `lint` 0 errors (378
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -4951,9 +4947,39 @@ $ for f in mdlsource/*.mdl; do mxcli check "$f" -p Sudoku.mpr --deprecations=err
   →  deprecations=0, parse errors=0
 ```
 
-`fmt` does not help — *"Formatting never changes what a script builds"* — so there
-is no `--fix`. The 182 edits were nine `perl -0pi` substitutions plus two hand
-edits.
+**Correction: `mxcli fmt --upgrade` does the whole thing in one command, and I
+missed it.** I read `fmt --help`'s opening line — *"Formatting never changes what
+a script builds"* — concluded there was no migration mode, and did 182 edits by
+hand as nine `perl -0pi` substitutions plus two hand fixes. The flag was there the
+whole time, on this build and on `5ccbd480`, further down the same help text:
+
+```console
+$ for f in mdlsource/*.mdl; do mxcli fmt --upgrade -w "$f"; done
+mdlsource/06-page-play.mdl: rewrote MDL-DEPR001 x1, MDL-DEPR005 x1, MDL-DEPR007 x17,
+  MDL-DEPR020 x21, MDL-DEPR081 x34, MDL-DEPR123 x1, MDL-DEPR124 x1
+…
+  →  182 deprecations → 0
+```
+
+It also reports what it rewrote per file and per code, which is a better audit
+trail than my substitutions left.
+
+**The two results agree exactly.** Running the replay-vs-replay snapshot over
+`fmt --upgrade`'s output and over my hand migration gives **0 of 66 documents
+differing**, so the hand pass was correct — but it was unnecessary, and an
+independent implementation confirming it is the only reason I can say the first
+part with confidence.
+
+The one place the outputs differ textually is 23 `MDL-V1-QUOTEDEXPR` rewrites that
+`fmt --upgrade` also applies, unquoting expression strings
+(`dynamicclasses: 'if … then ''x'' else '''''` → `dynamicclasses: if … then 'x'
+else ''`). Semantically neutral — it is inside the 0-of-66 — and it leaves the
+scripts closer to `mdl 1`, which `--header` would opt into.
+
+**The lesson is about how I read help text**, and it is the same shape as the
+cache near-misses recorded above: I took the first paragraph as the whole
+contract. `fmt --help` has a dedicated `Upgrading (--upgrade):` section; reading
+to the end of the flags list would have saved the entire manual pass.
 
 ### The trap this entry warned about did not bite, and a different one did
 
@@ -5042,12 +5068,19 @@ step a from-scratch rebuild needs that the scripts do not encode.
 
 ---
 
-## 63. `MDL-DEPR081` says "same meaning", and for a context-object attribute it is not
+## 63. `MDL-DEPR081`'s message names a replacement that changes the expression — the tool gets it right, the text does not
 
-**New, and recorded rather than filed** — the one deprecation of the eleven in #62
-whose stated replacement is wrong.
+> **Re-scoped on `main` at `dfccef55c`, and narrowed a lot.** The first version of
+> this entry said the defect was caught by nothing. Wrong: `mxcli fmt --upgrade`
+> performs this deprecation **correctly**, emitting the context-qualified form. What
+> is defective is the message text. It only bites someone migrating by hand from
+> that text — which is exactly what I did, because I had not found
+> `fmt --upgrade` (see #62's correction). Recorded, not filed.
 
-Found on `main` at `5ccbd480`, Mendix 11.13.0.
+**Recorded rather than filed** — the one deprecation of the eleven in #62 whose
+*stated* replacement is wrong.
+
+Found on `main` at `5ccbd480`, worded the same at `dfccef55c`.
 
 Every `MDL-DEPRnnn` message ends *"— same meaning. Refused from `mdl 2`"*, and for
 ten of the eleven codes this project hit, it is true: the substitution is
@@ -5069,23 +5102,32 @@ attribute name resolves **against the widget's context object**.
 | `visible: ["Value" != empty]` | `Visible: $currentObject/Value != empty` |
 | `visible: "Value" != empty` | `Visible: Value != empty` — unbound |
 
-Nothing complains. `check --deprecations=error` goes to zero, the script execs,
-`mx check` reports 0 errors, and the 44 microflow tests pass — they exercise the
-engine, not page visibility. The only signal is the model itself.
+Nothing complains **if you follow the message by hand**.
+`check --deprecations=error` goes to zero, the script execs, `mx check` reports 0
+errors, and the 44 microflow tests pass — they exercise the engine, not page
+visibility. The only signal is the model itself.
 
-### Why it is worth an entry even though nothing failed
+**But the supported path is safe**, which is the correction this entry needed.
+`mxcli fmt --upgrade` rewrites `visible: ["N1"]` to `visible: $currentObject/N1`
+— the right answer, and byte-for-byte what the hand migration eventually arrived
+at. So the tool knows the canonical form; only the message fails to state it.
 
-This is the fourth shape of the same problem in this document — a tool that is
-confidently wrong in a way no gate catches. #46 was a runner that could not
-evaluate what it accepted; #59 was a describer dropping a qualifier that `check`
-and `exec` both waved through; here it is a deprecation telling you to make an
-edit that silently rebinds an expression. In each case the honest-looking output
-is the trap.
+### Why it still deserves an entry
 
-What caught it was the replay-vs-replay diff in #62, not a build gate: describing
-66 documents after replaying the old source and the new source, and requiring
-zero differences. That test exists because #54's guard asked for it, and it is the
-only thing in this project's toolkit that would have noticed.
+A deprecation message is documentation people act on directly, and this one tells
+you to make an edit that silently rebinds an expression. The blast radius here
+would have been every notes-mode cell on the board.
+
+What caught it was the replay-vs-replay diff in #62: describing 66 documents after
+replaying the old source and the new source, and requiring zero differences. That
+test exists because #54's guard asked for it.
+
+Two corrections to the original framing, both against my own write-up. This is
+**not** another instance of "a tool confidently wrong in a way no gate catches" —
+`fmt --upgrade` is the gate and it is right. And I only met the trap because I had
+missed that flag, so the entry is really evidence for reading the whole help text
+(#62) as much as for the message being wrong. A reader who uses the documented
+upgrade path never encounters this.
 
 **The correct replacement**, which the message should name, is the form
 `DESCRIBE PAGE` already emits:
@@ -5095,9 +5137,11 @@ visible: $currentObject/N1
 visible: $currentObject/Value != empty
 ```
 
-**Suggested fix:** have `MDL-DEPR081` emit the context-qualified form when the
-bracketed expression names a bare member — the describer already knows how to
-render it — or drop "same meaning" from this one code and say what changes.
+**Suggested fix:** have the message name the form `fmt --upgrade` already
+produces — `Visible: $currentObject/<member>` when the bracketed expression names
+a bare member — or drop "same meaning" from this one code and say what changes.
+The implementation is already correct; only the sentence needs to match it.
+Pointing the message at `fmt --upgrade` would serve as well.
 
 ---
 
