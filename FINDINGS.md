@@ -4308,191 +4308,6 @@ here.
 
 ---
 
-## 62. Every `mdlsource/` script used MDL spellings that `mdl 2` will refuse — migrated
-
-> **DONE.** All 182 deprecations cleared across the 11 `mdlsource/` scripts, and
-> the migration is proven semantics-preserving: replaying the migrated source and
-> the pre-migration source into two scratch copies produces **66 of 66 documents
-> byte-identical**.
-
-`5ccbd480` introduced a deprecation regime: a legacy MDL spelling is reported as
-`MDL-DEPRnnn` naming the canonical form, and each message ends *"Refused from
-`mdl 2`"*. `mdlsource/` is how this app is rebuilt from scratch, so on `mdl 2` it
-would have stopped working. 182 warnings, 11 codes, 11 of 11 files:
-
-| code | count | written before | canonical |
-|---|---|---|---|
-| MDL-DEPR001 | 55 | `create or replace …` | `create or modify …` |
-| MDL-DEPR081 | 37 | `Visible: [<expr>]` / `Editable: [<expr>]` | `Visible: <expr>` |
-| MDL-DEPR020 | 41 | `Action: microflow M.F`, `show_page`, … | `Action: call microflow M.F`, `show page`, … |
-| MDL-DEPR007 | 29 | `…(Param: expr)` on a call | `…(Param = expr)` |
-| MDL-DEPR006 | 6 | `show page M.P($Param = expr)` | `(Param = expr)` |
-| MDL-DEPR124 | 3 | `ContentParams: [{1} = e]` | `ContentParams: ({1} = e)` |
-| MDL-DEPR123 | 3 | `Params: { … }` | `Params: ( … )` |
-| MDL-DEPR022 | 3 | `delete_behavior DELETE_AND_REFERENCES` | `on delete cascade` |
-| MDL-DEPR005 | 3 | `template tplCell {` | `template {` |
-| MDL-DEPR121 / 122 | 1 / 1 | `menu ( menu item 'X' page M.P; )` | `{ menu item 'X' ( OnClick: show page M.P ) }` |
-
-### `--deprecations=error` is what made this safe to do at all
-
-The gate is exact and cheap, so the migration could be driven to zero rather than
-eyeballed:
-
-```console
-$ for f in mdlsource/*.mdl; do mxcli check "$f" -p Sudoku.mpr --deprecations=error; done
-  →  deprecations=0, parse errors=0
-```
-
-`fmt` does not help — *"Formatting never changes what a script builds"* — so there
-is no `--fix`. The 182 edits were nine `perl -0pi` substitutions plus two hand
-edits.
-
-### The trap this entry warned about did not bite, and a different one did
-
-**`create or replace` → `create or modify` was safe here**, checked rather than
-assumed. #24 is about `create or modify` on an **entity** deleting members the
-statement omits, and `01-domain-model.mdl`'s header exists for that reason. But
-of the 55 occurrences, **none is an entity** — 49 microflows, 4 pages, 1 nanoflow,
-1 navigation, where replace and modify genuinely are the same thing:
-
-```console
-$ grep -hoE '^create or replace [a-z]+' mdlsource/*.mdl | sort | uniq -c
-     49 create or replace microflow      1 create or replace nanoflow
-      4 create or replace page           1 create or replace navigation
-```
-
-**The one that did bite was MDL-DEPR081, and "same meaning" is not quite true for
-it.** The old bracket form carried an implicit binding: inside
-`Visible: ["Value" != empty]`, a bare attribute name resolves **against the
-context object**. Dropping the brackets mechanically, as the message says to,
-silently changes what the expression means:
-
-```mdl
-visible: ["Value" != empty]     -- before → describes as  Visible: $currentObject/Value != empty
-visible: "Value" != empty       -- naive migration → describes as  Visible: Value != empty
-visible: ["N1"]                 -- before → describes as  Visible: $currentObject/N1
-visible: "N1"                   -- naive migration → describes as  Visible: [N1]
-```
-
-The correct migration writes the binding out, which is exactly how
-`DESCRIBE PAGE` renders it: `visible: $currentObject/Value != empty`. 37 of the
-182 edits were this, and a naive pass would have changed the behaviour of every
-notes-mode cell on the board.
-
-That is a defect in the deprecation message rather than in this project, and it
-has its own entry: **#63**. Recorded here, not filed upstream.
-
-### How the migration was proven rather than asserted
-
-The gate that matters is not "it still builds" but "it builds *the same thing*".
-Describe every Sudoku document — 66 of them, across entities, associations,
-enumerations, microflows, nanoflows, pages and navigation — then:
-
-1. replay the **pre-migration** source into a scratch copy, snapshot it
-2. replay the **migrated** source into another scratch copy, snapshot it
-3. diff the two snapshots
-
-```
-documents differing: 0 of 66
-```
-
-Both replays also land on `mx check` **0 errors** and **44/44** tests.
-
-Comparing against the *committed model* instead would have been the wrong test and
-would have buried the signal: 21 documents differ there, for two reasons that have
-nothing to do with this change — `layout flows` positions, which a source replay
-resets, and a pre-existing drift where the model holds
-`commit … without events` while the source has always said plain `commit … refresh`.
-The first naive DEPR081 pass was caught precisely because the replay-vs-replay
-diff isolates the migration from both.
-
-### Two pre-existing things this surfaced, both out of scope
-
-- **`commit` drift.** The model has `commit $Cell without events refresh` in
-  14 places where `mdlsource/` says `commit $Cell refresh`. Presumably an older
-  mxcli defaulted commits to without-events. A replay silently switches them on.
-- **`Cell_Game` has no delete behaviour.** `01-domain-model.mdl` asks for
-  cascade, but the stored association describes with none — because the statement
-  is `create association if not exists` and the association predates the clause,
-  so it has never been applied. Verified separately that
-  `delete_behavior DELETE_AND_REFERENCES` and `on delete cascade` do produce
-  identical storage, so the migration itself is faithful.
-
-Both are #10-class (the scripts are not fully idempotent) and belong in their own
-change.
-
-### And one thing to know before rebuilding from source
-
-**A source replay resets the flow layout.** The `layout flows` pass from
-`6fa2aaa` lives in the *model*; `mdlsource/` has no `@position` annotations, so
-re-running the scripts puts every flow back to whatever the writer produces.
-Measured: after a full replay, `lint` returns to 67 `MPR011` from 13. Anyone
-rebuilding this app from `mdlsource/` should re-run
-`mxcli layout flows --module Sudoku` afterwards. Not a defect — positions are
-model state, and the scripts deliberately do not carry them — but it is the one
-step a from-scratch rebuild needs that the scripts do not encode.
-
----
-
-## 63. `MDL-DEPR081` says "same meaning", and for a context-object attribute it is not
-
-**New, and recorded rather than filed** — the one deprecation of the eleven in #62
-whose stated replacement is wrong.
-
-Found on `main` at `5ccbd480`, Mendix 11.13.0.
-
-Every `MDL-DEPRnnn` message ends *"— same meaning. Refused from `mdl 2`"*, and for
-ten of the eleven codes this project hit, it is true: the substitution is
-mechanical and the model comes out identical. `MDL-DEPR081` is the exception.
-
-```
-`Visible: [<expression>] / Editable: [<expression>]` (visible) is deprecated;
-write `Visible: <expression> / Editable: <expression>` — same meaning.
-```
-
-Follow that literally and the expression changes meaning, because the bracket form
-carries an implicit binding the bare form does not: inside the brackets, a bare
-attribute name resolves **against the widget's context object**.
-
-| written | what the model ends up holding |
-|---|---|
-| `visible: ["N1"]` | `Visible: $currentObject/N1` — an attribute of the row |
-| `visible: "N1"` | `Visible: [N1]` — not an attribute reference at all |
-| `visible: ["Value" != empty]` | `Visible: $currentObject/Value != empty` |
-| `visible: "Value" != empty` | `Visible: Value != empty` — unbound |
-
-Nothing complains. `check --deprecations=error` goes to zero, the script execs,
-`mx check` reports 0 errors, and the 44 microflow tests pass — they exercise the
-engine, not page visibility. The only signal is the model itself.
-
-### Why it is worth an entry even though nothing failed
-
-This is the fourth shape of the same problem in this document — a tool that is
-confidently wrong in a way no gate catches. #46 was a runner that could not
-evaluate what it accepted; #59 was a describer dropping a qualifier that `check`
-and `exec` both waved through; here it is a deprecation telling you to make an
-edit that silently rebinds an expression. In each case the honest-looking output
-is the trap.
-
-What caught it was the replay-vs-replay diff in #62, not a build gate: describing
-66 documents after replaying the old source and the new source, and requiring
-zero differences. That test exists because #54's guard asked for it, and it is the
-only thing in this project's toolkit that would have noticed.
-
-**The correct replacement**, which the message should name, is the form
-`DESCRIBE PAGE` already emits:
-
-```mdl
-visible: $currentObject/N1
-visible: $currentObject/Value != empty
-```
-
-**Suggested fix:** have `MDL-DEPR081` emit the context-qualified form when the
-bracketed expression names a bare member — the describer already knows how to
-render it — or drop "same meaning" from this one code and say what changes.
-
----
-
 ## 57. A new constraint checker does not follow generalization for associations
 
 > **FIXED on `main` at `254c85068`** by `bdb8fabd1` *"resolve constraint
@@ -5098,6 +4913,191 @@ mxbuild:
 Four builds ago this sweep put five build errors into a clean project and five
 pages could not be parsed at all. It is now a no-op on nine pages and correct on
 the other eleven. #54 and #61 are both closed.
+
+---
+
+## 62. Every `mdlsource/` script used MDL spellings that `mdl 2` will refuse — migrated
+
+> **DONE.** All 182 deprecations cleared across the 11 `mdlsource/` scripts, and
+> the migration is proven semantics-preserving: replaying the migrated source and
+> the pre-migration source into two scratch copies produces **66 of 66 documents
+> byte-identical**.
+
+`5ccbd480` introduced a deprecation regime: a legacy MDL spelling is reported as
+`MDL-DEPRnnn` naming the canonical form, and each message ends *"Refused from
+`mdl 2`"*. `mdlsource/` is how this app is rebuilt from scratch, so on `mdl 2` it
+would have stopped working. 182 warnings, 11 codes, 11 of 11 files:
+
+| code | count | written before | canonical |
+|---|---|---|---|
+| MDL-DEPR001 | 55 | `create or replace …` | `create or modify …` |
+| MDL-DEPR081 | 37 | `Visible: [<expr>]` / `Editable: [<expr>]` | `Visible: <expr>` |
+| MDL-DEPR020 | 41 | `Action: microflow M.F`, `show_page`, … | `Action: call microflow M.F`, `show page`, … |
+| MDL-DEPR007 | 29 | `…(Param: expr)` on a call | `…(Param = expr)` |
+| MDL-DEPR006 | 6 | `show page M.P($Param = expr)` | `(Param = expr)` |
+| MDL-DEPR124 | 3 | `ContentParams: [{1} = e]` | `ContentParams: ({1} = e)` |
+| MDL-DEPR123 | 3 | `Params: { … }` | `Params: ( … )` |
+| MDL-DEPR022 | 3 | `delete_behavior DELETE_AND_REFERENCES` | `on delete cascade` |
+| MDL-DEPR005 | 3 | `template tplCell {` | `template {` |
+| MDL-DEPR121 / 122 | 1 / 1 | `menu ( menu item 'X' page M.P; )` | `{ menu item 'X' ( OnClick: show page M.P ) }` |
+
+### `--deprecations=error` is what made this safe to do at all
+
+The gate is exact and cheap, so the migration could be driven to zero rather than
+eyeballed:
+
+```console
+$ for f in mdlsource/*.mdl; do mxcli check "$f" -p Sudoku.mpr --deprecations=error; done
+  →  deprecations=0, parse errors=0
+```
+
+`fmt` does not help — *"Formatting never changes what a script builds"* — so there
+is no `--fix`. The 182 edits were nine `perl -0pi` substitutions plus two hand
+edits.
+
+### The trap this entry warned about did not bite, and a different one did
+
+**`create or replace` → `create or modify` was safe here**, checked rather than
+assumed. #24 is about `create or modify` on an **entity** deleting members the
+statement omits, and `01-domain-model.mdl`'s header exists for that reason. But
+of the 55 occurrences, **none is an entity** — 49 microflows, 4 pages, 1 nanoflow,
+1 navigation, where replace and modify genuinely are the same thing:
+
+```console
+$ grep -hoE '^create or replace [a-z]+' mdlsource/*.mdl | sort | uniq -c
+     49 create or replace microflow      1 create or replace nanoflow
+      4 create or replace page           1 create or replace navigation
+```
+
+**The one that did bite was MDL-DEPR081, and "same meaning" is not quite true for
+it.** The old bracket form carried an implicit binding: inside
+`Visible: ["Value" != empty]`, a bare attribute name resolves **against the
+context object**. Dropping the brackets mechanically, as the message says to,
+silently changes what the expression means:
+
+```mdl
+visible: ["Value" != empty]     -- before → describes as  Visible: $currentObject/Value != empty
+visible: "Value" != empty       -- naive migration → describes as  Visible: Value != empty
+visible: ["N1"]                 -- before → describes as  Visible: $currentObject/N1
+visible: "N1"                   -- naive migration → describes as  Visible: [N1]
+```
+
+The correct migration writes the binding out, which is exactly how
+`DESCRIBE PAGE` renders it: `visible: $currentObject/Value != empty`. 37 of the
+182 edits were this, and a naive pass would have changed the behaviour of every
+notes-mode cell on the board.
+
+That is a defect in the deprecation message rather than in this project, and it
+has its own entry: **#63**. Recorded here, not filed upstream.
+
+### How the migration was proven rather than asserted
+
+The gate that matters is not "it still builds" but "it builds *the same thing*".
+Describe every Sudoku document — 66 of them, across entities, associations,
+enumerations, microflows, nanoflows, pages and navigation — then:
+
+1. replay the **pre-migration** source into a scratch copy, snapshot it
+2. replay the **migrated** source into another scratch copy, snapshot it
+3. diff the two snapshots
+
+```
+documents differing: 0 of 66
+```
+
+Both replays also land on `mx check` **0 errors** and **44/44** tests.
+
+Comparing against the *committed model* instead would have been the wrong test and
+would have buried the signal: 21 documents differ there, for two reasons that have
+nothing to do with this change — `layout flows` positions, which a source replay
+resets, and a pre-existing drift where the model holds
+`commit … without events` while the source has always said plain `commit … refresh`.
+The first naive DEPR081 pass was caught precisely because the replay-vs-replay
+diff isolates the migration from both.
+
+### Two pre-existing things this surfaced, both out of scope
+
+- **`commit` drift.** The model has `commit $Cell without events refresh` in
+  14 places where `mdlsource/` says `commit $Cell refresh`. Presumably an older
+  mxcli defaulted commits to without-events. A replay silently switches them on.
+- **`Cell_Game` has no delete behaviour.** `01-domain-model.mdl` asks for
+  cascade, but the stored association describes with none — because the statement
+  is `create association if not exists` and the association predates the clause,
+  so it has never been applied. Verified separately that
+  `delete_behavior DELETE_AND_REFERENCES` and `on delete cascade` do produce
+  identical storage, so the migration itself is faithful.
+
+Both are #10-class (the scripts are not fully idempotent) and belong in their own
+change.
+
+### And one thing to know before rebuilding from source
+
+**A source replay resets the flow layout.** The `layout flows` pass from
+`6fa2aaa` lives in the *model*; `mdlsource/` has no `@position` annotations, so
+re-running the scripts puts every flow back to whatever the writer produces.
+Measured: after a full replay, `lint` returns to 67 `MPR011` from 13. Anyone
+rebuilding this app from `mdlsource/` should re-run
+`mxcli layout flows --module Sudoku` afterwards. Not a defect — positions are
+model state, and the scripts deliberately do not carry them — but it is the one
+step a from-scratch rebuild needs that the scripts do not encode.
+
+---
+
+## 63. `MDL-DEPR081` says "same meaning", and for a context-object attribute it is not
+
+**New, and recorded rather than filed** — the one deprecation of the eleven in #62
+whose stated replacement is wrong.
+
+Found on `main` at `5ccbd480`, Mendix 11.13.0.
+
+Every `MDL-DEPRnnn` message ends *"— same meaning. Refused from `mdl 2`"*, and for
+ten of the eleven codes this project hit, it is true: the substitution is
+mechanical and the model comes out identical. `MDL-DEPR081` is the exception.
+
+```
+`Visible: [<expression>] / Editable: [<expression>]` (visible) is deprecated;
+write `Visible: <expression> / Editable: <expression>` — same meaning.
+```
+
+Follow that literally and the expression changes meaning, because the bracket form
+carries an implicit binding the bare form does not: inside the brackets, a bare
+attribute name resolves **against the widget's context object**.
+
+| written | what the model ends up holding |
+|---|---|
+| `visible: ["N1"]` | `Visible: $currentObject/N1` — an attribute of the row |
+| `visible: "N1"` | `Visible: [N1]` — not an attribute reference at all |
+| `visible: ["Value" != empty]` | `Visible: $currentObject/Value != empty` |
+| `visible: "Value" != empty` | `Visible: Value != empty` — unbound |
+
+Nothing complains. `check --deprecations=error` goes to zero, the script execs,
+`mx check` reports 0 errors, and the 44 microflow tests pass — they exercise the
+engine, not page visibility. The only signal is the model itself.
+
+### Why it is worth an entry even though nothing failed
+
+This is the fourth shape of the same problem in this document — a tool that is
+confidently wrong in a way no gate catches. #46 was a runner that could not
+evaluate what it accepted; #59 was a describer dropping a qualifier that `check`
+and `exec` both waved through; here it is a deprecation telling you to make an
+edit that silently rebinds an expression. In each case the honest-looking output
+is the trap.
+
+What caught it was the replay-vs-replay diff in #62, not a build gate: describing
+66 documents after replaying the old source and the new source, and requiring
+zero differences. That test exists because #54's guard asked for it, and it is the
+only thing in this project's toolkit that would have noticed.
+
+**The correct replacement**, which the message should name, is the form
+`DESCRIBE PAGE` already emits:
+
+```mdl
+visible: $currentObject/N1
+visible: $currentObject/Value != empty
+```
+
+**Suggested fix:** have `MDL-DEPR081` emit the context-qualified form when the
+bracketed expression names a bare member — the describer already knows how to
+render it — or drop "same meaning" from this one code and say what changes.
 
 ---
 
