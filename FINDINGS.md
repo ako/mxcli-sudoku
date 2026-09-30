@@ -3073,40 +3073,49 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `2a723ec7`:** **all three findings I filed upstream are
-> fixed** — #59 ([#662](https://github.com/ako/mxcli/issues/662)) and #60
-> ([#663](https://github.com/ako/mxcli/issues/663)) closed, and #54A closed at the
-> source. #58 ([#677](https://github.com/ako/mxcli/issues/677)) and #56 are open
-> and unchanged; **#61** is new and is the last page in the project that will not
-> round-trip. PR 661 (`layout flows`) is merged.
+> **Update, `main` at `5ccbd480`** (494 commits on): **#61 is fixed, and with it
+> the page round-trip is clean end to end** — 20 of 20 pages write back, 9 of them
+> reported `Unchanged`, `mx check` 0 errors. **#56 is resolved** by a new command,
+> `mxcli fix widgets`. #58 ([#677](https://github.com/ako/mxcli/issues/677)) and
+> the `layout flows` overlaps ([#684](https://github.com/ako/mxcli/issues/684)) are
+> open and unchanged. **#62 is new and is the project's own homework**: every
+> `mdlsource/` script uses spellings `mdl 2` will refuse.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `2a723ec7`** (2026-09-25). Previous columns kept so
+Last retested on **`main` at `5ccbd480`** (2026-09-30). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 0dd7f51a0` | `main @ 254c85068` | `main @ 0a821cf` | `main @ 2a723ec7` |
+| Finding | `main @ 254c85068` | `main @ 0a821cf` | `main @ 2a723ec7` | `main @ 5ccbd480` |
 |---|---|---|---|---|
-| 46 / 47 / 48 / 49 / 51 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46 / 47 / 48 / 49 / 51 / 53 / 55 / 57 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 53 — `DESCRIBE WIDGET` vs the validator (+ 4 sub-items) | fixed | fixed | fixed | fixed |
-| 54A — `DESCRIBE PAGE` emits unparseable MDL | open, 5 of 20 | open | open | **FIXED** (`c7ffc0fe` + `95eb07ea`) — 0 of 20 |
-| 54B — a `textTemplate` is dropped | open | open | **FIXED** (`95c1841f`) | fixed |
-| 54C — a fieldset's body is dropped | open | open | no longer silent — MDL-WIDGET26 | unchanged in kind |
-| 55 — `check` rejects `create entity if not exists` | **FIXED** | fixed | fixed | fixed |
-| 56 — written widget nodes build to CE0463 | 6 types | 6 types | **5 types** | open, 5 types |
-| 57 — constraint checker ignores generalization | **new** | **FIXED** (`bdb8fabd1`) | fixed | fixed |
-| 58 — `check` rejects the `MxTest` module it generates | — | **new** | open | **open** ([#677](https://github.com/ako/mxcli/issues/677)) |
-| 59 — describe drops an inherited association's qualifier | — | — | **new**, 0 → 5 build errors | **FIXED** (`618c6004`, [#662](https://github.com/ako/mxcli/issues/662)) |
-| 59 sub — a ComboBox's caption is dropped (CE0642) | — | — | **new** | **FIXED** (`ccbfa268`, split out as #664) |
-| 60 — `DESCRIBE WIDGET` calls an installed widget unknown | — | present | **new** | **FIXED** (`3baa7097`, [#663](https://github.com/ako/mxcli/issues/663)) |
-| 61 — an excluded page's data source blocks round-trip | — | — | — | **new**, 1 of 20 pages |
+| 54A — `DESCRIBE PAGE` emits unparseable MDL | open, 5 of 20 | open | **FIXED** | fixed, 0 of 20 |
+| 54B — a `textTemplate` is dropped | open | **FIXED** | fixed | fixed |
+| 54C — a fieldset's body is dropped | open | no longer silent | unchanged in kind | fixed — body round-trips |
+| 56 — written widget nodes build to CE0463 | 6 types | **5 types** | 5 types | **RESOLVED** by `mxcli fix widgets` |
+| 58 — `check` rejects the `MxTest` module it generates | **new** | open | open | **open** ([#677](https://github.com/ako/mxcli/issues/677)) |
+| 59 — describe drops an inherited association's qualifier | — | **new**, 0 → 5 errors | **FIXED** ([#662](https://github.com/ako/mxcli/issues/662)) | fixed |
+| 60 — `DESCRIBE WIDGET` calls an installed widget unknown | present | **new** | **FIXED** ([#663](https://github.com/ako/mxcli/issues/663)) | fixed |
+| 61 — an excluded page's data source blocks round-trip | — | — | **new**, 1 of 20 | **FIXED** ([#680](https://github.com/ako/mxcli/issues/680)) |
+| `layout flows` introduces 4 MPR008 overlaps | — | — | **new** | **open** ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | — | **new**, 182 warnings / 11 files |
 
-On `2a723ec7`: **44/44** under `--require-assertions`, `lint` 0 errors (428
-warnings, 89 info — unchanged), `brain check` OK at 17 entries / 21 anchors / 19
+**The page round-trip, across four builds.** The single number an app author
+feels, and the reason this document kept re-running the same sweep:
+
+| | `0a821cf` | `2a723ec7` | `5ccbd480` |
+|---|---|---|---|
+| pages emitting parseable MDL | 15 of 20 | 20 of 20 | 20 of 20 |
+| pages that write back | 15 | 19 | **20** |
+| reported `Unchanged` — provably lossless | — | — | **9** |
+| `mx check` after the replay | **5 errors** | 0 | **0** |
+
+On `5ccbd480`: **44/44** under `--require-assertions`, `lint` 0 errors (378
+warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
 re-run against this build rather than carried forward, on a project with
@@ -3325,7 +3334,9 @@ for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-Findings #56 and #58 are open; #61 is new on `2a723ec7`. #54A, #59 and #60
+Findings #58 and the `layout flows` overlaps are open; **#62 is new on
+`5ccbd480`** and is the project's own work rather than mxcli's. #56 is resolved
+by tooling rather than in the writer, and #61 is fixed. #54A, #59 and #60
 closed there — all three were filed upstream as
 [#662](https://github.com/ako/mxcli/issues/662),
 [#663](https://github.com/ako/mxcli/issues/663) and, for #58 which is still open,
@@ -4117,6 +4128,10 @@ current commits, and both were filed after the head it was last verified at.
 
 ## 56. The widget nodes mxcli writes are incomplete: seven widget types build to CE0463
 
+> **Effectively resolved on `main` at `5ccbd480`**, by a tool rather than by
+> changing the writer: `mxcli fix widgets` clears CE0463 while preserving MPR v2
+> storage. Retest at the end.
+
 **New, and it is what is left of #53 once that entry's own defect was fixed.**
 `check` now accepts every property `DESCRIBE WIDGET` emits, and `exec` writes 42
 of 43 examples. But mxcli persists only the properties it has a write path for —
@@ -4238,6 +4253,114 @@ mx check      →  The app contains: 0 errors.
 
 Five types remain: Accessibility helper, Data grid 2, Feedback, Maps, Pop-up
 menu.
+
+### Retested on `main` at `5ccbd480` — resolved, by a new tool rather than by the writer
+
+The five remaining types are unchanged if you only run `exec` — still 6 CE0463.
+What changed is that there is now a command that clears them, and it is the thing
+this entry said the repair was:
+
+> *the repair is not a value but a Studio Pro **Update widget** on a widget you
+> never opened.*
+
+`mxcli fix widgets` runs Mendix's own `mx update-widgets` and then puts the
+project's storage format back, which is the part that makes it usable:
+
+```console
+$ mx check                    →  6 CE0463   (28 errors total)
+$ mxcli fix widgets -p Sudoku.mpr
+Updated widget definitions: 32 unit(s) changed.
+  Storage: 478 .mxunit file(s), unchanged from 478 before (MPR v2 preserved).
+$ mx check                    →  0 CE0463
+```
+
+The storage claim is the load-bearing one and it holds: 478 `.mxunit` files
+before and after, index still 81,920 bytes. `mx update-widgets` on its own
+collapses MPR v2 into the single-file v1 format — the command's own help reports
+1,866 units becoming 0 and a 69 KB index becoming 39 MB on 11.12.1 — which is why
+running the Mendix tool directly was never an option for a project kept in v2.
+
+**What the six errors turned into, which is the honest part.** Total errors went
+*up*, 28 → 39, because resyncing gives the widget node its full property set and
+the required ones a generic example cannot fill then become visible:
+
+```
+before:  CE0463 "The definition of this widget has changed"  × 6
+after:   CE0642 "Widgets container 'Content' of accessibility helper is required"
+         CE0642 "Widgets container 'The area to open or close the menu.' of pop-up menu"
+         CE0488 …
+```
+
+That is a straight improvement even though the count rose: one opaque staleness
+error per widget became specific, actionable ones, all in the CE0642/CE0488
+class this document has called inherent from the start — a generic example has no
+project content to put in a required container.
+
+**A caveat before anyone runs it here.** On the *pristine* project, which is
+already `mx check` 0 errors, `fix widgets` still rewrites **26 units**. It stays
+at 0 errors and 44/44 tests afterwards, and the `.mxunit` file set is unchanged,
+so the churn is harmless — but it is churn, and there is no reason to take it on
+a project with no CE0463. `fix design-properties` is correctly a 0-unit no-op
+here.
+
+---
+
+## 62. Every `mdlsource/` script uses MDL spellings that `mdl 2` will refuse
+
+**New, and it is work this project owes rather than an mxcli defect** — worth an
+entry because it is the first thing in this document with a deadline attached.
+
+`5ccbd480` introduces a deprecation regime: a legacy MDL spelling is reported as
+`MDL-DEPRnnn` naming the canonical form, and each message ends *"Refused from
+`mdl 2`"*. Across `mdlsource/` that is **182 warnings, 11 distinct codes, and 11
+of 11 files**:
+
+| code | count | written now | canonical |
+|---|---|---|---|
+| MDL-DEPR001 | 55 | `create or replace …` | `create or modify …` |
+| MDL-DEPR020 | 41 | `Visible: [<expr>]` | `Visible: <expr>` |
+| MDL-DEPR081 | 37 | `row row1 { … }` / `column Name (…)` | `row { … }` / `column (…)` |
+| MDL-DEPR007 | 29 | `show_page`, `microflow M.F`, … | `show page`, `call microflow M.F`, … |
+| MDL-DEPR006 | 6 | `call microflow M.F($Param = expr)` | `(Param = expr)` |
+| MDL-DEPR123 / 124 | 3 / 3 | `Params: { … }` / `ContentParams: [ … ]` | `( … )` |
+| MDL-DEPR022 | 3 | `delete_behavior …` | `on delete cascade\|restrict\|set null` |
+| MDL-DEPR005 | 3 | `show page M.P(Param: expr)` | `(Param = expr)` |
+| MDL-DEPR121 / 122 | 1 / 1 | navigation and menu `( … )` | `{ … }` |
+
+Every script still executes — these are warnings, and the full pipeline replay
+still lands on `mx check` 0 errors with 44/44 tests. But `mdlsource/` is the
+project's source of truth: it is how the app is rebuilt from scratch, and on
+`mdl 2` it stops working.
+
+### Two things that make this cheap, and one that does not
+
+`check --deprecations=error` turns the whole set into a gate, so the migration
+can be verified rather than eyeballed:
+
+```console
+$ mxcli check mdlsource/03-microflows-engine.mdl -p Sudoku.mpr --deprecations=error
+```
+
+And every message names the exact replacement, which is unusually good for a
+deprecation — *"`create or replace …` (microflow) is deprecated; write
+`create or modify …` — same meaning"*. "Same meaning" is the important half.
+
+What does **not** help is `fmt`, and its help says so plainly: *"Formatting never
+changes what a script builds."* So there is no `--fix`; 182 edits across 11 files
+are a manual pass, though most are mechanical and four codes account for 162 of
+them.
+
+**One trap to respect during that pass.** `create or replace` → `create or
+modify` is 55 of the 182 and looks like a pure find-and-replace, but this
+document already has two entries about exactly that spelling: #24, where
+`create or modify` on an **entity** deletes every member the statement omits, and
+the header of `01-domain-model.mdl`, which explains why the entities there use
+`create entity if not exists` instead. The deprecation applies to microflows,
+nanoflows, pages and navigation, where replace and modify really are the same
+thing. It must not be applied to the entity statements by a blind pass.
+
+**Planned, not done here.** Recorded now so the deadline is visible; the
+migration belongs in its own change with `--deprecations=error` as the gate.
 
 ---
 
@@ -4417,7 +4540,7 @@ of #54 with nothing extra.
 
 ## 58. `check` now parses a `.test.mdl`, then rejects the module it generated itself
 
-> **Open at `2a723ec7`**, unchanged. Reported as
+> **Open at `5ccbd480`**, unchanged across four builds. Reported as
 > [ako/mxcli#677](https://github.com/ako/mxcli/issues/677).
 
 **New, and it fails a CI gate.** `64b192a00` *"parse a .test.mdl file as the
@@ -4747,7 +4870,10 @@ called unknown — which is what the fix addressed.
 
 ## 61. An excluded page cannot be round-tripped when its data source names a document that does not exist
 
-> Reported as [ako/mxcli#680](https://github.com/ako/mxcli/issues/680).
+> **FIXED on `main` at `5ccbd480`.** Reported as
+> [ako/mxcli#680](https://github.com/ako/mxcli/issues/680). The data source has
+> joined the tolerated group, and with it **all 20 pages in this project now
+> round-trip** — see the retest at the end of this entry.
 
 **New.** `864440db` *"excluded page's dangling action references no longer block
 exec"* allows an excluded page to keep action references to documents the project
@@ -4811,6 +4937,38 @@ round-trip on this build, and it is the last thing between `DESCRIBE PAGE` →
 **Suggested fix:** apply `864440db`'s allowance to data sources and entities on
 an excluded document, in the builder as well as the checker — a placeholder or a
 left-as-stored reference rather than a hard resolve.
+
+### Retested on `main` at `5ccbd480` — fixed, and the page round-trip is now clean end to end
+
+The data source has moved into the tolerated group, with a detail worth quoting
+because it explains what was hard about it:
+
+```
+page '…ShareFeedback_Logo' is excluded, so its unresolved references do not
+block (Mendix does not validate excluded documents):
+  - nanoflow not found: …DS_FeedbackForm (data source; the bindings inside it are qualified)
+  - nanoflow not found: …ACT_UploadImage
+Check passed!
+  →  Replaced page FeedbackModule.ShareFeedback_Logo
+```
+
+A data source is not just a reference — the widget bindings underneath it are
+resolved *through* it, which is presumably why it could not simply be waved
+through with the actions. The parenthetical says so.
+
+**This closes the page round-trip.** Describe every page, exec it back, ask
+mxbuild:
+
+| | `0a821cf` | `2a723ec7` | `5ccbd480` |
+|---|---|---|---|
+| pages emitting parseable MDL | 15 of 20 | 20 of 20 | 20 of 20 |
+| pages that write back | 15 | 19 | **20** |
+| of those, reported `Unchanged` (provably lossless) | — | — | **9** |
+| `mx check` after the replay | **5 errors** | 0 | **0** |
+
+Four builds ago this sweep put five build errors into a clean project and five
+pages could not be parsed at all. It is now a no-op on nine pages and correct on
+the other eleven. #54 and #61 are both closed.
 
 ---
 
