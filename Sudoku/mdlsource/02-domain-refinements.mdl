@@ -226,7 +226,7 @@ create persistent entity Sudoku."Move" (
 create association Sudoku."Move_Game"
 from Sudoku."Move" to Sudoku."Game"
 type reference
-delete_behavior DELETE_AND_REFERENCES;
+on delete cascade;
 /
 
 /**
@@ -235,5 +235,5 @@ delete_behavior DELETE_AND_REFERENCES;
 create association Sudoku."Move_Cell"
 from Sudoku."Move" to Sudoku."Cell"
 type reference
-delete_behavior DELETE_AND_REFERENCES;
+on delete cascade;
 /

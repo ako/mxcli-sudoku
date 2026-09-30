@@ -3102,7 +3102,7 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 60 — `DESCRIBE WIDGET` calls an installed widget unknown | present | **new** | **FIXED** ([#663](https://github.com/ako/mxcli/issues/663)) | fixed |
 | 61 — an excluded page's data source blocks round-trip | — | — | **new**, 1 of 20 | **FIXED** ([#680](https://github.com/ako/mxcli/issues/680)) |
 | `layout flows` introduces 4 MPR008 overlaps | — | — | **new** | **open** ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | — | **new**, 182 warnings / 11 files |
+| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | — | **new and MIGRATED**, 182 → 0 |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3334,8 +3334,8 @@ for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-Findings #58 and the `layout flows` overlaps are open; **#62 is new on
-`5ccbd480`** and is the project's own work rather than mxcli's. #56 is resolved
+Findings #58 and the `layout flows` overlaps are open. **#62 was new on
+`5ccbd480` and is done** — the `mdl 2` migration is applied and proven. #56 is resolved
 by tooling rather than in the writer, and #61 is fixed. #54A, #59 and #60
 closed there — all three were filed upstream as
 [#662](https://github.com/ako/mxcli/issues/662),
@@ -4305,62 +4305,120 @@ here.
 
 ---
 
-## 62. Every `mdlsource/` script uses MDL spellings that `mdl 2` will refuse
+## 62. Every `mdlsource/` script used MDL spellings that `mdl 2` will refuse — migrated
 
-**New, and it is work this project owes rather than an mxcli defect** — worth an
-entry because it is the first thing in this document with a deadline attached.
+> **DONE.** All 182 deprecations cleared across the 11 `mdlsource/` scripts, and
+> the migration is proven semantics-preserving: replaying the migrated source and
+> the pre-migration source into two scratch copies produces **66 of 66 documents
+> byte-identical**.
 
-`5ccbd480` introduces a deprecation regime: a legacy MDL spelling is reported as
+`5ccbd480` introduced a deprecation regime: a legacy MDL spelling is reported as
 `MDL-DEPRnnn` naming the canonical form, and each message ends *"Refused from
-`mdl 2`"*. Across `mdlsource/` that is **182 warnings, 11 distinct codes, and 11
-of 11 files**:
+`mdl 2`"*. `mdlsource/` is how this app is rebuilt from scratch, so on `mdl 2` it
+would have stopped working. 182 warnings, 11 codes, 11 of 11 files:
 
-| code | count | written now | canonical |
+| code | count | written before | canonical |
 |---|---|---|---|
 | MDL-DEPR001 | 55 | `create or replace …` | `create or modify …` |
-| MDL-DEPR020 | 41 | `Visible: [<expr>]` | `Visible: <expr>` |
-| MDL-DEPR081 | 37 | `row row1 { … }` / `column Name (…)` | `row { … }` / `column (…)` |
-| MDL-DEPR007 | 29 | `show_page`, `microflow M.F`, … | `show page`, `call microflow M.F`, … |
-| MDL-DEPR006 | 6 | `call microflow M.F($Param = expr)` | `(Param = expr)` |
-| MDL-DEPR123 / 124 | 3 / 3 | `Params: { … }` / `ContentParams: [ … ]` | `( … )` |
-| MDL-DEPR022 | 3 | `delete_behavior …` | `on delete cascade\|restrict\|set null` |
-| MDL-DEPR005 | 3 | `show page M.P(Param: expr)` | `(Param = expr)` |
-| MDL-DEPR121 / 122 | 1 / 1 | navigation and menu `( … )` | `{ … }` |
+| MDL-DEPR081 | 37 | `Visible: [<expr>]` / `Editable: [<expr>]` | `Visible: <expr>` |
+| MDL-DEPR020 | 41 | `Action: microflow M.F`, `show_page`, … | `Action: call microflow M.F`, `show page`, … |
+| MDL-DEPR007 | 29 | `…(Param: expr)` on a call | `…(Param = expr)` |
+| MDL-DEPR006 | 6 | `show page M.P($Param = expr)` | `(Param = expr)` |
+| MDL-DEPR124 | 3 | `ContentParams: [{1} = e]` | `ContentParams: ({1} = e)` |
+| MDL-DEPR123 | 3 | `Params: { … }` | `Params: ( … )` |
+| MDL-DEPR022 | 3 | `delete_behavior DELETE_AND_REFERENCES` | `on delete cascade` |
+| MDL-DEPR005 | 3 | `template tplCell {` | `template {` |
+| MDL-DEPR121 / 122 | 1 / 1 | `menu ( menu item 'X' page M.P; )` | `{ menu item 'X' ( OnClick: show page M.P ) }` |
 
-Every script still executes — these are warnings, and the full pipeline replay
-still lands on `mx check` 0 errors with 44/44 tests. But `mdlsource/` is the
-project's source of truth: it is how the app is rebuilt from scratch, and on
-`mdl 2` it stops working.
+### `--deprecations=error` is what made this safe to do at all
 
-### Two things that make this cheap, and one that does not
-
-`check --deprecations=error` turns the whole set into a gate, so the migration
-can be verified rather than eyeballed:
+The gate is exact and cheap, so the migration could be driven to zero rather than
+eyeballed:
 
 ```console
-$ mxcli check mdlsource/03-microflows-engine.mdl -p Sudoku.mpr --deprecations=error
+$ for f in mdlsource/*.mdl; do mxcli check "$f" -p Sudoku.mpr --deprecations=error; done
+  →  deprecations=0, parse errors=0
 ```
 
-And every message names the exact replacement, which is unusually good for a
-deprecation — *"`create or replace …` (microflow) is deprecated; write
-`create or modify …` — same meaning"*. "Same meaning" is the important half.
+`fmt` does not help — *"Formatting never changes what a script builds"* — so there
+is no `--fix`. The 182 edits were nine `perl -0pi` substitutions plus two hand
+edits.
 
-What does **not** help is `fmt`, and its help says so plainly: *"Formatting never
-changes what a script builds."* So there is no `--fix`; 182 edits across 11 files
-are a manual pass, though most are mechanical and four codes account for 162 of
-them.
+### The trap this entry warned about did not bite, and a different one did
 
-**One trap to respect during that pass.** `create or replace` → `create or
-modify` is 55 of the 182 and looks like a pure find-and-replace, but this
-document already has two entries about exactly that spelling: #24, where
-`create or modify` on an **entity** deletes every member the statement omits, and
-the header of `01-domain-model.mdl`, which explains why the entities there use
-`create entity if not exists` instead. The deprecation applies to microflows,
-nanoflows, pages and navigation, where replace and modify really are the same
-thing. It must not be applied to the entity statements by a blind pass.
+**`create or replace` → `create or modify` was safe here**, checked rather than
+assumed. #24 is about `create or modify` on an **entity** deleting members the
+statement omits, and `01-domain-model.mdl`'s header exists for that reason. But
+of the 55 occurrences, **none is an entity** — 49 microflows, 4 pages, 1 nanoflow,
+1 navigation, where replace and modify genuinely are the same thing:
 
-**Planned, not done here.** Recorded now so the deadline is visible; the
-migration belongs in its own change with `--deprecations=error` as the gate.
+```console
+$ grep -hoE '^create or replace [a-z]+' mdlsource/*.mdl | sort | uniq -c
+     49 create or replace microflow      1 create or replace nanoflow
+      4 create or replace page           1 create or replace navigation
+```
+
+**The one that did bite was MDL-DEPR081, and "same meaning" is not quite true for
+it.** The old bracket form carried an implicit binding: inside
+`Visible: ["Value" != empty]`, a bare attribute name resolves **against the
+context object**. Dropping the brackets mechanically, as the message says to,
+silently changes what the expression means:
+
+```mdl
+visible: ["Value" != empty]     -- before → describes as  Visible: $currentObject/Value != empty
+visible: "Value" != empty       -- naive migration → describes as  Visible: Value != empty
+visible: ["N1"]                 -- before → describes as  Visible: $currentObject/N1
+visible: "N1"                   -- naive migration → describes as  Visible: [N1]
+```
+
+The correct migration writes the binding out, which is exactly how
+`DESCRIBE PAGE` renders it: `visible: $currentObject/Value != empty`. 37 of the
+182 edits were this, and a naive pass would have changed the behaviour of every
+notes-mode cell on the board.
+
+**This is worth reporting upstream.** `MDL-DEPR081`'s message says *"same
+meaning"*, and for an expression that names an attribute of the context object it
+is not — the canonical form needs `$currentObject/` prepended, which the message
+does not mention.
+
+### How the migration was proven rather than asserted
+
+The gate that matters is not "it still builds" but "it builds *the same thing*".
+Describe every Sudoku document — 66 of them, across entities, associations,
+enumerations, microflows, nanoflows, pages and navigation — then:
+
+1. replay the **pre-migration** source into a scratch copy, snapshot it
+2. replay the **migrated** source into another scratch copy, snapshot it
+3. diff the two snapshots
+
+```
+documents differing: 0 of 66
+```
+
+Both replays also land on `mx check` **0 errors** and **44/44** tests.
+
+Comparing against the *committed model* instead would have been the wrong test and
+would have buried the signal: 21 documents differ there, for two reasons that have
+nothing to do with this change — `layout flows` positions, which a source replay
+resets, and a pre-existing drift where the model holds
+`commit … without events` while the source has always said plain `commit … refresh`.
+The first naive DEPR081 pass was caught precisely because the replay-vs-replay
+diff isolates the migration from both.
+
+### Two pre-existing things this surfaced, both out of scope
+
+- **`commit` drift.** The model has `commit $Cell without events refresh` in
+  14 places where `mdlsource/` says `commit $Cell refresh`. Presumably an older
+  mxcli defaulted commits to without-events. A replay silently switches them on.
+- **`Cell_Game` has no delete behaviour.** `01-domain-model.mdl` asks for
+  cascade, but the stored association describes with none — because the statement
+  is `create association if not exists` and the association predates the clause,
+  so it has never been applied. Verified separately that
+  `delete_behavior DELETE_AND_REFERENCES` and `on delete cascade` do produce
+  identical storage, so the migration itself is faithful.
+
+Both are #10-class (the scripts are not fully idempotent) and belong in their own
+change.
 
 ---
 

@@ -41,7 +41,7 @@
  * @param $Cells Every square of that game
  * @returns True when the marks were recomputed
  */
-create or replace microflow Sudoku.ACT_MarkPeers (
+create or modify microflow Sudoku.ACT_MarkPeers (
   $Game: Sudoku."Game",
   $Cells: list of Sudoku."Cell"
 )
@@ -98,7 +98,7 @@ end;
  * @param $Game The game to re-evaluate
  * @returns True when the board is complete and correct
  */
-create or replace microflow Sudoku.ACT_Refresh (
+create or modify microflow Sudoku.ACT_Refresh (
   $Game: Sudoku."Game"
 )
 returns boolean as $IsSolved
@@ -304,7 +304,7 @@ end;
  * @param $Regions 81-character region map for a jigsaw, or '' for 3x3 boxes
  * @returns The same grid with every deducible square filled
  */
-create or replace microflow Sudoku.ACT_SolveGrid (
+create or modify microflow Sudoku.ACT_SolveGrid (
   $Grid: string,
   $Diagonal: boolean,
   $Regions: string
@@ -653,7 +653,7 @@ end;
  *
  * @returns The solved grid, 81 characters, row-major
  */
-create or replace microflow Sudoku.SUB_ShuffleSolution ()
+create or modify microflow Sudoku.SUB_ShuffleSolution ()
 returns string as $sol
 folder 'Game'
 begin
@@ -778,7 +778,7 @@ end;
  *
  * @returns An 81-character Sudoku X solution
  */
-create or replace microflow Sudoku.SUB_ShuffleSolutionX ()
+create or modify microflow Sudoku.SUB_ShuffleSolutionX ()
 returns string as $sol
 folder 'Game'
 begin
@@ -872,7 +872,7 @@ end;
  *
  * @returns 162 characters: 81 of solution, then 81 of region ids 0-8
  */
-create or replace microflow Sudoku.SUB_ShuffleSolutionJ ()
+create or modify microflow Sudoku.SUB_ShuffleSolutionJ ()
 returns string as $out
 folder 'Game'
 begin
@@ -974,7 +974,7 @@ end;
  *
  * @returns 162 characters: 81 of grid A, then 81 of grid B
  */
-create or replace microflow Sudoku.SUB_ShuffleSolutionMix ()
+create or modify microflow Sudoku.SUB_ShuffleSolutionMix ()
 returns string as $out
 folder 'Game'
 begin
@@ -1060,7 +1060,7 @@ end;
  * @param $TargetGivens How many squares should remain revealed
  * @returns The blanked grid, 81 characters
  */
-create or replace microflow Sudoku.SUB_BlankSquares (
+create or modify microflow Sudoku.SUB_BlankSquares (
   $Solution: string,
   $TargetGivens: integer
 )
@@ -1131,7 +1131,7 @@ end;
  * @param $Regions Region map for a jigsaw, or '' for the classic 3x3 boxes
  * @returns The repaired grid, 81 characters
  */
-create or replace microflow Sudoku.SUB_RepairToSolvable (
+create or modify microflow Sudoku.SUB_RepairToSolvable (
   $Solution: string,
   $Puzzle: string,
   $TargetGivens: integer,
@@ -1275,7 +1275,7 @@ end;
  * @param $Variant Classic, or Diagonal for a Sudoku X
  * @returns The new game
  */
-create or replace microflow Sudoku.ACT_DealGame (
+create or modify microflow Sudoku.ACT_DealGame (
   $Level: enum Sudoku."Difficulty",
   $TargetGivens: integer,
   $Variant: enum Sudoku."Variant"
@@ -1455,7 +1455,7 @@ end;
  * @param $TargetGivens Squares each grid aims to leave revealed
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_DealMix (
+create or modify microflow Sudoku.ACT_DealMix (
   $TargetGivens: integer
 )
 returns Sudoku."Game" as $Game
@@ -1615,7 +1615,7 @@ grant execute on microflow Sudoku.ACT_DealMix to Sudoku.User;
  * @param $Game The game to reset
  * @returns True when the board was reset
  */
-create or replace microflow Sudoku.ACT_ResetBoard (
+create or modify microflow Sudoku.ACT_ResetBoard (
   $Game: Sudoku."Game"
 )
 returns boolean as $Reset
@@ -1666,7 +1666,7 @@ end;
  * @param $Game The game to give a hint for
  * @returns True when a square was revealed
  */
-create or replace microflow Sudoku.ACT_Hint (
+create or modify microflow Sudoku.ACT_Hint (
   $Game: Sudoku."Game"
 )
 returns boolean as $Revealed

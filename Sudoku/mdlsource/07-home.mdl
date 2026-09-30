@@ -11,14 +11,14 @@
  *
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_NewEasy ()
+create or modify microflow Sudoku.ACT_NewEasy ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewEasy';
 
   $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Easy, TargetGivens = 50, Variant = Sudoku."Variant".Classic);
-  show page Sudoku.Game_Play($Game = $Game);
+  show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
 /
@@ -28,14 +28,14 @@ end;
  *
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_NewMedium ()
+create or modify microflow Sudoku.ACT_NewMedium ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewMedium';
 
   $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Medium, TargetGivens = 42, Variant = Sudoku."Variant".Classic);
-  show page Sudoku.Game_Play($Game = $Game);
+  show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
 /
@@ -45,14 +45,14 @@ end;
  *
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_NewHard ()
+create or modify microflow Sudoku.ACT_NewHard ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewHard';
 
   $Game = call microflow Sudoku.ACT_DealGame(Level = Sudoku."Difficulty".Hard, TargetGivens = 30, Variant = Sudoku."Variant".Classic);
-  show page Sudoku.Game_Play($Game = $Game);
+  show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
 /
@@ -61,7 +61,7 @@ end;
 -- Landing page
 -- =====================================================================
 
-create or replace page Sudoku.Home
+create or modify page Sudoku.Home
 (
   title: 'Sudoku',
   layout: Atlas_Core.Atlas_Default,
@@ -91,7 +91,7 @@ create or replace page Sudoku.Home
         )
         actionbutton bEasy (
           caption: 'Start easy game',
-          action: microflow Sudoku.ACT_NewEasy,
+          action: call microflow Sudoku.ACT_NewEasy,
           buttonstyle: primary,
           class: 'sd-cta'
         )
@@ -107,7 +107,7 @@ create or replace page Sudoku.Home
         )
         actionbutton bMedium (
           caption: 'Start medium game',
-          action: microflow Sudoku.ACT_NewMedium,
+          action: call microflow Sudoku.ACT_NewMedium,
           buttonstyle: primary,
           class: 'sd-cta'
         )
@@ -123,7 +123,7 @@ create or replace page Sudoku.Home
         )
         actionbutton bHard (
           caption: 'Start hard game',
-          action: microflow Sudoku.ACT_NewHard,
+          action: call microflow Sudoku.ACT_NewHard,
           buttonstyle: primary,
           class: 'sd-cta'
         )
@@ -141,7 +141,7 @@ create or replace page Sudoku.Home
       )
       actionbutton bDiagonal (
         caption: 'Start diagonal game',
-        action: microflow Sudoku.ACT_NewDiagonal,
+        action: call microflow Sudoku.ACT_NewDiagonal,
         buttonstyle: primary,
         class: 'sd-cta'
       )
@@ -157,7 +157,7 @@ create or replace page Sudoku.Home
       )
       actionbutton bJigsaw (
         caption: 'Start jigsaw game',
-        action: microflow Sudoku.ACT_NewJigsaw,
+        action: call microflow Sudoku.ACT_NewJigsaw,
         buttonstyle: primary,
         class: 'sd-cta'
       )
@@ -173,7 +173,7 @@ create or replace page Sudoku.Home
       )
       actionbutton bMix (
         caption: 'Start mix game',
-        action: microflow Sudoku.ACT_NewMix,
+        action: call microflow Sudoku.ACT_NewMix,
         buttonstyle: primary,
         class: 'sd-cta'
       )
@@ -201,7 +201,7 @@ create or replace page Sudoku.Home
  *
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_NewJigsaw ()
+create or modify microflow Sudoku.ACT_NewJigsaw ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
@@ -212,7 +212,7 @@ begin
     TargetGivens = 40,
     Variant = Sudoku."Variant".Jigsaw);
 
-  show page Sudoku.Game_Play($Game = $Game);
+  show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
 /
@@ -229,7 +229,7 @@ grant execute on microflow Sudoku.ACT_NewJigsaw to Sudoku.User;
  *
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_NewDiagonal ()
+create or modify microflow Sudoku.ACT_NewDiagonal ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
@@ -240,7 +240,7 @@ begin
     TargetGivens = 36,
     Variant = Sudoku."Variant".Diagonal);
 
-  show page Sudoku.Game_Play($Game = $Game);
+  show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
 /
@@ -261,14 +261,14 @@ grant execute on microflow Sudoku.ACT_NewDiagonal to Sudoku.User;
  *
  * @returns The dealt game
  */
-create or replace microflow Sudoku.ACT_NewMix ()
+create or modify microflow Sudoku.ACT_NewMix ()
 returns Sudoku."Game" as $Game
 folder 'Game'
 begin
   log info node 'Sudoku' 'ACT_NewMix';
 
   $Game = call microflow Sudoku.ACT_DealMix(TargetGivens = 40);
-  show page Sudoku.Game_Mix($Game = $Game);
+  show page Sudoku.Game_Mix(Game = $Game);
   return $Game;
 end;
 /
@@ -285,7 +285,7 @@ grant execute on microflow Sudoku.ACT_NewMix to Sudoku.User;
 alter page Sudoku.Game_Done {
   insert after sdDoneChartWrap {
     container sdDoneActions (class: 'sd-done-actions') {
-      container doneNew (class: 'sd-tool sd-tool-on', OnClick: show_page Sudoku.Home) {
+      container doneNew (class: 'sd-tool sd-tool-on', OnClick: show page Sudoku.Home) {
         dynamictext doneNewT (content: 'NEW PUZZLE', class: 'sd-tool-text')
       }
     }

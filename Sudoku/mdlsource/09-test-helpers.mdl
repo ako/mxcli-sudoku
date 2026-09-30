@@ -50,7 +50,7 @@
  * @param $Regions 81-character region map for a jigsaw, or '' for 3x3 boxes
  * @returns 'OK', or the first rule violation
  */
-create or replace microflow Sudoku.SUB_ValidateGrid (
+create or modify microflow Sudoku.SUB_ValidateGrid (
   $Grid: string,
   $Diagonal: boolean,
   $Regions: string
@@ -198,7 +198,7 @@ grant execute on microflow Sudoku.SUB_ValidateGrid to Sudoku.User;
  *
  * @returns 'OK', or the first rule violation in the generated grid
  */
-create or replace microflow Sudoku.TST_GenClassicValid ()
+create or modify microflow Sudoku.TST_GenClassicValid ()
 returns string as $verdict
 folder 'Test'
 begin
@@ -218,7 +218,7 @@ grant execute on microflow Sudoku.TST_GenClassicValid to Sudoku.User;
  *
  * @returns 'OK', or the first rule violation
  */
-create or replace microflow Sudoku.TST_GenDiagonalValid ()
+create or modify microflow Sudoku.TST_GenDiagonalValid ()
 returns string as $verdict
 folder 'Test'
 begin
@@ -242,7 +242,7 @@ grant execute on microflow Sudoku.TST_GenDiagonalValid to Sudoku.User;
  *
  * @returns 'OK', or the first rule violation
  */
-create or replace microflow Sudoku.TST_GenJigsawValid ()
+create or modify microflow Sudoku.TST_GenJigsawValid ()
 returns string as $verdict
 folder 'Test'
 begin
@@ -270,7 +270,7 @@ grant execute on microflow Sudoku.TST_GenJigsawValid to Sudoku.User;
  *
  * @returns 'OK', 'A:<violation>', 'B:<violation>', or 'overlap <i> <j>'
  */
-create or replace microflow Sudoku.TST_GenMixValid ()
+create or modify microflow Sudoku.TST_GenMixValid ()
 returns string as $verdict
 folder 'Test'
 begin
@@ -329,7 +329,7 @@ grant execute on microflow Sudoku.TST_GenMixValid to Sudoku.User;
  * @returns 'OK', or 'MISMATCH' when the repaired puzzle does not solve
  *          back to the original solution
  */
-create or replace microflow Sudoku.TST_RepairSolvesBack ()
+create or modify microflow Sudoku.TST_RepairSolvesBack ()
 returns string as $verdict
 folder 'Test'
 begin
@@ -368,7 +368,7 @@ grant execute on microflow Sudoku.TST_RepairSolvesBack to Sudoku.User;
  *
  * @returns The prepared game
  */
-create or replace microflow Sudoku.TST_FixedGame ()
+create or modify microflow Sudoku.TST_FixedGame ()
 returns Sudoku."Game" as $Game
 folder 'Test'
 begin
@@ -431,7 +431,7 @@ grant execute on microflow Sudoku.TST_FixedGame to Sudoku.User;
  * @param $Digit The digit to play
  * @returns The board after the move
  */
-create or replace microflow Sudoku.TST_Play (
+create or modify microflow Sudoku.TST_Play (
   $Digit: integer
 )
 returns Sudoku."Game" as $Board
@@ -459,7 +459,7 @@ grant execute on microflow Sudoku.TST_Play to Sudoku.User;
  * @param $Action 'undo', 'redo', 'erase' or 'reset'
  * @returns The board afterwards
  */
-create or replace microflow Sudoku.TST_PlayThen (
+create or modify microflow Sudoku.TST_PlayThen (
   $Action: string
 )
 returns Sudoku."Game" as $Board
@@ -499,7 +499,7 @@ grant execute on microflow Sudoku.TST_PlayThen to Sudoku.User;
  *
  * @returns The refreshed board
  */
-create or replace microflow Sudoku.TST_RefreshCounters ()
+create or modify microflow Sudoku.TST_RefreshCounters ()
 returns Sudoku."Game" as $Game
 folder 'Test'
 begin
@@ -544,7 +544,7 @@ grant execute on microflow Sudoku.TST_RefreshCounters to Sudoku.User;
  *
  * @returns The board after the hint
  */
-create or replace microflow Sudoku.TST_Hint ()
+create or modify microflow Sudoku.TST_Hint ()
 returns Sudoku."Game" as $Game
 folder 'Test'
 begin
@@ -563,7 +563,7 @@ grant execute on microflow Sudoku.TST_Hint to Sudoku.User;
  *
  * @returns The board, whose selected cell carries the mark
  */
-create or replace microflow Sudoku.TST_NoteMark ()
+create or modify microflow Sudoku.TST_NoteMark ()
 returns Sudoku."Game" as $Board
 folder 'Test'
 begin
@@ -591,7 +591,7 @@ grant execute on microflow Sudoku.TST_NoteMark to Sudoku.User;
  * @param $Variant Which board to deal
  * @returns 'OK', or the first rule violation in the dealt board
  */
-create or replace microflow Sudoku.TST_DealValid (
+create or modify microflow Sudoku.TST_DealValid (
   $Variant: enum Sudoku."Variant"
 )
 returns string as $verdict
