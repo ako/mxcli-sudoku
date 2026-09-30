@@ -128,5 +128,5 @@ create entity if not exists Sudoku."Cell" (
 create association if not exists Sudoku."Cell_Game"
 from Sudoku."Cell" to Sudoku."Game"
 type reference
-delete_behavior DELETE_AND_REFERENCES;
+on delete cascade;
 /

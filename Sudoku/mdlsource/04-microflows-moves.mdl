@@ -22,7 +22,7 @@
  * @param $Digit The candidate 1..9 to toggle
  * @returns True when a mark was toggled
  */
-create or replace microflow Sudoku.ACT_ToggleNote (
+create or modify microflow Sudoku.ACT_ToggleNote (
   $Cell: Sudoku."Cell",
   $Digit: integer
 )
@@ -82,7 +82,7 @@ end;
  * @param $NewValue The value it changes to, empty when cleared
  * @returns True when the move was logged
  */
-create or replace microflow Sudoku.ACT_LogMove (
+create or modify microflow Sudoku.ACT_LogMove (
   $Game: Sudoku."Game",
   $Cell: Sudoku."Cell",
   $NewValue: integer
@@ -131,7 +131,7 @@ end;
  * @param $Game The game being played
  * @returns The new mode
  */
-create or replace microflow Sudoku.ACT_ToggleNotes (
+create or modify microflow Sudoku.ACT_ToggleNotes (
   $Game: Sudoku."Game"
 )
 returns boolean as $Mode
@@ -162,7 +162,7 @@ end;
  * @param $Cell The square the player tapped
  * @returns True when the selection moved
  */
-create or replace microflow Sudoku.ACT_SelectCell (
+create or modify microflow Sudoku.ACT_SelectCell (
   $Cell: Sudoku."Cell"
 )
 returns boolean as $Selected
@@ -242,7 +242,7 @@ end;
  * @param $Digit The digit 1..9 to write
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_ApplyValue (
+create or modify microflow Sudoku.ACT_ApplyValue (
   $Game: Sudoku."Game",
   $Digit: integer
 )
@@ -297,7 +297,7 @@ end;
  * @param $Game The game being played
  * @returns True when the square was cleared
  */
-create or replace microflow Sudoku.ACT_ClearValue (
+create or modify microflow Sudoku.ACT_ClearValue (
   $Game: Sudoku."Game"
 )
 returns boolean as $Cleared
@@ -342,7 +342,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set1 (
+create or modify microflow Sudoku.ACT_Set1 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -361,7 +361,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set2 (
+create or modify microflow Sudoku.ACT_Set2 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -380,7 +380,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set3 (
+create or modify microflow Sudoku.ACT_Set3 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -399,7 +399,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set4 (
+create or modify microflow Sudoku.ACT_Set4 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -418,7 +418,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set5 (
+create or modify microflow Sudoku.ACT_Set5 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -437,7 +437,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set6 (
+create or modify microflow Sudoku.ACT_Set6 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -456,7 +456,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set7 (
+create or modify microflow Sudoku.ACT_Set7 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -475,7 +475,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set8 (
+create or modify microflow Sudoku.ACT_Set8 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -494,7 +494,7 @@ end;
  * @param $Game The game being played
  * @returns True when the move was applied
  */
-create or replace microflow Sudoku.ACT_Set9 (
+create or modify microflow Sudoku.ACT_Set9 (
   $Game: Sudoku."Game"
 )
 returns boolean as $Applied
@@ -513,7 +513,7 @@ end;
  * @param $Game The game being played
  * @returns True when a move was undone
  */
-create or replace microflow Sudoku.ACT_Undo (
+create or modify microflow Sudoku.ACT_Undo (
   $Game: Sudoku."Game"
 )
 returns boolean as $Undone
@@ -560,7 +560,7 @@ end;
  * @param $Game The game being played
  * @returns True when a move was redone
  */
-create or replace microflow Sudoku.ACT_Redo (
+create or modify microflow Sudoku.ACT_Redo (
   $Game: Sudoku."Game"
 )
 returns boolean as $Redone

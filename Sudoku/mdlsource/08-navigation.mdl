@@ -4,10 +4,9 @@
 -- Point the Responsive profile at the Sudoku landing page.
 -- =====================================================================
 
-create or replace navigation Responsive
+create or modify navigation Responsive
   home page Sudoku.Home
-  menu (
-    menu item 'Play Sudoku' page Sudoku.Home;
-  )
-;
+{
+  menu item 'Play Sudoku' ( OnClick: show page Sudoku.Home )
+};
 /

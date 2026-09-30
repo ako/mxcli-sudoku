@@ -21,7 +21,7 @@
  * @param $Game The game being played
  * @returns The new mode
  */
-create or replace nanoflow Sudoku.NF_ToggleNotes (
+create or modify nanoflow Sudoku.NF_ToggleNotes (
   $Game: Sudoku."Game"
 )
 returns boolean as $Mode

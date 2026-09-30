@@ -17,9 +17,9 @@
 -- replaying a level needs ACT_New*, which do not exist yet at this point.
 -- =====================================================================
 
-create or replace page Sudoku.Game_Done
+create or modify page Sudoku.Game_Done
 (
-  params: { $Game: Sudoku."Game" },
+  params: ( $Game: Sudoku."Game" ),
   title: 'Solved',
   layout: Atlas_Core.Atlas_Default,
   class: 'sd-page sd-dark'
@@ -31,24 +31,24 @@ create or replace page Sudoku.Game_Done
       container sdDoneHead (class: 'sd-done-head') {
         dynamictext sdDoneKicker (
           content: 'SOLVED · {1} CONFLICTS LEFT',
-          contentparams: [{1} = "ErrorCount"],
+          contentparams: ({1} = "ErrorCount"),
           class: 'sd-done-kicker'
         )
         dynamictext sdDoneTitle (
           content: '{1} No. {2}',
-          contentparams: [{1} = "Level", {2} = "PuzzleNo"],
+          contentparams: ({1} = "Level", {2} = "PuzzleNo"),
           rendermode: H1,
           class: 'sd-done-title'
         )
         dynamictext sdDoneTime (
           content: 'in {1}',
-          contentparams: [{1} = "ElapsedLabel"],
+          contentparams: ({1} = "ElapsedLabel"),
           rendermode: H1,
           class: 'sd-done-time'
         )
         dynamictext sdDoneSub (
           content: 'Dealt {1} with {2} squares revealed.',
-          contentparams: [{1} = "DateLabel", {2} = "GivenCount"],
+          contentparams: ({1} = "DateLabel", {2} = "GivenCount"),
           rendermode: Paragraph,
           class: 'sd-done-sub'
         )
@@ -56,15 +56,15 @@ create or replace page Sudoku.Game_Done
 
       container sdDoneStats (class: 'sd-done-stats') {
         container sdDoneStat1 (class: 'sd-done-stat') {
-          dynamictext sdDoneStat1v (content: '{1}', contentparams: [{1} = "HintCount"], class: 'sd-done-stat-value')
+          dynamictext sdDoneStat1v (content: '{1}', contentparams: ({1} = "HintCount"), class: 'sd-done-stat-value')
           dynamictext sdDoneStat1l (content: 'HINTS USED', class: 'sd-done-stat-label')
         }
         container sdDoneStat2 (class: 'sd-done-stat') {
-          dynamictext sdDoneStat2v (content: '{1}', contentparams: [{1} = "MaxSeq"], class: 'sd-done-stat-value')
+          dynamictext sdDoneStat2v (content: '{1}', contentparams: ({1} = "MaxSeq"), class: 'sd-done-stat-value')
           dynamictext sdDoneStat2l (content: 'MOVES MADE', class: 'sd-done-stat-label')
         }
         container sdDoneStat3 (class: 'sd-done-stat') {
-          dynamictext sdDoneStat3v (content: '{1}', contentparams: [{1} = "GivenCount"], class: 'sd-done-stat-value')
+          dynamictext sdDoneStat3v (content: '{1}', contentparams: ({1} = "GivenCount"), class: 'sd-done-stat-value')
           dynamictext sdDoneStat3l (content: 'SQUARES GIVEN', class: 'sd-done-stat-label')
         }
       }
@@ -81,7 +81,7 @@ create or replace page Sudoku.Game_Done
           PageSize: 7,
           class: 'sd-bars'
         ) {
-          template tplBar {
+          template {
             container sdBarCol (class: 'sd-bar-col') {
               container sdBar (
                 class: 'sd-bar',
@@ -89,7 +89,7 @@ create or replace page Sudoku.Game_Done
               ) {
                 dynamictext sdBarSpacer (content: ' ')
               }
-              dynamictext sdBarLabel (content: '{1}', contentparams: [{1} = "PuzzleNo"], class: 'sd-bar-label')
+              dynamictext sdBarLabel (content: '{1}', contentparams: ({1} = "PuzzleNo"), class: 'sd-bar-label')
             }
           }
         }
