@@ -3073,33 +3073,31 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `dfccef55c`:** a 2-commit hop, and every row re-ran
-> unchanged — the page round-trip still 20 of 20 to `mx check` 0 errors, the
-> migrated `mdlsource/` still 0 deprecations. What the pass did turn up is two
-> corrections to my own write-ups: **`mxcli fmt --upgrade` does the whole #62
-> migration in one command** and I had missed it, and **#63 is narrower than I
-> said** — that tool performs the deprecation correctly, so only its message is
-> wrong.
+> **Update, `main` at `2b73b8246`** (120 commits on): every row re-ran unchanged —
+> page round-trip 20 of 20 to `mx check` 0 errors, migrated `mdlsource/` still 0 of
+> 84 deprecation codes. **#63 is largely addressed**: a per-code `mxcli help` page
+> now states the correct rewrite, and the warning points at it. And a **correction**
+> to #62: a source replay does *not* reset the flow layout — my earlier claim there
+> was a conflation, not a measurement.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `dfccef55c`** (2026-09-30). Previous columns kept so
+Last retested on **`main` at `2b73b8246`** (2026-10-01). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 0a821cf` | `main @ 2a723ec7` | `main @ 5ccbd480` | `main @ dfccef55c` |
+| Finding | `main @ 2a723ec7` | `main @ 5ccbd480` | `main @ dfccef55c` | `main @ 2b73b8246` |
 |---|---|---|---|---|
-| 46–53, 55, 57, 59, 60 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46–53, 55, 57, 59, 60, 61 and the `-dirty` version string | mostly fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54 — `DESCRIBE PAGE` round-trip (A, B, C) | open, 5 of 20 unparseable | A and B fixed | **closed** | closed, 20 of 20 |
-| 56 — written widget nodes build to CE0463 | 5 types | 5 types | **RESOLVED** by `fix widgets` | resolved; 6 CE0463 without it |
+| 54 — `DESCRIBE PAGE` round-trip (A, B, C) | A and B fixed | **closed** | closed | closed, 20 of 20 |
+| 56 — written widget nodes build to CE0463 | 5 types | **RESOLVED** by `fix widgets` | resolved | resolved; 6 CE0463 without it |
 | 58 — `check` rejects the `MxTest` module it generates | open | open | open | **open**, 44 errors ([#677](https://github.com/ako/mxcli/issues/677)) |
-| 61 — an excluded page's data source blocks round-trip | — | **new** | **FIXED** ([#680](https://github.com/ako/mxcli/issues/680)) | fixed |
-| `layout flows` introduces 4 MPR008 overlaps | — | **new** | open | **open**, still 4 ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | — | **new and MIGRATED**, 182 → 0 | 0, and `fmt --upgrade` would have done it |
-| 63 — `MDL-DEPR081`'s message misnames the replacement | — | — | **new** | open, **narrowed to the message** |
+| `layout flows` introduces 4 MPR008 overlaps | **new** | open | open | **open**, still 4 ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | **new and MIGRATED**, 182 → 0 | 0; `fmt --upgrade` would have done it | 0 of 84 codes |
+| 63 — `MDL-DEPR081`'s message misnames the replacement | — | **new** | narrowed to the message | **largely addressed** (`27be848e2`) |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3111,7 +3109,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | **9** |
 | `mx check` after the replay | **5 errors** | 0 | **0** |
 
-On `dfccef55c`: **44/44** under `--require-assertions`, `lint` 0 errors (378
+On `2b73b8246`: **44/44** under `--require-assertions`, `lint` 0 errors (378
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -5055,16 +5053,40 @@ diff isolates the migration from both.
 Both are #10-class (the scripts are not fully idempotent) and belong in their own
 change.
 
-### And one thing to know before rebuilding from source
+### Correction: a source replay does *not* reset the flow layout
 
-**A source replay resets the flow layout.** The `layout flows` pass from
-`6fa2aaa` lives in the *model*; `mdlsource/` has no `@position` annotations, so
-re-running the scripts puts every flow back to whatever the writer produces.
-Measured: after a full replay, `lint` returns to 67 `MPR011` from 13. Anyone
-rebuilding this app from `mdlsource/` should re-run
-`mxcli layout flows --module Sudoku` afterwards. Not a defect — positions are
-model state, and the scripts deliberately do not carry them — but it is the one
-step a from-scratch rebuild needs that the scripts do not encode.
+An earlier version of this section claimed it did — *"after a full replay, `lint`
+returns to 67 `MPR011` from 13"* — and recommended re-running `layout flows`
+after any rebuild. **That was wrong, and it was not a measurement.** 67 is the
+**pre-layout** project's count; I measured that tree and then wrote it up as what
+a replay returns you to, which is not the same thing and which I never ran.
+
+What actually happens, measured on three builds (`5ccbd480`, `dfccef55c`,
+`2b73b8246`), replaying the full `mdlsource/` over the laid-out project:
+
+```
+committed project   →  4 MPR008, 13 MPR011
+after a full replay →  4 MPR008, 13 MPR011
+```
+
+And at the level that matters rather than the summary count — describing all 50
+microflows **with positions included**, before and after a replay — no position is
+lost. 16 of 50 describes differ, and essentially all of it is the
+`commit … without events` drift recorded above. The only `@position` differences
+are **five additions** in `ACT_SelectCell`, where the replay wrote explicit
+coordinates the stored flow had left implicit.
+
+The reason is `create or modify` on a flow: the 12 `fix(flow-modify)` commits in
+`dfccef55c..2b73b8246` are about it splicing a stored flow in place rather than
+rewriting it — *"build a declared flow at most once, and not for an unchanged
+body"*, *"no folder clause leaves a stored flow where it is"*. Positions survive
+because an unchanged flow is not rebuilt. `create or replace` behaves the same
+way, being an alias (DEPR001), so the migration did not cause this either —
+checked by replaying both the migrated and the unmigrated source and getting 4/13
+from both.
+
+**So a from-scratch rebuild does not need a `layout flows` pass**, and the claim
+that it did was mine rather than the tool's.
 
 ---
 
@@ -5076,6 +5098,15 @@ step a from-scratch rebuild needs that the scripts do not encode.
 > is defective is the message text. It only bites someone migrating by hand from
 > that text — which is exactly what I did, because I had not found
 > `fmt --upgrade` (see #62's correction). Recorded, not filed.
+>
+> **Largely addressed on `main` at `2b73b8246`.** `27be848e2` adds a generated
+> migration reference and `mxcli help <code>`, and the one-line warning now ends
+> `(mxcli help MDL-DEPR081)`. That page states the right answer outright —
+> *"Rewrite: yes: brackets into the expression they store: `Visible: [Active]`
+> becomes `Visible: $currentObject/Active`"* — plus a note on why, and old/new
+> examples. The inline sentence still says "same meaning" and still shows the bare
+> form, so the misleading half survives; but it now carries a pointer to the
+> correct answer, which is what I would have followed.
 
 **Recorded rather than filed** — the one deprecation of the eleven in #62 whose
 *stated* replacement is wrong.
