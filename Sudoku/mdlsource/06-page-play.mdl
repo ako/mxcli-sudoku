@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — board page, Nocturne layout
 -- =====================================================================
@@ -47,19 +48,19 @@ create or modify page Sudoku.Game_Play
               caption: 'EASY',
               action: call microflow Sudoku.ACT_NewEasy,
               class: 'sd-seg-btn',
-              dynamicclasses: 'if $currentObject/Level = Sudoku.Difficulty.Easy then ''sd-seg-on'' else '''''
+              dynamicclasses: if $currentObject/Level = Sudoku.Difficulty.Easy then 'sd-seg-on' else ''
             )
             actionbutton segMedium (
               caption: 'MEDIUM',
               action: call microflow Sudoku.ACT_NewMedium,
               class: 'sd-seg-btn',
-              dynamicclasses: 'if $currentObject/Level = Sudoku.Difficulty.Medium then ''sd-seg-on'' else '''''
+              dynamicclasses: if $currentObject/Level = Sudoku.Difficulty.Medium then 'sd-seg-on' else ''
             )
             actionbutton segHard (
               caption: 'HARD',
               action: call microflow Sudoku.ACT_NewHard,
               class: 'sd-seg-btn',
-              dynamicclasses: 'if $currentObject/Level = Sudoku.Difficulty.Hard then ''sd-seg-on'' else '''''
+              dynamicclasses: if $currentObject/Level = Sudoku.Difficulty.Hard then 'sd-seg-on' else ''
             )
           }
           container sdCount (class: 'sd-count') {
@@ -77,7 +78,7 @@ create or modify page Sudoku.Game_Play
         container sdProgTrack (class: 'sd-prog-track') {
           container sdProgFill (
             class: 'sd-prog-fill',
-            dynamicclasses: '''sd-pb-'' + toString($currentObject/ProgressBucket)'
+            dynamicclasses: 'sd-pb-' + toString($currentObject/ProgressBucket)
           ) {
             dynamictext sdProgSpacer (content: ' ')
           }
@@ -101,7 +102,7 @@ create or modify page Sudoku.Game_Play
             ) {
               template {
                 container sdCell (
-                  dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsPeer then '' sd-peer'' else '''') + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
+                  dynamicclasses: $currentObject/CellClass + (if $currentObject/IsPeer then ' sd-peer' else '') + (if $currentObject/IsInvalid then ' sd-bad' else '') + (if $currentObject/IsSelected then ' sd-sel' else ''),
                   OnClick: call microflow Sudoku.ACT_SelectCell(Cell = $currentObject)
                 ) {
                   dynamictext sdCellNum (
@@ -150,11 +151,11 @@ create or modify page Sudoku.Game_Play
 
           container sdPad (
             class: 'sd-pad',
-            dynamicclasses: 'if $currentObject/HasSelection and $currentObject/SelEditable = false then ''sd-pad-locked'' else '''''
+            dynamicclasses: if $currentObject/HasSelection and $currentObject/SelEditable = false then 'sd-pad-locked' else ''
           ) {
             container key1 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining1 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining1 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set1(Game = $Game)
             ) {
               dynamictext key1d (content: '1', class: 'sd-key-digit')
@@ -168,7 +169,7 @@ create or modify page Sudoku.Game_Play
             }
             container key2 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining2 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining2 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set2(Game = $Game)
             ) {
               dynamictext key2d (content: '2', class: 'sd-key-digit')
@@ -182,7 +183,7 @@ create or modify page Sudoku.Game_Play
             }
             container key3 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining3 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining3 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set3(Game = $Game)
             ) {
               dynamictext key3d (content: '3', class: 'sd-key-digit')
@@ -196,7 +197,7 @@ create or modify page Sudoku.Game_Play
             }
             container key4 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining4 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining4 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set4(Game = $Game)
             ) {
               dynamictext key4d (content: '4', class: 'sd-key-digit')
@@ -210,7 +211,7 @@ create or modify page Sudoku.Game_Play
             }
             container key5 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining5 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining5 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set5(Game = $Game)
             ) {
               dynamictext key5d (content: '5', class: 'sd-key-digit')
@@ -224,7 +225,7 @@ create or modify page Sudoku.Game_Play
             }
             container key6 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining6 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining6 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set6(Game = $Game)
             ) {
               dynamictext key6d (content: '6', class: 'sd-key-digit')
@@ -238,7 +239,7 @@ create or modify page Sudoku.Game_Play
             }
             container key7 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining7 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining7 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set7(Game = $Game)
             ) {
               dynamictext key7d (content: '7', class: 'sd-key-digit')
@@ -252,7 +253,7 @@ create or modify page Sudoku.Game_Play
             }
             container key8 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining8 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining8 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set8(Game = $Game)
             ) {
               dynamictext key8d (content: '8', class: 'sd-key-digit')
@@ -266,7 +267,7 @@ create or modify page Sudoku.Game_Play
             }
             container key9 (
               class: 'sd-key',
-              dynamicclasses: 'if $currentObject/Remaining9 = 0 then ''sd-key-done'' else ''''',
+              dynamicclasses: if $currentObject/Remaining9 = 0 then 'sd-key-done' else '',
               OnClick: call microflow Sudoku.ACT_Set9(Game = $Game)
             ) {
               dynamictext key9d (content: '9', class: 'sd-key-digit')
@@ -318,28 +319,28 @@ create or modify page Sudoku.Game_Play
           container sdTools2 (class: 'sd-tools') {
             container toolNotes (
               class: 'sd-tool',
-              dynamicclasses: 'if $currentObject/NotesMode then ''sd-tool-on'' else ''''',
+              dynamicclasses: if $currentObject/NotesMode then 'sd-tool-on' else '',
               OnClick: call nanoflow Sudoku.NF_ToggleNotes(Game = $Game)
             ) {
               dynamictext toolNotesT (content: 'NOTES', class: 'sd-tool-text')
             }
             container toolUndo (
               class: 'sd-tool',
-              dynamicclasses: 'if $currentObject/CanUndo then '''' else ''sd-tool-off''',
+              dynamicclasses: if $currentObject/CanUndo then '' else 'sd-tool-off',
               OnClick: call microflow Sudoku.ACT_Undo(Game = $Game)
             ) {
               dynamictext toolUndoT (content: 'UNDO', class: 'sd-tool-text')
             }
             container toolRedo (
               class: 'sd-tool',
-              dynamicclasses: 'if $currentObject/CanRedo then '''' else ''sd-tool-off''',
+              dynamicclasses: if $currentObject/CanRedo then '' else 'sd-tool-off',
               OnClick: call microflow Sudoku.ACT_Redo(Game = $Game)
             ) {
               dynamictext toolRedoT (content: 'REDO', class: 'sd-tool-text')
             }
             container toolResult (
               class: 'sd-tool',
-              dynamicclasses: 'if $currentObject/Status = Sudoku.GameStatus.Solved then ''sd-tool-on'' else ''sd-tool-off''',
+              dynamicclasses: if $currentObject/Status = Sudoku.GameStatus.Solved then 'sd-tool-on' else 'sd-tool-off',
               OnClick: show page Sudoku.Game_Done(Game = $Game)
             ) {
               dynamictext toolResultT (content: 'RESULT', class: 'sd-tool-text')
@@ -374,7 +375,7 @@ create or modify page Sudoku.Game_Play
                 content: '{1}',
                 contentparams: ({1} = "ErrorCount"),
                 class: 'sd-stat-value',
-                dynamicclasses: 'if $currentObject/ErrorCount > 0 then ''sd-stat-bad'' else '''''
+                dynamicclasses: if $currentObject/ErrorCount > 0 then 'sd-stat-bad' else ''
               )
               dynamictext sdStat3l (content: 'CONFLICTS', class: 'sd-stat-label')
             }
@@ -383,4 +384,4 @@ create or modify page Sudoku.Game_Play
       }
     }
   }
-}
+};

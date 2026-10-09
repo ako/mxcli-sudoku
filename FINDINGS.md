@@ -3077,8 +3077,9 @@ That workaround is retired.
 > builds open — `check` on a `.test.mdl` passes at last. The `layout flows`
 > overlaps are **halved, and two of the four I reported were the linter's fault
 > rather than the layouter's**. Everything else re-ran unchanged. **#64 is new**:
-> `mdlsource/` is clean against `mdl 2` but carries 158 `MDL-V1-*` warnings, a
-> second migration axis `--deprecations=error` does not cover.
+> `mdlsource/` was clean against `mdl 2` but carried 158 `MDL-V1-*` warnings, a
+> second migration axis `--deprecations=error` does not cover — **now migrated**,
+> and the upgrade closed #62's `commit` drift as a side effect.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
@@ -3098,7 +3099,7 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | `layout flows` introduces MPR008 overlaps | — | open, 4 | open, 4 | **2** — 2 were lint false positives (`3d5c459e5`) |
 | 62 — `mdlsource/` uses spellings `mdl 2` will refuse | **new and MIGRATED**, 182 → 0 | 0 | 0 of 84 codes | 0 |
 | 63 — `MDL-DEPR081`'s message misnames the replacement | **new** | narrowed to the message | **largely addressed** | addressed |
-| 64 — `mdlsource/` not ready for `mdl 1` | — | — | — | **new**, 158 `MDL-V1-*` warnings |
+| 64 — `mdlsource/` not ready for `mdl 1` | — | — | — | **new and MIGRATED**, 158 → 0 |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3358,8 +3359,9 @@ warning about single samples applies either way.
 ([#684](https://github.com/ako/mxcli/issues/684), down from 4). Everything else
 is fixed or withdrawn.
 
-**Open against this project:** **#64**, the `mdl 1` migration — 158 `MDL-V1-*`
-warnings that #62's gate does not cover.
+**Open against this project:** nothing. **#64** — the `mdl 1` migration — is
+done, and it closed #62's `commit` drift on the way. The one remaining
+#10-class item is `Cell_Game`'s missing delete behaviour.
 
 #58 was the long one — open across six builds, fixed at `28a3b1bf6`. #62's
 migration is applied and proven. #63 came out of doing it and is largely
@@ -5229,59 +5231,97 @@ Pointing the message at `fmt --upgrade` would serve as well.
 
 ---
 
-## 64. `mdlsource/` is clean against `mdl 2` but not ready for `mdl 1` — a second migration axis
+## 64. `mdlsource/` was clean against `mdl 2` but not ready for `mdl 1` — migrated
 
-**New, and the project's own work again** — found while verifying something
-unrelated, which is the only reason I know it exists.
+> **DONE.** `fmt --upgrade --header` cleared all 158 `MDL-V1-*` warnings across
+> the 11 scripts and added the `mdl 1;` header to each. Source-only; no model file
+> changed. And it closed #62's `commit` drift as a side effect — see below.
 
 Finding #62 migrated `mdlsource/` off every deprecated spelling, and that holds:
-`check --deprecations=error` reports **0** across all 11 scripts on `28a3b1bf6`.
-But `--deprecations=error` does not cover a second, separate set of codes —
-`MDL-V1-*`, which are not deprecations but **semantic changes `mdl 1` introduces**.
-Plain `check` reports **158** of them, across 11 of 11 files:
+`check --deprecations=error` reports **0**. But that flag does not cover a second,
+separate set of codes — `MDL-V1-*`, which are not deprecations but **semantic
+changes `mdl 1` introduces**. Plain `check` reported **158**, across 11 of 11
+files:
 
 | code | count | what changes under `mdl 1` |
 |---|---|---|
-| MDL-V1-SLASH | 246 | a `/` after a statement is a terminator under `mdl 0`; under `mdl 1` it is an error — `;` is the only terminator |
-| MDL-V1-QUOTEDEXPR | 46 | a quoted expression string is read as an expression under `mdl 1` |
-| MDL-V1-LIMIT | 10 | `retrieve … limit` semantics |
-| MDL-V1-SEMI | 8 | a statement without a terminating `;` is accepted under `mdl 0`, an error under `mdl 1` |
-| MDL-V1-REBUILD | 6 | flow rebuild behaviour |
+| MDL-V1-SLASH | 123 | a `/` after a statement terminates it under `mdl 0`; under `mdl 1` it is an error — `;` is the only terminator |
+| MDL-V1-QUOTEDEXPR | 23 | a quoted expression string is read as an expression |
+| MDL-V1-SEMI | 4 | a statement without a terminating `;` is accepted under `mdl 0`, an error under `mdl 1` |
+| MDL-V1-LIMIT1 | 5 | `retrieve … limit 1` semantics |
 
-(The per-code counts exceed 158 because a line can carry more than one.)
+Every script ended its statements with `/`, the SQL\*Plus style they were written
+in, which is most of the count.
 
 ### Why this was easy to miss, and why that matters
 
-#62's gate was `check --deprecations=error`, which is the right gate for what
-#62 was about and reports zero here. The `MDL-V1-*` codes come out of plain
-`check` as warnings and are counted by neither that flag nor
-`syntax --deprecated`. So a project can be *fully* migrated against `mdl 2` and
-still not parse under `mdl 1`, with no single command that says so.
-
-This project is exactly that case. Every script ends its statements with `/`,
-the SQL\*Plus style the original scripts were written in — 246 of the 158
-warnings are that one habit.
-
-**The remedy exists and is the same tool:** `fmt --upgrade --header`, whose
-`--header` flag adds the `mdl 1;` opt-in line and whose rewrites include the V1
-set — `fmt --upgrade` already performed 23 `MDL-V1-QUOTEDEXPR` rewrites
-unprompted during #62's cross-check, which in hindsight was the clue I did not
-follow up.
-
-**Not done here.** Recorded so the second deadline is visible. It should be its
-own change, gated the way #62's was: `fmt --upgrade --header`, then the
-replay-vs-replay snapshot of all 66 documents, `mx check` and the 44 tests. The
-`mdl 1` header is described as an opt-in preview, so there is no urgency — but
-#62's framing, that `mdlsource/` is "how this app is rebuilt from scratch", applies
-here identically.
+#62's gate was `check --deprecations=error` — the right gate for what #62 was
+about, and it reports zero here. The `MDL-V1-*` codes come out of plain `check` as
+warnings and are counted by neither that flag nor `syntax --deprecated`. So a
+project can be fully migrated against `mdl 2` and still not parse under `mdl 1`,
+with no single command that says so.
 
 **The lesson, and it is one this document keeps relearning:** a gate answers the
 question it was built for and no other. `--deprecations=error` reporting zero was
 true and told me nothing about `mdl 1`. Same shape as trusting a lint count
-without checking what the rule measured (#684), and as reading the first
-paragraph of `fmt --help` (#62).
+without checking what the rule measured (#684), and as reading the first paragraph
+of `fmt --help` (#62).
 
----
+### The migration, and the thing it fixed that I had not asked for
+
+```console
+$ for f in mdlsource/*.mdl; do mxcli fmt --upgrade --header -w "$f" -p Sudoku.mpr; done
+mdlsource/02-domain-refinements.mdl: rewrote for the header MDL-V1-SLASH x43
+mdlsource/02-domain-refinements.mdl: added the language header
+mdlsource/03-microflows-engine.mdl: rewrote for the header MDL-V1-LIMIT1 x1, MDL-V1-SLASH x14
+mdlsource/03-microflows-engine.mdl: stated `without events` on 13 bare commit(s),
+  as the project's stored flows have them (MDL067)
+…
+  →  158 MDL-V1-* → 0,  0 deprecations,  0 parse errors,  11 of 11 headers added
+```
+
+That third line is the interesting one. **It closed the `commit` drift #62
+recorded as out of scope** — the model held `commit … without events` in 30 places
+where the source said a plain `commit`, so a replay silently switched events on.
+`fmt --upgrade` read the project, noticed, and stated the stored behaviour
+explicitly. Measured across the three snapshots:
+
+| | `without events` commits |
+|---|---|
+| the committed model | **30** |
+| pre-migration source, replayed | **0** ← the drift |
+| migrated source, replayed | **30** |
+
+And every flow's commit lines now match the committed model exactly — 0 of 50
+differ. So `mdlsource/` describes the app more accurately after the migration than
+before it, which is more than a syntax change.
+
+### How it was verified
+
+Same gates as #62, plus a third snapshot because this migration *does* change what
+a replay produces:
+
+1. replay the **pre-migration** source into a scratch copy, snapshot 66 documents
+2. replay the **migrated** source into another, snapshot
+3. snapshot the **committed model**, which never gets replayed
+
+The two replays differ in **16 of 66** documents, and **every differing line is a
+`commit` statement** — nothing else moved. Against the committed model both
+replays differ in the same 55 documents, which is doc-comment whitespace a replay
+always introduces and is identical either way.
+
+```
+mx check after the migrated replay  →  0 errors
+tests                               →  44/44
+layout                              →  2 MPR008, 13 MPR011 (unchanged)
+model files changed by the migration →  0
+```
+
+**One pre-existing item still out of scope:** `Cell_Game` has no delete behaviour,
+because `01-domain-model.mdl` asks for cascade through a
+`create association if not exists` that has never re-run. #10-class, and untouched
+by this.
+
 
 ## Verification summary
 

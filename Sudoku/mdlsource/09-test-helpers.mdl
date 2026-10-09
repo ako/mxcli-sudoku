@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — test helpers
 -- =====================================================================
@@ -183,10 +184,8 @@ begin
 
   return $verdict;
 end;
-/
 
 grant execute on microflow Sudoku.SUB_ValidateGrid to Sudoku.User;
-/
 
 /**
  * Validates whatever the classic generator just produced.
@@ -208,10 +207,8 @@ begin
   set $verdict = $v;
   return $verdict;
 end;
-/
 
 grant execute on microflow Sudoku.TST_GenClassicValid to Sudoku.User;
-/
 
 /**
  * Validates the Sudoku X generator, diagonals included.
@@ -228,10 +225,8 @@ begin
   set $verdict = $v;
   return $verdict;
 end;
-/
 
 grant execute on microflow Sudoku.TST_GenDiagonalValid to Sudoku.User;
-/
 
 /**
  * Validates the jigsaw generator against the region map it returns.
@@ -255,10 +250,8 @@ begin
   set $verdict = $v;
   return $verdict;
 end;
-/
 
 grant execute on microflow Sudoku.TST_GenJigsawValid to Sudoku.User;
-/
 
 /**
  * Validates both Mix grids and the nine squares they share.
@@ -312,10 +305,8 @@ begin
 
   return $verdict;
 end;
-/
 
 grant execute on microflow Sudoku.TST_GenMixValid to Sudoku.User;
-/
 
 /**
  * Checks that repair leaves a puzzle the solver can finish, and finish
@@ -353,10 +344,8 @@ begin
   end if;
   return 'MISMATCH';
 end;
-/
 
 grant execute on microflow Sudoku.TST_RepairSolvesBack to Sudoku.User;
-/
 
 /**
  * Builds a deterministic board: a known solution with squares 0-40 blanked,
@@ -386,7 +375,7 @@ begin
     "DealtAt" = [%CurrentDateTime%],
     "GivenCount" = 40,
     "Message" = 'fixture');
-  commit $Game;
+  commit $Game without events;
 
   set $i = 0;
   while $i < 81
@@ -405,17 +394,15 @@ begin
     if $isGiven then
       change $Cell ("Value" = parseInteger($ch));
     end if;
-    commit $Cell;
+    commit $Cell without events;
     set $i = $i + 1;
   end while;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.TST_FixedGame to Sudoku.User;
-/
 
 /**
  * Selects the first open square and plays a digit into it through the real
@@ -439,7 +426,7 @@ folder 'Test'
 begin
   $Game = call microflow Sudoku.TST_FixedGame();
   retrieve $Cell from Sudoku."Cell"
-    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
+    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] first;
   call microflow Sudoku.ACT_SelectCell(Cell = $Cell);
   -- ACT_SelectCell sets the selection on the Game it retrieves from the
   -- cell, not on the handle held here, and that change is invisible to a
@@ -448,10 +435,8 @@ begin
   call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = $Digit);
   return $Board;
 end;
-/
 
 grant execute on microflow Sudoku.TST_Play to Sudoku.User;
-/
 
 /**
  * Plays the correct digit, then runs one history or board action on it.
@@ -483,10 +468,8 @@ begin
 
   return $Board;
 end;
-/
 
 grant execute on microflow Sudoku.TST_PlayThen to Sudoku.User;
-/
 
 /**
  * Counts empty squares on a board that is deliberately not 81 squares.
@@ -512,7 +495,7 @@ begin
     "Status" = Sudoku."GameStatus".Playing,
     "DealtAt" = [%CurrentDateTime%],
     "Message" = 'fixture');
-  commit $Game;
+  commit $Game without events;
 
   set $i = 0;
   while $i < 120
@@ -527,17 +510,15 @@ begin
     if $playable then
       change $Cell ("SolutionValue" = 1);
     end if;
-    commit $Cell;
+    commit $Cell without events;
     set $i = $i + 1;
   end while;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.TST_RefreshCounters to Sudoku.User;
-/
 
 /**
  * Reveals one square through ACT_Hint.
@@ -552,10 +533,8 @@ begin
   call microflow Sudoku.ACT_Hint(Game = $Game);
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.TST_Hint to Sudoku.User;
-/
 
 /**
  * Switches to notes mode and presses a digit, which must leave a pencil mark
@@ -569,17 +548,15 @@ folder 'Test'
 begin
   $Game = call microflow Sudoku.TST_FixedGame();
   retrieve $Cell from Sudoku."Cell"
-    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] limit 1;
+    where [Sudoku."Cell_Game" = $Game and "Row" = 0 and "Col" = 0] first;
   call microflow Sudoku.ACT_SelectCell(Cell = $Cell);
   retrieve $Board from $Cell/Sudoku."Cell_Game";
   call microflow Sudoku.ACT_ToggleNotes(Game = $Board);
   call microflow Sudoku.ACT_ApplyValue(Game = $Board, Digit = 5);
   return $Board;
 end;
-/
 
 grant execute on microflow Sudoku.TST_NoteMark to Sudoku.User;
-/
 
 /**
  * Deals a real board and validates the solution its Cell rows carry.
@@ -633,7 +610,5 @@ begin
   set $verdict = $v;
   return $verdict;
 end;
-/
 
 grant execute on microflow Sudoku.TST_DealValid to Sudoku.User;
-/

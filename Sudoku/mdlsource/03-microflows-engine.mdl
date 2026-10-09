@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — board engine
 -- =====================================================================
@@ -80,12 +81,11 @@ begin
     end if;
   end loop;
 
-  commit $Changed refresh;
+  commit $Changed without events refresh;
 
   set $Marked = true;
   return $Marked;
 end;
-/
 
 /**
  * Recomputes counters, per-digit remainders and per-cell error flags.
@@ -196,7 +196,7 @@ begin
     end if;
   end loop;
 
-  commit $Changed refresh;
+  commit $Changed without events refresh;
 
   -- Progress in twentieths, so one CSS class per 5% can set the bar width
   set $bucket = 0;
@@ -263,7 +263,7 @@ begin
     end if;
   end if;
 
-  commit $Game refresh;
+  commit $Game without events refresh;
 
   -- A move changes which squares share the selected digit. $Cells is the list
   -- retrieved at the top of this flow and committed above, so it is current.
@@ -271,7 +271,6 @@ begin
 
   return $IsSolved;
 end;
-/
 
 /**
  * Solves as far as pure logic allows.
@@ -622,7 +621,6 @@ begin
   set $Result = $g;
   return $Result;
 end;
-/
 
 /**
  * Deals a fresh board that is valid, solvable and fully determined.
@@ -747,7 +745,6 @@ begin
 
   return $sol;
 end;
-/
 
 /**
  * Produces a shuffled grid that is valid as a Sudoku X — rows, columns,
@@ -849,7 +846,6 @@ begin
 
   return $sol;
 end;
-/
 
 /**
  * Produces a shuffled jigsaw ("vorm") solution together with its region map.
@@ -949,7 +945,6 @@ begin
   set $out = $grid + $regs;
   return $out;
 end;
-/
 
 /**
  * Produces the two interlocking solutions of a "Sudoku Mix": two 9x9 grids
@@ -1047,7 +1042,6 @@ begin
   set $out = $gridA + $gridB;
   return $out;
 end;
-/
 
 /**
  * Blanks squares until the board is down to the requested number of givens.
@@ -1111,7 +1105,6 @@ begin
 
   return $puz;
 end;
-/
 
 /**
  * Hands squares back until the puzzle is solvable by forced logic alone, then
@@ -1260,7 +1253,6 @@ begin
 
   return $puz;
 end;
-/
 
 /**
  * Deals a fresh game: a shuffled solution, blanked to the tier's difficulty,
@@ -1345,7 +1337,7 @@ begin
     "DealtAt" = [%CurrentDateTime%],
     "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEE dd MMM yyyy'),
     "Message" = 'Pick a square, then tap a number.');
-  commit $Game;
+  commit $Game without events;
 
   $Cells = create list of Sudoku."Cell";
 
@@ -1412,7 +1404,7 @@ begin
     set $i = $i + 1;
   end while;
 
-  commit $Cells;
+  commit $Cells without events;
 
   -- Publish the derived counters (per-digit remainders, empty count,
   -- progress bucket) so a freshly dealt board reads correctly before the
@@ -1421,7 +1413,6 @@ begin
 
   return $Game;
 end;
-/
 
 /**
  * Deals a Sudoku Mix: two 9x9 grids on one 15x15 canvas, the second offset six
@@ -1522,7 +1513,7 @@ begin
     "DealtAt" = [%CurrentDateTime%],
     "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEEE d MMMM'),
     "Message" = 'Two grids, one shared block.');
-  commit $Game;
+  commit $Game without events;
 
   set $i = 0;
   while $i < 225
@@ -1540,7 +1531,7 @@ begin
         "IsGiven" = false, "IsEditable" = false, "IsInvalid" = false,
         "CellClass" = 'sd-cell sd-void',
         Sudoku."Cell_Game" = $Game);
-      commit $Void;
+      commit $Void without events;
     else
       set $la = $r * 9 + $c;
       set $lb = ($r - 6) * 9 + $c - 6;
@@ -1584,13 +1575,13 @@ begin
       if $isGiven then
         change $Cell ("Value" = parseInteger($ch));
       end if;
-      commit $Cell;
+      commit $Cell without events;
     end if;
     set $i = $i + 1;
   end while;
 
   change $Game ("GivenCount" = $givens) refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
 
   -- Without this the board opens on default counters — the status line read
   -- "81 EMPTY" on a 153-square board until the first move triggered a refresh.
@@ -1598,10 +1589,8 @@ begin
 
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.ACT_DealMix to Sudoku.User;
-/
 
 /**
  * Clears every square the player filled in, keeping the dealt givens.
@@ -1640,7 +1629,7 @@ begin
     end if;
   end loop;
 
-  commit $Changed refresh;
+  commit $Changed without events refresh;
 
   retrieve $Moves from Sudoku."Move"
     where [Sudoku."Move_Game" = $Game];
@@ -1652,13 +1641,12 @@ begin
     "MaxSeq" = 0,
     "CanUndo" = false,
     "CanRedo" = false) refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Reset = true;
   return $Reset;
 end;
-/
 
 /**
  * Reveals the solution for one empty square.
@@ -1682,20 +1670,19 @@ begin
 
   retrieve $Empty from Sudoku."Cell"
     where [Sudoku."Cell_Game" = $Game and "Value" = empty]
-    limit 1;
+    first;
 
   if $Empty = empty then
     return false;
   end if;
 
   change $Empty ("Value" = $Empty/"SolutionValue", "IsInvalid" = false) refresh;
-  commit $Empty refresh;
+  commit $Empty without events refresh;
 
   change $Game ("HintCount" = $Game/"HintCount" + 1) refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Revealed = true;
   return $Revealed;
 end;
-/
