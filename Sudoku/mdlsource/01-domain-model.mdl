@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — domain model
 -- =====================================================================
@@ -29,7 +30,6 @@
 -- =====================================================================
 
 create module Sudoku;
-/
 
 /**
  * Puzzle difficulty — drives how many cells are revealed at deal time.
@@ -52,14 +52,12 @@ create or modify enumeration Sudoku."Variant" (
   Jigsaw 'Jigsaw',
   Mix 'Mix'
 );
-/
 
 create or modify enumeration Sudoku."Difficulty" (
   Easy 'Easy',
   Medium 'Medium',
   Hard 'Hard'
 );
-/
 
 /**
  * Lifecycle of a single game.
@@ -68,7 +66,6 @@ create or modify enumeration Sudoku."GameStatus" (
   Playing 'Playing',
   Solved 'Solved'
 );
-/
 
 /**
  * One Sudoku game: the board metadata and running progress counters.
@@ -93,7 +90,6 @@ create entity if not exists Sudoku."Game" (
   /** Status line shown above the board */
   "Message": string(200)
 );
-/
 
 /**
  * One square of the 9x9 board.
@@ -120,7 +116,6 @@ create entity if not exists Sudoku."Cell" (
   /** Precomputed CSS classes: box borders + given/open state */
   "CellClass": string(100)
 );
-/
 
 /**
  * Every Cell belongs to one Game; deleting the Game clears its board.
@@ -129,4 +124,3 @@ create association if not exists Sudoku."Cell_Game"
 from Sudoku."Cell" to Sudoku."Game"
 type reference
 on delete cascade;
-/

@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — navigation
 -- =====================================================================
@@ -9,4 +10,3 @@ create or modify navigation Responsive
 {
   menu item 'Play Sudoku' ( OnClick: show page Sudoku.Home )
 };
-/

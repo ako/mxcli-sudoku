@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.linechart.LineChart' widget1 {
-  playground {
+  playground slot1 {
     -- widgets for `playground`
   }
   line item1   -- one entry of `lines`

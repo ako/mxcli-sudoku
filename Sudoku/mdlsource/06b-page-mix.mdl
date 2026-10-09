@@ -1,3 +1,4 @@
+mdl 1;
 /**
  * The Mix board: one 15x15 canvas carrying two overlapping 9x9 grids.
  *
@@ -68,7 +69,7 @@ create or modify page Sudoku.Game_Mix
             ) {
               template {
                 container sdCell (
-                  dynamicclasses: '$currentObject/CellClass + (if $currentObject/IsPeer then '' sd-peer'' else '''') + (if $currentObject/IsInvalid then '' sd-bad'' else '''') + (if $currentObject/IsSelected then '' sd-sel'' else '''')',
+                  dynamicclasses: $currentObject/CellClass + (if $currentObject/IsPeer then ' sd-peer' else '') + (if $currentObject/IsInvalid then ' sd-bad' else '') + (if $currentObject/IsSelected then ' sd-sel' else ''),
                   OnClick: call microflow Sudoku.ACT_SelectCell(Cell = $currentObject)
                 ) {
                   dynamictext sdCellNum (
@@ -139,7 +140,7 @@ create or modify page Sudoku.Game_Mix
             }
             container toolUndo (
               class: 'sd-tool',
-              dynamicclasses: 'if $currentObject/CanUndo then '''' else ''sd-tool-off''',
+              dynamicclasses: if $currentObject/CanUndo then '' else 'sd-tool-off',
               OnClick: call microflow Sudoku.ACT_Undo(Game = $Game)
             ) {
               dynamictext toolUndoT (content: 'UNDO', class: 'sd-tool-text')
@@ -161,8 +162,6 @@ create or modify page Sudoku.Game_Mix
       }
     }
   }
-}
-/
+};
 
 grant view on page Sudoku.Game_Mix to Sudoku.User;
-/

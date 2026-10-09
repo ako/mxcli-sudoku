@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — new-game actions, landing page, board navigation
 -- =====================================================================
@@ -21,7 +22,6 @@ begin
   show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
-/
 
 /**
  * Deals a medium board and opens it.
@@ -38,7 +38,6 @@ begin
   show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
-/
 
 /**
  * Deals a hard board and opens it.
@@ -55,7 +54,6 @@ begin
   show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
-/
 
 -- =====================================================================
 -- Landing page
@@ -188,8 +186,7 @@ create or modify page Sudoku.Home
       )
     }
   }
-}
-/
+};
 
 /**
  * Deals a jigsaw ("vorm") sudoku: rows and columns as usual, but the nine
@@ -215,10 +212,8 @@ begin
   show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.ACT_NewJigsaw to Sudoku.User;
-/
 
 /**
  * Deals a Sudoku X: the classic rules plus both main diagonals.
@@ -243,10 +238,8 @@ begin
   show page Sudoku.Game_Play(Game = $Game);
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.ACT_NewDiagonal to Sudoku.User;
-/
 
 /**
  * Deals a Sudoku Mix and opens its board.
@@ -271,10 +264,8 @@ begin
   show page Sudoku.Game_Mix(Game = $Game);
   return $Game;
 end;
-/
 
 grant execute on microflow Sudoku.ACT_NewMix to Sudoku.User;
-/
 
 -- Everything below this line is deliberately last. `alter page ... insert`
 -- is not idempotent: re-running the pipeline fails here on the duplicate
@@ -291,4 +282,3 @@ alter page Sudoku.Game_Done {
     }
   }
 };
-/

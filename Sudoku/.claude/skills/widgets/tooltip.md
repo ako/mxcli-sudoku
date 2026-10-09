@@ -8,10 +8,10 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.tooltip.Tooltip' widget1 {
-  trigger {
+  trigger slot1 {
     -- widgets for `trigger`
   }
-  htmlmessage {
+  htmlmessage slot2 {
     -- widgets for `htmlMessage`
   }
 }

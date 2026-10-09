@@ -8,11 +8,11 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.popupmenu.PopupMenu' widget1 {
-  menutrigger {
+  menutrigger slot1 {
     -- widgets for `menuTrigger`
   }
   item item1   -- one entry of `basicItems`
-  customitem item1   -- one entry of `customItems`
+  customitem item2   -- one entry of `customItems`
 }
 ```
 

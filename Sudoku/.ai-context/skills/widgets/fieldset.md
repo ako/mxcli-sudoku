@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.fieldset.Fieldset' widget1 {
-  template {
+  template slot1 {
     -- widgets for `content`
   }
 }

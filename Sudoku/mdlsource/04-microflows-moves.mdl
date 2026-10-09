@@ -1,3 +1,4 @@
+mdl 1;
 -- =====================================================================
 -- Sudoku — selection and moves
 -- =====================================================================
@@ -65,11 +66,10 @@ begin
     change $Cell ("N9" = $Cell/"N9" = false);
   end if;
 
-  commit $Cell refresh;
+  commit $Cell without events refresh;
   set $Toggled = true;
   return $Toggled;
 end;
-/
 
 /**
  * Appends an answer change to the undo log.
@@ -111,19 +111,18 @@ begin
     "NewValue" = $NewValue,
     Sudoku."Move_Game" = $Game,
     Sudoku."Move_Cell" = $Cell);
-  commit $Move;
+  commit $Move without events;
 
   change $Game (
     "MoveSeq" = $next,
     "MaxSeq" = $next,
     "CanUndo" = true,
     "CanRedo" = false) refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
 
   set $Logged = true;
   return $Logged;
 end;
-/
 
 /**
  * Switches pencil-mark mode on or off.
@@ -147,10 +146,9 @@ begin
 
   set $Mode = $Game/"NotesMode" = false;
   change $Game ("NotesMode" = $Mode) refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
   return $Mode;
 end;
-/
 
 /**
  * Selects a square, moving the Game's selection to it.
@@ -188,11 +186,11 @@ begin
   retrieve $Previous from $Game/Sudoku."Game_SelectedCell";
   if $Previous != empty then
     change $Previous ("IsSelected" = false);
-    commit $Previous refresh;
+    commit $Previous without events refresh;
   end if;
 
   change $Cell ("IsSelected" = true);
-  commit $Cell refresh;
+  commit $Cell without events refresh;
 
   -- Box number 1..9, reading band/stack off the row and column
   set $bandRow = 0;
@@ -218,7 +216,7 @@ begin
     "HasSelection" = true,
     "SelEditable" = $Cell/"IsEditable");
   set $Game/Sudoku."Game_SelectedCell" = $Cell;
-  commit $Game refresh;
+  commit $Game without events refresh;
 
   -- Selection has no square list of its own, so it retrieves one here. That is
   -- the same single retrieve ACT_MarkPeers used to do internally, moved out so
@@ -229,7 +227,6 @@ begin
   set $Selected = true;
   return $Selected;
 end;
-/
 
 /**
  * Writes a digit into the Game's selected square.
@@ -282,14 +279,13 @@ begin
     "N1" = false, "N2" = false, "N3" = false,
     "N4" = false, "N5" = false, "N6" = false,
     "N7" = false, "N8" = false, "N9" = false) refresh;
-  commit $Cell refresh;
+  commit $Cell without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Applied = true;
   return $Applied;
 end;
-/
 
 /**
  * Clears the player's entry from the Game's selected square.
@@ -327,14 +323,13 @@ begin
     "N1" = false, "N2" = false, "N3" = false,
     "N4" = false, "N5" = false, "N6" = false,
     "N7" = false, "N8" = false, "N9" = false) refresh;
-  commit $Cell refresh;
+  commit $Cell without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Cleared = true;
   return $Cleared;
 end;
-/
 
 /**
  * Number-pad action: writes 1 into the selected square.
@@ -353,7 +348,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 1);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 2 into the selected square.
@@ -372,7 +366,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 2);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 3 into the selected square.
@@ -391,7 +384,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 3);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 4 into the selected square.
@@ -410,7 +402,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 4);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 5 into the selected square.
@@ -429,7 +420,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 5);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 6 into the selected square.
@@ -448,7 +438,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 6);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 7 into the selected square.
@@ -467,7 +456,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 7);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 8 into the selected square.
@@ -486,7 +474,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 8);
   return $Applied;
 end;
-/
 
 /**
  * Number-pad action: writes 9 into the selected square.
@@ -505,7 +492,6 @@ begin
   $Applied = call microflow Sudoku.ACT_ApplyValue(Game = $Game, Digit = 9);
   return $Applied;
 end;
-/
 
 /**
  * Steps one answer change backwards.
@@ -532,7 +518,7 @@ begin
 
   retrieve $Move from Sudoku."Move"
     where [Sudoku."Move_Game" = $Game and "Seq" = $Game/"MoveSeq"]
-    limit 1;
+    first;
   if $Move = empty then
     return false;
   end if;
@@ -540,19 +526,18 @@ begin
   retrieve $Cell from $Move/Sudoku."Move_Cell";
   if $Cell != empty then
     change $Cell ("Value" = $Move/"OldValue", "IsInvalid" = false) refresh;
-    commit $Cell refresh;
+    commit $Cell without events refresh;
   end if;
 
   change $Game ("MoveSeq" = $Game/"MoveSeq" - 1, "CanRedo" = true) refresh;
   change $Game ("CanUndo" = $Game/"MoveSeq" > 0) refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Undone = true;
   return $Undone;
 end;
-/
 
 /**
  * Steps one answer change forwards again.
@@ -581,7 +566,7 @@ begin
   set $target = $Game/"MoveSeq" + 1;
   retrieve $Move from Sudoku."Move"
     where [Sudoku."Move_Game" = $Game and "Seq" = $target]
-    limit 1;
+    first;
   if $Move = empty then
     return false;
   end if;
@@ -589,16 +574,15 @@ begin
   retrieve $Cell from $Move/Sudoku."Move_Cell";
   if $Cell != empty then
     change $Cell ("Value" = $Move/"NewValue", "IsInvalid" = false) refresh;
-    commit $Cell refresh;
+    commit $Cell without events refresh;
   end if;
 
   change $Game ("MoveSeq" = $Game/"MoveSeq" + 1, "CanUndo" = true) refresh;
   change $Game ("CanRedo" = $Game/"MoveSeq" < $Game/"MaxSeq") refresh;
-  commit $Game refresh;
+  commit $Game without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Redone = true;
   return $Redone;
 end;
-/

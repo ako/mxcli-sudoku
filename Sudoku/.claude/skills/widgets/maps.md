@@ -9,7 +9,7 @@
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.custom.Maps.Maps' widget1 {
   marker item1   -- one entry of `markers`
-  dynamicmarker item1   -- one entry of `dynamicMarkers`
+  dynamicmarker item2   -- one entry of `dynamicMarkers`
 }
 ```
 

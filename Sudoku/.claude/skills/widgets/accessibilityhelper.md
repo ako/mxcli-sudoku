@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.accessibilityhelper.AccessibilityHelper' widget1 {
-  template {
+  template slot1 {
     -- widgets for `content`
   }
   attr item1   -- one entry of `attributesList`
