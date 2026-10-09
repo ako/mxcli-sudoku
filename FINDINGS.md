@@ -3076,8 +3076,9 @@ That workaround is retired.
 > **Update, `main` at `28a3b1bf6`** (625 commits on): **#58 is fixed** after six
 > builds open — `check` on a `.test.mdl` passes at last. The `layout flows`
 > overlaps are **halved, and two of the four I reported were the linter's fault
-> rather than the layouter's**. Everything else re-ran unchanged. #56 and the
-> remaining 2 overlaps are the only open items left.
+> rather than the layouter's**. Everything else re-ran unchanged. **#64 is new**:
+> `mdlsource/` is clean against `mdl 2` but carries 158 `MDL-V1-*` warnings, a
+> second migration axis `--deprecations=error` does not cover.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
@@ -3097,6 +3098,7 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | `layout flows` introduces MPR008 overlaps | — | open, 4 | open, 4 | **2** — 2 were lint false positives (`3d5c459e5`) |
 | 62 — `mdlsource/` uses spellings `mdl 2` will refuse | **new and MIGRATED**, 182 → 0 | 0 | 0 of 84 codes | 0 |
 | 63 — `MDL-DEPR081`'s message misnames the replacement | **new** | narrowed to the message | **largely addressed** | addressed |
+| 64 — `mdlsource/` not ready for `mdl 1` | — | — | — | **new**, 158 `MDL-V1-*` warnings |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3351,11 +3353,13 @@ for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-**Two items remain open**, which is the fewest this document has carried since
-it started: **#56** (6 CE0463 on five widget types unless `mxcli fix widgets` is
-run) and **2 `layout flows` overlaps** ([#684](https://github.com/ako/mxcli/issues/684),
-down from 4). Everything else is fixed, withdrawn, or this project's own work
-that is done.
+**Open against mxcli:** **#56** (6 CE0463 on five widget types unless
+`mxcli fix widgets` is run) and **2 `layout flows` overlaps**
+([#684](https://github.com/ako/mxcli/issues/684), down from 4). Everything else
+is fixed or withdrawn.
+
+**Open against this project:** **#64**, the `mdl 1` migration — 158 `MDL-V1-*`
+warnings that #62's gate does not cover.
 
 #58 was the long one — open across six builds, fixed at `28a3b1bf6`. #62's
 migration is applied and proven. #63 came out of doing it and is largely
@@ -5222,6 +5226,60 @@ produces — `Visible: $currentObject/<member>` when the bracketed expression na
 a bare member — or drop "same meaning" from this one code and say what changes.
 The implementation is already correct; only the sentence needs to match it.
 Pointing the message at `fmt --upgrade` would serve as well.
+
+---
+
+## 64. `mdlsource/` is clean against `mdl 2` but not ready for `mdl 1` — a second migration axis
+
+**New, and the project's own work again** — found while verifying something
+unrelated, which is the only reason I know it exists.
+
+Finding #62 migrated `mdlsource/` off every deprecated spelling, and that holds:
+`check --deprecations=error` reports **0** across all 11 scripts on `28a3b1bf6`.
+But `--deprecations=error` does not cover a second, separate set of codes —
+`MDL-V1-*`, which are not deprecations but **semantic changes `mdl 1` introduces**.
+Plain `check` reports **158** of them, across 11 of 11 files:
+
+| code | count | what changes under `mdl 1` |
+|---|---|---|
+| MDL-V1-SLASH | 246 | a `/` after a statement is a terminator under `mdl 0`; under `mdl 1` it is an error — `;` is the only terminator |
+| MDL-V1-QUOTEDEXPR | 46 | a quoted expression string is read as an expression under `mdl 1` |
+| MDL-V1-LIMIT | 10 | `retrieve … limit` semantics |
+| MDL-V1-SEMI | 8 | a statement without a terminating `;` is accepted under `mdl 0`, an error under `mdl 1` |
+| MDL-V1-REBUILD | 6 | flow rebuild behaviour |
+
+(The per-code counts exceed 158 because a line can carry more than one.)
+
+### Why this was easy to miss, and why that matters
+
+#62's gate was `check --deprecations=error`, which is the right gate for what
+#62 was about and reports zero here. The `MDL-V1-*` codes come out of plain
+`check` as warnings and are counted by neither that flag nor
+`syntax --deprecated`. So a project can be *fully* migrated against `mdl 2` and
+still not parse under `mdl 1`, with no single command that says so.
+
+This project is exactly that case. Every script ends its statements with `/`,
+the SQL\*Plus style the original scripts were written in — 246 of the 158
+warnings are that one habit.
+
+**The remedy exists and is the same tool:** `fmt --upgrade --header`, whose
+`--header` flag adds the `mdl 1;` opt-in line and whose rewrites include the V1
+set — `fmt --upgrade` already performed 23 `MDL-V1-QUOTEDEXPR` rewrites
+unprompted during #62's cross-check, which in hindsight was the clue I did not
+follow up.
+
+**Not done here.** Recorded so the second deadline is visible. It should be its
+own change, gated the way #62's was: `fmt --upgrade --header`, then the
+replay-vs-replay snapshot of all 66 documents, `mx check` and the 44 tests. The
+`mdl 1` header is described as an opt-in preview, so there is no urgency — but
+#62's framing, that `mdlsource/` is "how this app is rebuilt from scratch", applies
+here identically.
+
+**The lesson, and it is one this document keeps relearning:** a gate answers the
+question it was built for and no other. `--deprecations=error` reporting zero was
+true and told me nothing about `mdl 1`. Same shape as trusting a lint count
+without checking what the rule measured (#684), and as reading the first
+paragraph of `fmt --help` (#62).
 
 ---
 
