@@ -3073,31 +3073,30 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `2b73b8246`** (120 commits on): every row re-ran unchanged —
-> page round-trip 20 of 20 to `mx check` 0 errors, migrated `mdlsource/` still 0 of
-> 84 deprecation codes. **#63 is largely addressed**: a per-code `mxcli help` page
-> now states the correct rewrite, and the warning points at it. And a **correction**
-> to #62: a source replay does *not* reset the flow layout — my earlier claim there
-> was a conflation, not a measurement.
+> **Update, `main` at `28a3b1bf6`** (625 commits on): **#58 is fixed** after six
+> builds open — `check` on a `.test.mdl` passes at last. The `layout flows`
+> overlaps are **halved, and two of the four I reported were the linter's fault
+> rather than the layouter's**. Everything else re-ran unchanged. #56 and the
+> remaining 2 overlaps are the only open items left.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `2b73b8246`** (2026-10-01). Previous columns kept so
+Last retested on **`main` at `28a3b1bf6`** (2026-10-09). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 2a723ec7` | `main @ 5ccbd480` | `main @ dfccef55c` | `main @ 2b73b8246` |
+| Finding | `main @ 5ccbd480` | `main @ dfccef55c` | `main @ 2b73b8246` | `main @ 28a3b1bf6` |
 |---|---|---|---|---|
-| 46–53, 55, 57, 59, 60, 61 and the `-dirty` version string | mostly fixed | fixed | fixed | fixed |
+| 46–55, 57, 59, 60, 61 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54 — `DESCRIBE PAGE` round-trip (A, B, C) | A and B fixed | **closed** | closed | closed, 20 of 20 |
-| 56 — written widget nodes build to CE0463 | 5 types | **RESOLVED** by `fix widgets` | resolved | resolved; 6 CE0463 without it |
-| 58 — `check` rejects the `MxTest` module it generates | open | open | open | **open**, 44 errors ([#677](https://github.com/ako/mxcli/issues/677)) |
-| `layout flows` introduces 4 MPR008 overlaps | **new** | open | open | **open**, still 4 ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | — | **new and MIGRATED**, 182 → 0 | 0; `fmt --upgrade` would have done it | 0 of 84 codes |
-| 63 — `MDL-DEPR081`'s message misnames the replacement | — | **new** | narrowed to the message | **largely addressed** (`27be848e2`) |
+| 54 — `DESCRIBE PAGE` round-trip (A, B, C) | **closed** | closed | closed | closed, 20 of 20 |
+| 56 — written widget nodes build to CE0463 | **RESOLVED** by `fix widgets` | resolved | resolved | **open** without it, 6 CE0463 |
+| 58 — `check` rejects the `MxTest` module it generates | open | open | open | **FIXED** (`db8ab0ad6`, [#677](https://github.com/ako/mxcli/issues/677)) |
+| `layout flows` introduces MPR008 overlaps | — | open, 4 | open, 4 | **2** — 2 were lint false positives (`3d5c459e5`) |
+| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | **new and MIGRATED**, 182 → 0 | 0 | 0 of 84 codes | 0 |
+| 63 — `MDL-DEPR081`'s message misnames the replacement | **new** | narrowed to the message | **largely addressed** | addressed |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3109,7 +3108,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | **9** |
 | `mx check` after the replay | **5 errors** | 0 | **0** |
 
-On `2b73b8246`: **44/44** under `--require-assertions`, `lint` 0 errors (378
+On `28a3b1bf6`: **44/44** under `--require-assertions`, `lint` 0 errors (376
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -3191,6 +3190,29 @@ The 4 new MPR008s are a real cost and all four involve a **merge node** within
 Reported as [ako/mxcli#684](https://github.com/ako/mxcli/issues/684), together
 with the `ACT_SolveGrid` annotation that loses its explicit position and the 13
 MPR011s that survive.
+
+> **Halved on `main` at `28a3b1bf6`, and half of what I reported was not the
+> layouter's fault.** `3d5c459e5 "MPR008 measures each node with its stored size"`
+> drops **two of the four** — they were **linter false positives**, counted as
+> overlapping only because the rule assumed a default node size. Re-running the
+> same pre-layout tree through the same layout on this build:
+>
+> ```
+> 2b73b8246:  4 MPR008      28a3b1bf6:  2 MPR008
+> ```
+>
+> The two that survive are the genuinely tight ones — a **5px** gap between two
+> merges in `ACT_DealGame` and a **75px** gap in `ACT_Refresh`. The two that went
+> away are the wider pairs (115px and 55px), which the stored sizes show never
+> overlapped.
+>
+> So the number in my issue was wrong by half, through no fault of
+> `layout flows` — I trusted a lint count without asking whether the rule measured
+> what it claimed. The same lesson as the cache near-misses: a measurement is only
+> as good as the instrument, and **"mxcli's own linter can grade the layouter"**
+> cuts both ways, since a bug in the grader reads as a bug in the thing graded.
+> The remaining 2 are still worth fixing, and #684 should be corrected to say 2
+> rather than 4.
 
 **Checked that this was the layout and not the newer binary** — the pristine
 project linted with the *same* build gives 517/428, so the 50-warning drop is the
@@ -3329,10 +3351,15 @@ for this outage). Not re-measured since `41c55d09` — the measurement requires
 downing a running preview, and the one open here was needed; the entry's own
 warning about single samples applies either way.
 
-Findings #58 and the `layout flows` overlaps are open. **#62 was new on
-`5ccbd480` and is done** — the `mdl 2` migration is applied and proven — and
-**#63** came out of doing it: the one deprecation whose promised replacement
-changes behaviour. #63 is recorded here rather than filed upstream. #56 is resolved
+**Two items remain open**, which is the fewest this document has carried since
+it started: **#56** (6 CE0463 on five widget types unless `mxcli fix widgets` is
+run) and **2 `layout flows` overlaps** ([#684](https://github.com/ako/mxcli/issues/684),
+down from 4). Everything else is fixed, withdrawn, or this project's own work
+that is done.
+
+#58 was the long one — open across six builds, fixed at `28a3b1bf6`. #62's
+migration is applied and proven. #63 came out of doing it and is largely
+addressed by a per-code help page; it was recorded here rather than filed. #56 is resolved
 by tooling rather than in the writer, and #61 is fixed. #54A, #59 and #60
 closed there — all three were filed upstream as
 [#662](https://github.com/ako/mxcli/issues/662),
@@ -4478,8 +4505,11 @@ of #54 with nothing extra.
 
 ## 58. `check` now parses a `.test.mdl`, then rejects the module it generated itself
 
-> **Open at `5ccbd480`**, unchanged across four builds. Reported as
-> [ako/mxcli#677](https://github.com/ako/mxcli/issues/677).
+> **FIXED on `main` at `28a3b1bf6`** by `db8ab0ad6` *"a test file's references
+> resolve the runner's MxTest module (#677)"*, with `f949968ba` declaring it under
+> `--references`. Reported as
+> [ako/mxcli#677](https://github.com/ako/mxcli/issues/677); open across six builds
+> before that. Retest at the end.
 
 **New, and it fails a CI gate.** `64b192a00` *"parse a .test.mdl file as the
 microflow bodies it is"* fixes a real gap — on `0dd7f51a0`, `mxcli check
@@ -4582,6 +4612,25 @@ Unchanged: 44 errors for 44 tests, exit 1, and `MxTest` still appears zero times
 in the source. `02053281 "diagnose a test file on the text the parser was given"`
 improved the diagnosis side; the generated module is still not in the set the
 reference pass treats as created-by-this-script.
+
+### Fixed at `28a3b1bf6`
+
+The fix is the one this entry asked for: the generated module joined the set the
+reference pass knows about.
+
+```console
+$ mxcli check sudoku.test.mdl -p Sudoku.mpr --references
+✓ Expression types OK, no unstated member drops, no flow change exec would refuse,
+  no used flow left without access
+
+Check passed!
+$ echo $?
+0
+```
+
+44 errors → 0, exit 1 → 0, and the runner still passes 44/44 on the same file. So
+`mxcli check` over this repo can now include the file a test-focused gate most
+wants to check — which was the whole impact of the entry.
 
 ---
 
