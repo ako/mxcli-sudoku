@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.custom.progressbar.ProgressBar' widget1 {
-  customlabel {
+  customlabel slot1 {
     -- widgets for `customLabel`
   }
 }

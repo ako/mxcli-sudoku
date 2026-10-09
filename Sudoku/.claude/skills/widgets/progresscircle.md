@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.custom.progresscircle.ProgressCircle' widget1 {
-  customlabel {
+  customlabel slot1 {
     -- widgets for `customLabel`
   }
 }

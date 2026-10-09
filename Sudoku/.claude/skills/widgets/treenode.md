@@ -8,10 +8,10 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.treenode.TreeNode' widget1 {
-  headercontent {
+  headercontent slot1 {
     -- widgets for `headerContent`
   }
-  children {
+  children slot2 {
     -- widgets for `children`
   }
 }

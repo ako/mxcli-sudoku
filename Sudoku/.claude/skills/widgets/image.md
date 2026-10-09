@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.image.Image' widget1 {
-  content {
+  content slot1 {
     -- widgets for `children`
   }
 }

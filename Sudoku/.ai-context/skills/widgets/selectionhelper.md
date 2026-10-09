@@ -8,13 +8,13 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.selectionhelper.SelectionHelper' widget1 {
-  customallselected {
+  customallselected slot1 {
     -- widgets for `customAllSelected`
   }
-  customsomeselected {
+  customsomeselected slot2 {
     -- widgets for `customSomeSelected`
   }
-  customnoneselected {
+  customnoneselected slot3 {
     -- widgets for `customNoneSelected`
   }
 }

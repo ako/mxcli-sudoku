@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.columnchart.ColumnChart' widget1 {
-  playground {
+  playground slot1 {
     -- widgets for `playground`
   }
   series item1   -- one entry of `series`

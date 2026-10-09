@@ -8,14 +8,14 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.htmlelement.HTMLElement' widget1 {
-  tagcontentcontainer {
+  tagcontentcontainer slot1 {
     -- widgets for `tagContentContainer`
   }
-  tagcontentrepeatcontainer {
+  tagcontentrepeatcontainer slot2 {
     -- widgets for `tagContentRepeatContainer`
   }
   attribute item1   -- one entry of `attributes`
-  event item1   -- one entry of `events`
+  event item2   -- one entry of `events`
 }
 ```
 

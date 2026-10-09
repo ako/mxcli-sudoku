@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.heatmap.HeatMap' widget1 {
-  playground {
+  playground slot1 {
     -- widgets for `playground`
   }
   scalecolor item1   -- one entry of `scaleColors`

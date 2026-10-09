@@ -8,13 +8,13 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.gallery.Gallery' widget1 {
-  template {
+  template slot1 {
     -- widgets for `content`
   }
-  emptyplaceholder {
+  emptyplaceholder slot2 {
     -- widgets for `emptyPlaceholder`
   }
-  filter {
+  filter slot3 {
     -- widgets for `filtersPlaceholder`
   }
 }

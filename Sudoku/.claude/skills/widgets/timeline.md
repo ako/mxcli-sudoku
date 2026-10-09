@@ -8,19 +8,19 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.timeline.Timeline' widget1 {
-  customicon {
+  customicon slot1 {
     -- widgets for `customIcon`
   }
-  customgroupheader {
+  customgroupheader slot2 {
     -- widgets for `customGroupHeader`
   }
-  customtitle {
+  customtitle slot3 {
     -- widgets for `customTitle`
   }
-  customeventdatetime {
+  customeventdatetime slot4 {
     -- widgets for `customEventDateTime`
   }
-  customdescription {
+  customdescription slot5 {
     -- widgets for `customDescription`
   }
 }

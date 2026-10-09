@@ -8,7 +8,7 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.customchart.CustomChart' widget1 {
-  playground {
+  playground slot1 {
     -- widgets for `playground`
   }
 }

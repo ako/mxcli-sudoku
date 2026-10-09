@@ -8,10 +8,10 @@
 
 ```sql
 PLUGGABLEWIDGET 'com.mendix.widget.web.datagrid.Datagrid' widget1 {
-  emptyplaceholder {
+  emptyplaceholder slot1 {
     -- widgets for `emptyPlaceholder`
   }
-  controlbar {
+  controlbar slot2 {
     -- widgets for `filtersPlaceholder`
   }
   column item1   -- one entry of `columns`
