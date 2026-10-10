@@ -3073,45 +3073,42 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `28a3b1bf6`** (625 commits on): **#58 is fixed** after six
-> builds open — `check` on a `.test.mdl` passes at last. The `layout flows`
-> overlaps are **halved, and two of the four I reported were the linter's fault
-> rather than the layouter's**. Everything else re-ran unchanged. **#64 is new**:
-> `mdlsource/` was clean against `mdl 2` but carried 158 `MDL-V1-*` warnings, a
-> second migration axis `--deprecations=error` does not cover — **now migrated**,
-> and the upgrade closed #62's `commit` drift as a side effect.
+> **Update, `main` at `ce5b66fb0`** (68 commits on): every row re-ran unchanged,
+> and the page round-trip got measurably better — **11 of 20 pages now report
+> `Unchanged`**, up from 9, with `Account_Edit` and `Account_New` newly lossless
+> (`a1f046312`, layout-grid appearance through describe → exec). The two open
+> items are untouched: #56 and the 2 `layout flows` overlaps.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `28a3b1bf6`** (2026-10-09). Previous columns kept so
+Last retested on **`main` at `ce5b66fb0`** (2026-10-10). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 5ccbd480` | `main @ dfccef55c` | `main @ 2b73b8246` | `main @ 28a3b1bf6` |
+| Finding | `main @ dfccef55c` | `main @ 2b73b8246` | `main @ 28a3b1bf6` | `main @ ce5b66fb0` |
 |---|---|---|---|---|
-| 46–55, 57, 59, 60, 61 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54 — `DESCRIBE PAGE` round-trip (A, B, C) | **closed** | closed | closed | closed, 20 of 20 |
-| 56 — written widget nodes build to CE0463 | **RESOLVED** by `fix widgets` | resolved | resolved | **open** without it, 6 CE0463 |
-| 58 — `check` rejects the `MxTest` module it generates | open | open | open | **FIXED** (`db8ab0ad6`, [#677](https://github.com/ako/mxcli/issues/677)) |
-| `layout flows` introduces MPR008 overlaps | — | open, 4 | open, 4 | **2** — 2 were lint false positives (`3d5c459e5`) |
-| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | **new and MIGRATED**, 182 → 0 | 0 | 0 of 84 codes | 0 |
-| 63 — `MDL-DEPR081`'s message misnames the replacement | **new** | narrowed to the message | **largely addressed** | addressed |
-| 64 — `mdlsource/` not ready for `mdl 1` | — | — | — | **new and MIGRATED**, 158 → 0 |
+| 54 — `DESCRIBE PAGE` round-trip | closed | closed | closed, 20 of 20 | closed; **11 of 20 lossless**, up from 9 |
+| 56 — written widget nodes build to CE0463 | resolved by `fix widgets` | resolved | **open** without it, 6 CE0463 | open, 6 CE0463 |
+| 58 — `check` rejects the `MxTest` module it generates | open | open | **FIXED** ([#677](https://github.com/ako/mxcli/issues/677)) | fixed |
+| `layout flows` introduces MPR008 overlaps | open, 4 | open, 4 | **2** — 2 were lint false positives | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | 0 | 0 of 84 codes | 0 | 0 |
+| 64 — `mdlsource/` not ready for `mdl 1` | — | — | **new**, 158 warnings | **MIGRATED**, 158 → 0 |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
 
-| | `0a821cf` | `2a723ec7` | `5ccbd480` |
-|---|---|---|---|
-| pages emitting parseable MDL | 15 of 20 | 20 of 20 | 20 of 20 |
-| pages that write back | 15 | 19 | **20** |
-| reported `Unchanged` — provably lossless | — | — | **9** |
-| `mx check` after the replay | **5 errors** | 0 | **0** |
+| | `0a821cf` | `2a723ec7` | `5ccbd480` | `ce5b66fb0` |
+|---|---|---|---|---|
+| pages emitting parseable MDL | 15 of 20 | 20 of 20 | 20 of 20 | 20 of 20 |
+| pages that write back | 15 | 19 | **20** | 20 |
+| reported `Unchanged` — provably lossless | — | — | 9 | **11** |
+| `mx check` after the replay | **5 errors** | 0 | **0** | 0 |
 
-On `28a3b1bf6`: **44/44** under `--require-assertions`, `lint` 0 errors (376
+On `ce5b66fb0`: **44/44** under `--require-assertions`, `lint` 0 errors (376
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -4952,16 +4949,24 @@ through with the actions. The parenthetical says so.
 **This closes the page round-trip.** Describe every page, exec it back, ask
 mxbuild:
 
-| | `0a821cf` | `2a723ec7` | `5ccbd480` |
-|---|---|---|---|
-| pages emitting parseable MDL | 15 of 20 | 20 of 20 | 20 of 20 |
-| pages that write back | 15 | 19 | **20** |
-| of those, reported `Unchanged` (provably lossless) | — | — | **9** |
-| `mx check` after the replay | **5 errors** | 0 | **0** |
+| | `0a821cf` | `2a723ec7` | `5ccbd480` | `ce5b66fb0` |
+|---|---|---|---|---|
+| pages emitting parseable MDL | 15 of 20 | 20 of 20 | 20 of 20 | 20 of 20 |
+| pages that write back | 15 | 19 | **20** | 20 |
+| of those, reported `Unchanged` (provably lossless) | — | — | 9 | **11** |
+| `mx check` after the replay | **5 errors** | 0 | **0** | 0 |
 
 Four builds ago this sweep put five build errors into a clean project and five
-pages could not be parsed at all. It is now a no-op on nine pages and correct on
-the other eleven. #54 and #61 are both closed.
+pages could not be parsed at all. It is now a no-op on eleven pages and correct
+on the other nine. #54 and #61 are both closed.
+
+**The two that moved at `ce5b66fb0`** are `Administration.Account_Edit` and
+`Administration.Account_New`, measured by running the same per-page sweep with
+both binaries rather than inferred from the count. Both are layout-grid pages,
+which matches `a1f046312 "carry layout-grid row/column appearance and alignment
+through describe -> exec"`. `Unchanged` is the strongest signal this sweep can
+produce — the tool stating that re-executing its own description of a page
+changes nothing — and it now covers more than half of them.
 
 ---
 
