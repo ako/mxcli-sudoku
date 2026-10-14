@@ -3073,34 +3073,30 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `7196b88bf` + PR 1158** (174 commits on): **#54C is closed**
-> by `9e51dd33f` — describe now emits a child slot under the definition's MDL
-> keyword, and the fieldset round-trip reports `Unchanged`. So #54 is closed on
-> all three counts. **PR 1158 is a clean no-op on this project**, which is the
-> useful result for an 11.13 app. Two new small items: the loss warning that
-> accompanies #54C's fix is a false positive for `fieldset`, and `make sync-mods`
-> cannot build without `rsync`.
+> **Update, `main` at `020f4572b`** (118 commits on): the `fieldset` false
+> `NOT SHOWN` note is **fixed** (`43f3a3759`), and PR 1158 is merged. Everything
+> else re-ran unchanged. Three items stay open: #56, the 2 `layout flows`
+> overlaps, and `sync-mods`' missing `rsync` fallback.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `7196b88bf`, plus PR 1158** (2026-10-12). Previous columns kept so
+Last retested on **`main` at `020f4572b`** (2026-10-14). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 2b73b8246` | `main @ 28a3b1bf6` | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 |
+| Finding | `main @ 28a3b1bf6` | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 | `main @ 020f4572b` |
 |---|---|---|---|---|
 | 46–53, 55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54A / 54B — unparseable MDL / dropped `textTemplate` | fixed | fixed | fixed | fixed |
-| 54C — a fieldset's body round-trip | open, MDL-WIDGET26 | open | open | **FIXED** (`9e51dd33f`) — `Unchanged` |
-| 56 — written widget nodes build to CE0463 | resolved by `fix widgets` | **open** without it | open, 6 CE0463 | open, 6 CE0463 |
-| `layout flows` introduces MPR008 overlaps | open, 4 | **2** — 2 were lint false positives | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 / 64 — `mdl 2` and `mdl 1` readiness of `mdlsource/` | 0 / — | 0 / **new** | 0 / **MIGRATED** | 0 / 0 |
-| page round-trip, pages reported `Unchanged` | — | — | **11 of 20** | 11 of 20 |
-| **new** — `fieldset`'s loss warning is a false positive | — | — | — | **new** |
-| **new** — `make sync-mods` needs `rsync`, no fallback | — | — | — | **new** |
+| 54A / 54B / 54C — the page round-trip | A,B fixed | A,B fixed | **all three closed** | closed |
+| 56 — written widget nodes build to CE0463 | **open** without `fix widgets` | open | open | **open**, 6 CE0463 |
+| `layout flows` introduces MPR008 overlaps | **2** — 2 were lint false positives | open, 2 | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / **new** | 0 / **MIGRATED** | 0 / 0 | 0 / 0 |
+| page round-trip, pages reported `Unchanged` | — | **11 of 20** | 11 of 20 | 11 of 20 |
+| 65 — `fieldset`'s false `NOT SHOWN` note | — | — | **new** | **FIXED** (`43f3a3759`) |
+| 65 — `make sync-mods` needs `rsync`, no fallback | — | — | **new** | **open**, unchanged |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3112,7 +3108,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | 9 | **11** |
 | `mx check` after the replay | **5 errors** | 0 | **0** | 0 |
 
-On `7196b88bf` + PR 1158: **44/44** under `--require-assertions`, `lint` 0 errors (376
+On `020f4572b`: **44/44** under `--require-assertions`, `lint` 0 errors (376
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -4138,6 +4134,16 @@ trusting a round-trip that is in fact lossless. **Suggested fix:** suppress the
 warning when the unreproduced schema key is the one already emitted under its
 MDL keyword — the mapping is in the same definition the fix now reads for the
 keyword.
+
+> **FIXED on `main` at `020f4572b`** by `43f3a3759 "no false NOT SHOWN note on a
+> reproduced content slot"`, and it took the suggested fix: slots are now matched
+> on the stored `PropertyKey` rather than the emitted keyword. The describe output
+> is clean and the round-trip still reports `Unchanged`.
+>
+> **Checked that it was fixed rather than switched off** — the lesson #684 taught.
+> The diff narrows the comparison (`doneKeys[cs.PropertyKey]`) instead of dropping
+> the note, and adds a regression test for the reproduced-slot case, so a genuine
+> unreproduced container is still reported.
 
 ---
 
@@ -5376,6 +5382,10 @@ by this.
 
 ## 65. PR 1158 verified as a no-op on an 11.13 project, and `make sync-mods` cannot build without `rsync`
 
+> **Status at `020f4572b`:** PR 1158 is **merged**. The `fieldset` false
+> `NOT SHOWN` note is **fixed** (`43f3a3759`). The `sync-mods` build break is
+> **still open** — see the two update boxes below.
+
 **Two results from testing [PR 1158](https://github.com/ako/mxcli/pull/1158)**,
 *"write flows in the shape the project's Mendix version stores"*. Its purpose is a
 9.x/10.x bug — those projects could not have a microflow created at all, because
@@ -5448,6 +5458,15 @@ binary at all. Worked around with the equivalent `cp -R` plus the excludes.
 **Suggested fix:** give `sync-mods` the same `|| { … cp -R … }` fallback the
 other four targets already have. One line, and it restores the property that
 `make build` needs only Go.
+
+> **Still open at `020f4572b`.** `make sync-mods` fails identically, and the
+> `Makefile` target is unchanged — still the only one of the five without a
+> fallback. Worked around with `cp -R` again to build this build.
+
+### PR 1158 is merged
+
+`678c8d076` is in `main` as of this range, so the no-op result above now
+describes shipped behaviour rather than a pull request.
 
 ---
 
