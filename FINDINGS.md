@@ -3073,30 +3073,30 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `ce5b66fb0`** (68 commits on): every row re-ran unchanged,
-> and the page round-trip got measurably better — **11 of 20 pages now report
-> `Unchanged`**, up from 9, with `Account_Edit` and `Account_New` newly lossless
-> (`a1f046312`, layout-grid appearance through describe → exec). The two open
-> items are untouched: #56 and the 2 `layout flows` overlaps.
+> **Update, `main` at `020f4572b`** (118 commits on): the `fieldset` false
+> `NOT SHOWN` note is **fixed** (`43f3a3759`), and PR 1158 is merged. Everything
+> else re-ran unchanged. Three items stay open: #56, the 2 `layout flows`
+> overlaps, and `sync-mods`' missing `rsync` fallback.
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `ce5b66fb0`** (2026-10-10). Previous columns kept so
+Last retested on **`main` at `020f4572b`** (2026-10-14). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ dfccef55c` | `main @ 2b73b8246` | `main @ 28a3b1bf6` | `main @ ce5b66fb0` |
+| Finding | `main @ 28a3b1bf6` | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 | `main @ 020f4572b` |
 |---|---|---|---|---|
-| 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46–53, 55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54 — `DESCRIBE PAGE` round-trip | closed | closed | closed, 20 of 20 | closed; **11 of 20 lossless**, up from 9 |
-| 56 — written widget nodes build to CE0463 | resolved by `fix widgets` | resolved | **open** without it, 6 CE0463 | open, 6 CE0463 |
-| 58 — `check` rejects the `MxTest` module it generates | open | open | **FIXED** ([#677](https://github.com/ako/mxcli/issues/677)) | fixed |
-| `layout flows` introduces MPR008 overlaps | open, 4 | open, 4 | **2** — 2 were lint false positives | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 — `mdlsource/` uses spellings `mdl 2` will refuse | 0 | 0 of 84 codes | 0 | 0 |
-| 64 — `mdlsource/` not ready for `mdl 1` | — | — | **new**, 158 warnings | **MIGRATED**, 158 → 0 |
+| 54A / 54B / 54C — the page round-trip | A,B fixed | A,B fixed | **all three closed** | closed |
+| 56 — written widget nodes build to CE0463 | **open** without `fix widgets` | open | open | **open**, 6 CE0463 |
+| `layout flows` introduces MPR008 overlaps | **2** — 2 were lint false positives | open, 2 | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / **new** | 0 / **MIGRATED** | 0 / 0 | 0 / 0 |
+| page round-trip, pages reported `Unchanged` | — | **11 of 20** | 11 of 20 | 11 of 20 |
+| 65 — `fieldset`'s false `NOT SHOWN` note | — | — | **new** | **FIXED** (`43f3a3759`) |
+| 65 — `make sync-mods` needs `rsync`, no fallback | — | — | **new** | **open**, unchanged |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3108,7 +3108,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | 9 | **11** |
 | `mx check` after the replay | **5 errors** | 0 | **0** | 0 |
 
-On `ce5b66fb0`: **44/44** under `--require-assertions`, `lint` 0 errors (376
+On `020f4572b`: **44/44** under `--require-assertions`, `lint` 0 errors (376
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -4092,6 +4092,58 @@ unsayable part was made to parse.
 **C is unchanged in kind** — describe still emits the fieldset container as
 `content` and the validator still wants `template` (MDL-WIDGET26), so the
 round-trip is refused rather than silently destructive.
+
+### C is closed on `main` at `7196b88bf`
+
+`9e51dd33f "describe child slots with the definition's keyword
+(mendixlabs/mxcli#1400)"` settles which of the two spellings is canonical:
+describe now emits the **MDL keyword** the widget definition declares, which is
+what the validator has always wanted.
+
+```mdl
+fieldset fs1 (legend: 'Board settings') {
+  template {                       -- was `content`, which MDL-WIDGET26 refused
+    dynamictext dt1 (Content: 'hello')
+  }
+}
+```
+
+Round-tripped: `check` passes, `exec` reports **`Unchanged page`**, and the body
+survives. So #54 is closed on all three counts — A at `0a821cf`, B at `0a821cf`,
+C here — and the fieldset case that opened this entry is now lossless.
+
+### A new, smaller thing in its place: the loss warning is a false positive here
+
+The same describe output ends with an explicit warning, which is the right
+instinct and much better than the silent drop this entry started with:
+
+```
+      -- NOT SHOWN: content — this widget stores content DESCRIBE cannot yet
+      -- reproduce. Re-running this script would DROP it. Inspect the widget with
+      -- `mxcli widget describe <name>` and re-add the block by hand.
+```
+
+But for `fieldset` it is wrong: `content` is not a second slot. `DESCRIBE WIDGET
+fieldset` reports **one** body container — *"template · child slot · -> content"*
+— so `content` is the schema key of the very slot describe just emitted as
+`template`. Nothing is missing, and the round-trip proves it: `Unchanged page`,
+body intact.
+
+The cost is an author hand-editing a block that is already correct, or not
+trusting a round-trip that is in fact lossless. **Suggested fix:** suppress the
+warning when the unreproduced schema key is the one already emitted under its
+MDL keyword — the mapping is in the same definition the fix now reads for the
+keyword.
+
+> **FIXED on `main` at `020f4572b`** by `43f3a3759 "no false NOT SHOWN note on a
+> reproduced content slot"`, and it took the suggested fix: slots are now matched
+> on the stored `PropertyKey` rather than the emitted keyword. The describe output
+> is clean and the round-trip still reports `Unchanged`.
+>
+> **Checked that it was fixed rather than switched off** — the lesson #684 taught.
+> The diff narrows the comparison (`doneKeys[cs.PropertyKey]`) instead of dropping
+> the note, and adds a regression test for the reproduced-slot case, so a genuine
+> unreproduced container is still reported.
 
 ---
 
@@ -5327,6 +5379,96 @@ because `01-domain-model.mdl` asks for cascade through a
 `create association if not exists` that has never re-run. #10-class, and untouched
 by this.
 
+
+## 65. PR 1158 verified as a no-op on an 11.13 project, and `make sync-mods` cannot build without `rsync`
+
+> **Status at `020f4572b`:** PR 1158 is **merged**. The `fieldset` false
+> `NOT SHOWN` note is **fixed** (`43f3a3759`). The `sync-mods` build break is
+> **still open** — see the two update boxes below.
+
+**Two results from testing [PR 1158](https://github.com/ako/mxcli/pull/1158)**,
+*"write flows in the shape the project's Mendix version stores"*. Its purpose is a
+9.x/10.x bug — those projects could not have a microflow created at all, because
+the flow writers always emitted the newest shape:
+
+```
+Error: failed to create microflow: … this Mendix 9.24.2 project cannot store
+Microflows$Microflow.StableId (Mendix 10.2.0+); Microflows$SequenceFlow.CaseValues (10.15.0+)
+```
+
+This project is on **11.13.0**, so it cannot exercise the fix. What it *can*
+answer is whether gating the writers on `major.minor` regressed the newest
+version — and the answer is no.
+
+### The no-op, established against the right control
+
+Replaying all 11 `mdlsource/` scripts into two fresh copies, one per build, then
+describing all 55 flows and pages with a single binary:
+
+```
+documents differing: 0 of 55
+```
+
+At byte level 3 of 436 `.mxunit` files differ — but **the same 3 differ when main
+is compared against itself**, replayed twice into fresh copies, and it is the same
+three units (`Game_Mix`, `Game_Done`, `Game_Play` pages). So that is run-to-run
+noise in page writing, not the PR. Without that control the honest reading would
+have been "3 units changed", which is how a no-op gets reported as a regression.
+
+Full battery on `main` + PR 1158: 20 of 20 pages write back with 11 `Unchanged`,
+50 of 50 microflows round-trip, `mx check` 0 errors after a full replay, 44/44
+tests, `lint` 0 errors, layout steady at 2 MPR008 / 13 MPR011.
+
+**What this project cannot tell you:** whether the fix works. Testing that needs a
+9.24 or 10.x project, which means downloading another MxBuild. The PR's own
+`flow_version_keys_test.go` and `flow_version_shape_test.go` pass, and they cannot
+be used as a canary against `main` — they reference `flowVersion`, which the PR
+introduces, so they do not compile without it. That is normal for a new feature's
+tests; it just means "the tests fail before and pass after" is not available here.
+
+### `make sync-mods` has no `rsync` fallback, and the build dies without it
+
+Building either binary failed first:
+
+```console
+$ go build ./cmd/mxcli
+cmd/mxcli/skills_content.go:46:12: pattern all:mods: cannot embed directory mods:
+  contains no embeddable files
+
+$ make sync-mods
+make: rsync: No such file or directory
+make: *** [Makefile:79: sync-mods] Error 127
+```
+
+`cmd/mxcli/mods` is a new `go:embed` directory populated by `sync-mods`, and that
+target is the only one of the sync family with no fallback. Its siblings all have
+one:
+
+```make
+sync-skills:
+	@rsync -a --delete … 2>/dev/null 		|| { rm -rf cmd/mxcli/skills && mkdir -p … && cp -R … ; }
+sync-mods:
+	@rsync -a --delete --exclude=… mods/ cmd/mxcli/mods/      # no `||` branch
+```
+
+So on a machine without `rsync` — which this container is, and which the project's
+own `scripts/setup-tools.sh` has never needed — `make build` cannot produce a
+binary at all. Worked around with the equivalent `cp -R` plus the excludes.
+
+**Suggested fix:** give `sync-mods` the same `|| { … cp -R … }` fallback the
+other four targets already have. One line, and it restores the property that
+`make build` needs only Go.
+
+> **Still open at `020f4572b`.** `make sync-mods` fails identically, and the
+> `Makefile` target is unchanged — still the only one of the five without a
+> fallback. Worked around with `cp -R` again to build this build.
+
+### PR 1158 is merged
+
+`678c8d076` is in `main` as of this range, so the no-op result above now
+describes shipped behaviour rather than a pull request.
+
+---
 
 ## Verification summary
 
