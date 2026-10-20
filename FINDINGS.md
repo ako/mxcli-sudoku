@@ -3073,30 +3073,33 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `020f4572b`** (118 commits on): the `fieldset` false
-> `NOT SHOWN` note is **fixed** (`43f3a3759`), and PR 1158 is merged. Everything
-> else re-ran unchanged. Three items stay open: #56, the 2 `layout flows`
-> overlaps, and `sync-mods`' missing `rsync` fallback.
+> **Update, `main` at `4c0e494e8` + PR 1497** (272 commits on): **PR 1497's BSON
+> v1 → v2 driver migration writes a byte-identical model** — the
+> highest-blast-radius change tested here, and a clean no-op. **#56 narrowed to
+> four widget types.** Everything else re-ran unchanged. Three items open: #56,
+> the 2 `layout flows` overlaps, and `sync-mods`' missing `rsync` fallback
+> ([#1214](https://github.com/ako/mxcli/issues/1214)).
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `020f4572b`** (2026-10-14). Previous columns kept so
+Last retested on **`main` at `4c0e494e8`, plus PR 1497** (2026-10-20). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 28a3b1bf6` | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 | `main @ 020f4572b` |
+| Finding | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 | `main @ 020f4572b` | `4c0e494e8` + PR 1497 |
 |---|---|---|---|---|
-| 46–53, 55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54A / 54B / 54C — the page round-trip | A,B fixed | A,B fixed | **all three closed** | closed |
-| 56 — written widget nodes build to CE0463 | **open** without `fix widgets` | open | open | **open**, 6 CE0463 |
-| `layout flows` introduces MPR008 overlaps | **2** — 2 were lint false positives | open, 2 | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / **new** | 0 / **MIGRATED** | 0 / 0 | 0 / 0 |
-| page round-trip, pages reported `Unchanged` | — | **11 of 20** | 11 of 20 | 11 of 20 |
-| 65 — `fieldset`'s false `NOT SHOWN` note | — | — | **new** | **FIXED** (`43f3a3759`) |
-| 65 — `make sync-mods` needs `rsync`, no fallback | — | — | **new** | **open**, unchanged |
+| 54A / 54B / 54C — the page round-trip | A,B fixed | **all three closed** | closed | closed |
+| 56 — written widget nodes build to CE0463 | open, 6 on 5 types | open, 6 on 5 | open, 6 on 5 | **open, 4 on 4** — Data grid 2 → CE0488 |
+| `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684), count corrected) |
+| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / **MIGRATED** | 0 / 0 | 0 / 0 | 0 / 0 |
+| page round-trip, pages reported `Unchanged` | **11 of 20** | 11 of 20 | 11 of 20 | 11 of 20 |
+| 65 — `fieldset`'s false `NOT SHOWN` note | — | **new** | **FIXED** (`43f3a3759`) | fixed |
+| 65 — `make sync-mods` needs `rsync` | — | **new** | open | **open** ([#1214](https://github.com/ako/mxcli/issues/1214)) |
+| 66 — PR 1497's BSON v1 → v2 migration | — | — | — | **new**, verified no-op |
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3108,7 +3111,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | 9 | **11** |
 | `mx check` after the replay | **5 errors** | 0 | **0** | 0 |
 
-On `020f4572b`: **44/44** under `--require-assertions`, `lint` 0 errors (376
+On `4c0e494e8` + PR 1497: **44/44** under `--require-assertions`, `lint` 0 errors (376
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -4333,6 +4336,21 @@ mx check      →  The app contains: 0 errors.
 Five types remain: Accessibility helper, Data grid 2, Feedback, Maps, Pop-up
 menu.
 
+### Narrowed again on `main` at `4c0e494e8` — four types
+
+| | `0dd7f51a0` | `0a821cf` | `4c0e494e8` |
+|---|---|---|---|
+| CE0463 — the defect | 7, on 6 types | 6, on 5 | **4, on 4** |
+| CE0488 — inherent (no entity to name) | 1 | 1 | 3 |
+
+**Data grid 2** moved out of the defect column: its two errors are now
+`CE0488 "No entity configured for the data source"`, the same inherent class as
+Gallery — a generic example has no project entity to put there. Four remain:
+Accessibility helper, Feedback, Maps, Pop-up menu.
+
+(`mxcli fix widgets` still clears the CE0463s entirely; this is the count without
+it.)
+
 ### Retested on `main` at `5ccbd480` — resolved, by a new tool rather than by the writer
 
 The five remaining types are unchanged if you only run `exec` — still 6 CE0463.
@@ -5459,14 +5477,89 @@ binary at all. Worked around with the equivalent `cp -R` plus the excludes.
 other four targets already have. One line, and it restores the property that
 `make build` needs only Go.
 
-> **Still open at `020f4572b`.** `make sync-mods` fails identically, and the
-> `Makefile` target is unchanged — still the only one of the five without a
-> fallback. Worked around with `cp -R` again to build this build.
+> **Still open at `4c0e494e8`**, reported as
+> [ako/mxcli#1214](https://github.com/ako/mxcli/issues/1214). `make sync-mods`
+> fails identically and the `Makefile` is unchanged. **Correction to this entry:**
+> I first wrote that `sync-mods` was the only one of the five without a fallback.
+> It is **three** of five — `sync-mods`, `sync-commands` and `sync-lint-rules`.
+> `sync-mods` is simply the first `sync-all` reaches. Measured by clearing all
+> five embed directories and running `make sync-all`: `skills` and `skillpacks`
+> populate through their fallbacks (100 and 52 files), then it dies, leaving the
+> other three empty and `go build` failing on `all:mods`. So a fresh clone cannot
+> build without `rsync`.
 
 ### PR 1158 is merged
 
 `678c8d076` is in `main` as of this range, so the no-op result above now
 describes shipped behaviour rather than a pull request.
+
+---
+
+## 66. PR 1497 moves off the v1 BSON driver, and writes a byte-identical model
+
+**Tested** [PR 1497](https://github.com/ako/mxcli/pull/1497) — four commits, two
+of them *"move off the deprecated v1 BSON driver entirely"* and *"move ALTER
+NAVIGATION's new files off the v1 BSON driver"*. Everything mxcli reads and writes
+in a `.mpr` goes through that layer, so this is the highest-blast-radius change
+this document has tested.
+
+Verified on `main` at `4c0e494e8` + PR 1497, Mendix 11.13.0.
+
+### The result: no-op, against the control that makes that claim mean something
+
+Replaying all 11 `mdlsource/` scripts into two fresh copies, one per build, then
+describing all 58 entities, flows and pages with a single binary:
+
+```
+documents differing: 0 of 58
+```
+
+At byte level **3 of 436** `.mxunit` files differ — and the same 3 differ when
+`main` is compared against **itself**, replayed twice into fresh copies. Same
+three units (`Game_Mix`, `Game_Done`, `Game_Play` pages), both times. So that is
+run-to-run noise in page writing, not the driver swap.
+
+This is the second change in a row where the noise baseline was the difference
+between "no-op" and "3 units changed" (see #65 for PR 1158). It is worth stating
+as a standing rule for this project: **a byte-level model comparison means
+nothing without replaying the same build twice first.** Three units of churn is
+this project's floor.
+
+### The other half of the PR is a test fix, not shipped code
+
+`36f8cc426 "resolve a microflow's module through the container hierarchy"` repairs
+mxcli's **own** CI round-trip test, which had been resolving a microflow's module
+from a flat `ListModules` map — wrong, because a microflow's `ContainerID` is its
+*folder* when it sits in one. The commit message is candid that the test's vacuity
+guard caught it rather than a hint, and that the guard was right.
+
+That matters here only indirectly: this project's flows do sit in folders (the
+`TST_*` helpers are in `Test`), so the `FindModuleID` walk it restores is the one
+this project depends on. The shipped runner is unaffected — **44/44 on both
+builds**.
+
+### Full battery on `main` + PR 1497
+
+20 of 20 pages write back with 11 `Unchanged`, `mx check` 0 errors; 50 of 50
+microflows round-trip; `mdlsource/` at 0 deprecations, 0 `MDL-V1-*`, 0 parse
+errors; full replay to `mx check` 0 errors; 44/44 tests; `lint` 0 errors;
+`brain check` OK; layout steady at 2 MPR008 / 13 MPR011.
+
+### Worth recording: navigation round-trips, and says what it cannot carry
+
+`main` added `ALTER NAVIGATION` menu items (#1495). This project's one profile
+round-trips to `Unchanged`, and the describe output names the one thing it cannot
+express rather than dropping it silently:
+
+```mdl
+menu item 'Play Sudoku' ( OnClick: show page Sudoku.Home with (DisabledDuringExecution: false) )
+-- menu item 'Play Sudoku': a page title override ('') has no MDL form; a rewrite
+--   keeps it while the item's action is unchanged
+```
+
+"A rewrite keeps it while the item's action is unchanged" is the useful half —
+it tells you the condition under which the un-expressible thing survives, which
+is more than a warning that something is missing.
 
 ---
 
