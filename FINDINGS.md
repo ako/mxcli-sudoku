@@ -3083,23 +3083,31 @@ That workaround is retired.
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `4c0e494e8`, plus PR 1497** (2026-10-20). Previous columns kept so
+Last retested on **`main` at `a059cb3c7` and `c289c6e25`** (2026-10-23). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 | `main @ 020f4572b` | `4c0e494e8` + PR 1497 |
+| Finding | `main @ 020f4572b` | `4c0e494e8` + PR 1497 | `a059cb3c7` | `c289c6e25` |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54A / 54B / 54C — the page round-trip | A,B fixed | **all three closed** | closed | closed |
-| 56 — written widget nodes build to CE0463 | open, 6 on 5 types | open, 6 on 5 | open, 6 on 5 | **open, 4 on 4** — Data grid 2 → CE0488 |
-| `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684), count corrected) |
-| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / **MIGRATED** | 0 / 0 | 0 / 0 | 0 / 0 |
-| page round-trip, pages reported `Unchanged` | **11 of 20** | 11 of 20 | 11 of 20 | 11 of 20 |
-| 65 — `fieldset`'s false `NOT SHOWN` note | — | **new** | **FIXED** (`43f3a3759`) | fixed |
-| 65 — `make sync-mods` needs `rsync` | — | **new** | open | **open** ([#1214](https://github.com/ako/mxcli/issues/1214)) |
-| 66 — PR 1497's BSON v1 → v2 migration | — | — | — | **new**, verified no-op |
+| 54A / 54B / 54C — the page round-trip | closed | closed | closed | closed |
+| 56 — written widget nodes build to CE0463 | open, 6 on 5 | **open, 4 on 4** — Data grid 2 → CE0488 | open, 4 on 4 | open, 4 on 4 |
+| `layout flows` introduces MPR008 overlaps | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684), count corrected) | open, 2 | open, 2 |
+| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| page round-trip, pages reported `Unchanged` | 11 of 20 | 11 of 20 | 11 of 20 | 11 of 20 — **and 20 of 20 on the second pass, see #67** |
+| 65 — `fieldset`'s false `NOT SHOWN` note | **FIXED** (`43f3a3759`) | fixed | fixed | fixed |
+| 65 — `make sync-mods` needs `rsync` | open | **open** ([#1214](https://github.com/ako/mxcli/issues/1214)) | open | open |
+| 66 — PR 1497's BSON v1 → v2 migration | — | **new**, verified no-op | merged, no-op holds | merged, no-op holds |
+| 10 — `alter entity … add attribute` not re-runnable | open | open | open | open — `check --references` names all 4 collisions |
+
+Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
+large cluster of describe-round-trip commits and `c289c6e25` adds one more
+(`33ad8ba22`, System associations kept qualified); neither moved any number this
+project can see, because the project has no construct those commits touch. A
+build can be a real fix upstream and a no-op here — that is not a regression, and
+it is not a reason to stop measuring.
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -5560,6 +5568,70 @@ menu item 'Play Sudoku' ( OnClick: show page Sudoku.Home with (DisabledDuringExe
 "A rewrite keeps it while the item's action is unchanged" is the useful half —
 it tells you the condition under which the un-expressible thing survives, which
 is more than a warning that something is missing.
+
+---
+
+## 67. The page round-trip converges: all 20 pages are lossless, and "11 of 20" never meant what this document said it did
+
+> **Not a defect — a correction to the headline metric this document has tracked
+> since #54.** `describe` is lossless for all 20 pages on every build measured.
+> The 9 that report `Replaced page` are being normalised in storage, not
+> degraded, and the second pass proves it.
+
+**What the number actually measures.** Every build since `5ccbd480` has been
+scored on one line: *pages reported `Unchanged`*. It has read `11 of 20` for
+four builds running, and this document has carried it as "9 pages still don't
+round-trip". That reading is wrong.
+
+Replaying each page's own description into a fresh copy of the committed
+project, repeatedly:
+
+| pass | `a059cb3c7` | `c289c6e25` |
+|---|---|---|
+| 1 — from the committed model | `Unchanged` 11, `Replaced` 9, failed 0 | 11 / 9 / 0 |
+| 2 — from pass 1's output | **`Unchanged` 20**, `Replaced` 0, failed 0 | **20 / 0 / 0** |
+| 3 | 20 / 0 / 0 | 20 / 0 / 0 |
+
+`mx check` after the passes: `The app contains: 0 errors.`
+
+**The proof that nothing is lost.** Describing all 20 pages from the committed
+model and again after three replay passes, and diffing:
+
+```
+pages whose description changed: 0 of 20
+```
+
+So `describe` → `exec` → `describe` is a fixed point on the first try for all
+twenty. The 9 pass-1 rewrites change stored bytes without changing a single
+character of what mxcli can say about the page. They are the committed model's
+spelling being normalised to the writer's — a one-time cost on a model that
+Studio Pro wrote, not description loss.
+
+**Why this was missed for four builds.** The metric answers "did `exec` decide
+it had nothing to write?", and that question folds together two different
+things: *the description is faithful* and *the stored form already matches what
+the writer emits*. Only the first matters to an app author. Measuring one pass
+cannot separate them; measuring two does, and the second pass costs one more
+loop over the same 20 pages.
+
+This is the same lesson as #62 and #65, which is why it is worth stating a third
+time: **a gate answers the question it was built for and no other.** Here the
+gate was sound and the reading of it was not, which is the harder version to
+catch — nothing ever failed.
+
+**What to track instead.** Both numbers, because they fail independently:
+
+- *pass-1 `Unchanged`* — how close the committed model is to the writer's
+  normal form. Cosmetic; it moves when the writer's formatting changes.
+- *pass-2 `Unchanged`* — whether the description is lossless. **This is the one
+  that matters**, and it has been 20 of 20 on every build where it was measured.
+
+**Method note.** This was nearly filed as "14 of 20, improved" on `c289c6e25`.
+The scratch copy used for that sweep had already had four pages replayed into it
+by an earlier run in the same directory, so three of its "`Unchanged`" results
+were second-pass. A fresh copy per build and per pass brought both builds back
+to an identical 11. Re-using a scratch project across measurements silently
+mixes passes; copy it fresh or the number drifts upward on its own.
 
 ---
 
