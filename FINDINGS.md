@@ -3088,19 +3088,28 @@ a regression would be visible rather than silently overwritten — which is exac
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 020f4572b` | `4c0e494e8` + PR 1497 | `a059cb3c7` | `c289c6e25` |
+| Finding | `a059cb3c7` | `c289c6e25` | `main @ 9a8cf0b` | `9a8cf0b` + PR 1798 |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
 | 54A / 54B / 54C — the page round-trip | closed | closed | closed | closed |
-| 56 — written widget nodes build to CE0463 | open, 6 on 5 | **open, 4 on 4** — Data grid 2 → CE0488 | open, 4 on 4 | open, 4 on 4 |
-| `layout flows` introduces MPR008 overlaps | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684), count corrected) | open, 2 | open, 2 |
+| 56 — written widget nodes build to CE0463 | open, 4 on 4 | open, 4 on 4 | not re-measured | not re-measured |
+| `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) | open, 2 |
 | 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
-| page round-trip, pages reported `Unchanged` | 11 of 20 | 11 of 20 | 11 of 20 | 11 of 20 — **and 20 of 20 on the second pass, see #67** |
-| 65 — `fieldset`'s false `NOT SHOWN` note | **FIXED** (`43f3a3759`) | fixed | fixed | fixed |
-| 65 — `make sync-mods` needs `rsync` | open | **open** ([#1214](https://github.com/ako/mxcli/issues/1214)) | open | open |
-| 66 — PR 1497's BSON v1 → v2 migration | — | **new**, verified no-op | merged, no-op holds | merged, no-op holds |
-| 10 — `alter entity … add attribute` not re-runnable | open | open | open | open — `check --references` names all 4 collisions |
+| page round-trip pass 1, pages reported `Unchanged` | 11 of 20 | 11 of 20 | **3 REFUSED**, 15 of 17 — see #69 | 3 refused, 15 of 17 → **16 of 20 after the fix** |
+| page round-trip pass 2 — the number that matters (#67) | 20 of 20 | 20 of 20 | 17 of 17, 3 refused | **20 of 20 after the fix** |
+| 65 — `fieldset`'s false `NOT SHOWN` note | fixed | fixed | fixed | fixed |
+| 65 — `make sync-mods` needs `rsync` | open | open | **FIXED** — all 5 sync targets have a `cp -R` fallback ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed |
+| 66 — PR 1497's BSON v1 → v2 migration | merged, no-op holds | merged, no-op holds | merged, no-op holds | merged, no-op holds |
+| 10 — `alter entity … add attribute` not re-runnable | open | open | open | open |
+| 69 — `MDL-WIDGET08` refuses a page over a stored `pagingPosition: 'below'` | — | — | **new** | new (from main) — **project fixed** |
+| 68 — PR 1798's source catalog build | — | — | — | **new**, verified: 32× fewer file opens, identical rows |
+
+`9a8cf0b` is the first build in this series to **break** something: three pages
+stop round-tripping. The cause is a correct new diagnostic meeting an invalid
+value an older mxcli wrote into this project's model — see #69, now fixed here.
+PR 1798 measures identically to its base on every row above; it only makes the
+source catalog build cheaper (#68).
 
 Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
 large cluster of describe-round-trip commits and `c289c6e25` adds one more
@@ -5632,6 +5641,139 @@ by an earlier run in the same directory, so three of its "`Unchanged`" results
 were second-pass. A fresh copy per build and per pass brought both builds back
 to an identical 11. Re-using a scratch project across measurements silently
 mixes passes; copy it fresh or the number drifts upward on its own.
+
+---
+
+## 68. PR 1798: a source catalog build read each unit file 33 times; now it reads each once
+
+> **Verified on this project, independently measured.** 32× fewer file opens,
+> 1.7× faster, and all 84 catalog tables byte-identical. No effect on any other
+> tracked number.
+
+[PR 1798](https://github.com/ako/mxcli/pull/1798) (`3259bba5b`, base `9a8cf0b`)
+fixes a quadratic read pattern in `refresh catalog full source`: every microflow
+describe found its own microflow, and each microflow it called, by listing every
+microflow in the project from disk.
+
+**Measured here with `strace -e trace=openat`, not taken from the PR body.**
+Fresh copy of the project per run, 436 `.mxunit` files:
+
+| | base (`9a8cf0b`) | + PR 1798 |
+|---|---|---|
+| `.mxunit` opens for one `refresh catalog full source force` | **14,211** | **441** |
+| opens per unit | 32.6 | 1.01 |
+| wall time | 8.3 s | 4.8 s |
+
+441 opens for 436 units is essentially one read per unit, which is what the PR
+claims and what its own test asserts.
+
+**The correctness half.** Dumping all 84 `CATALOG.*` tables from both builds and
+diffing:
+
+```
+tables differing: 0 of 84          (7,957 rows compared)
+```
+
+A first diff showed 33 of 84 tables differing, which looked alarming for about a
+minute. Every one of those diffs was the catalog's own build-timestamp column —
+the two runs happened eight seconds apart. Normalising the timestamp brought it
+to zero. Row counts had been identical all along (`CATALOG.SOURCE` 184,
+`CATALOG.REFS` 1,001, `CATALOG.STRINGS` 1,830, `CATALOG.ACTIVITIES` 1,661), which
+was the clue that nothing substantive had moved: **a diff that fires on every
+table at once is usually measuring the measurement.**
+
+The rest of the battery is identical to the base build, row for row. This PR
+changes performance and nothing else.
+
+**Scale note.** This project is small enough that the fix saves 3.5 seconds. The
+PR reports 330 s → 31 s on a 4,753-unit app, and 90+ minutes on Windows where
+Defender scans every open. The ratio measured here (32.6 reads per unit) is the
+part that generalises; the wall time is not.
+
+---
+
+## 69. `describe` emits a gallery `pagingPosition` that `exec` refuses, and 3 of 20 pages stop round-tripping
+
+> **A correct new diagnostic, a real break, and a genuine latent bug in this
+> project — all at once.** Fixed here; worth knowing before the rule lands for
+> anyone else with an older model.
+
+**What happened.** On `main` at `9a8cf0b`, three pages refuse to replay their own
+description:
+
+```
+✗ page Sudoku.Game_Play: widget `galBoard` (gallery) property `pagingPosition`
+  has invalid value `below` — valid values are bottom, top, both;
+  the widget compares its keys exactly and would ignore it   [MDL-WIDGET08]
+Refusing to execute: 1 error(s) above. Nothing was written.
+```
+
+`Game_Play`, `Game_Mix` and `Game_Done` — the three hand-authored Sudoku pages.
+This is the first hard round-trip failure in this series since `0a821cf`; the
+previous build had 0 failed on both passes.
+
+**Which side is wrong.** Neither the describe nor the rule, as it turns out:
+
+1. `mdlsource/` **never sets `pagingPosition`** — `grep` across all 11 scripts
+   finds nothing. This project never asked for `below`.
+2. Replaying `mdlsource/` into a fresh copy produces galleries with **no
+   `pagingPosition` at all**, and those pages round-trip cleanly
+   (`Unchanged page`). So the current writer does not produce `below` either.
+3. The Gallery widget's own definition declares `bottom | top | both`, default
+   `bottom` (`CATALOG.WIDGET_DEFINITION_PROPERTIES`).
+4. Mendix's own validator does not care: `mx check` reports
+   `The app contains: 0 errors.` both before and after.
+
+So `below` is **stale residue written into the committed `.mpr` by an older
+mxcli**, sitting in the model for months, silently ignored by the Gallery widget
+at runtime, invisible to `mx check`, and surfaced only now by a rule that is
+right to reject it.
+
+**Why it still counts as a break.** However good the diagnostic, the effect is
+that mxcli refuses to replay a page it describes. The page cannot be fixed by the
+describe → edit → replay loop unless you know to hand-edit the bad value, because
+every replay of the unedited description is refused. A warning that wrote the page
+anyway, or a describe that normalised the dead value, would both have left the
+loop intact.
+
+**The remedy, and that it works.** Describing the page, changing the one value,
+and replaying it is accepted and restores the round trip permanently:
+
+```
+describe → s/pagingPosition: 'below'/'bottom'/ → exec   Replaced page
+describe → exec                                         Unchanged page
+```
+
+Applied to this project with `alter page … { set ("pagingPosition": 'bottom') on … }`
+for all three galleries. Because `bottom` is the widget's default, `describe` now
+omits the property entirely — the same output a clean source replay gives, so the
+fix converges with `mdlsource/` rather than papering over it.
+
+After the fix, on `9a8cf0b` + PR 1798:
+
+| | before | after |
+|---|---|---|
+| page round-trip pass 1 | 15 `Unchanged`, 2 replaced, **3 refused** | 16 `Unchanged`, 4 replaced, **0 refused** |
+| page round-trip pass 2 | 17 of 17, 3 refused | **20 of 20** |
+| `mx check` | 0 errors | 0 errors |
+| tests | 44 of 44 | 44 of 44 |
+
+Pass 1 also improved from the 11 of 20 that held for four builds to 16 of 20 —
+the writer's normal form moved closer to what is stored. Per #67 that number is
+cosmetic; pass 2 is the one that matters, and it is back to 20 of 20.
+
+**Two smaller things found on the way.**
+
+- **`MDL-DEPR101` is new**: `set Key = value` in `alter page` is deprecated in
+  favour of `set (Key: value)`. The message names the replacement, the scope
+  (`alter page`, `alter snippet`, `alter layout`), and the one form it does not
+  apply to (`set layout = M.L`). This is the quality #63 asked for. Note this
+  project's own `CLAUDE.md` and `.ai-context/skills/alter-page.md` still document
+  the deprecated spelling.
+- **`alter page … set` needs braces** — `alter page X { set … }`, not
+  `alter page X set …`. The parse error says `missing '{' at 'set'`, which is
+  precise, but the skill docs' table of operations shows the ops without the
+  surrounding block.
 
 ---
 
