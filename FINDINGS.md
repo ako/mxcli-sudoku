@@ -205,7 +205,13 @@ practice anyway, but it is not what the documentation promises.
 
 ## 10. Scripts are not re-runnable, and exec stops at the first error
 
-> **Open — and the suggested remedy is dangerous, see #24.** `alter entity … add attribute` is still non-idempotent and `exec` still halts at the first error.
+> **Half fixed as of `e3f7f061e`; the remedy is still dangerous, see #24.**
+> `alter entity … add attribute` is still non-idempotent and `exec` still halts
+> at the first error — but it no longer leaves the project half-applied. A script
+> that aborts at statement 2 now rolls statement 1 back and says so
+> (`Nothing was written: statement 1 was rolled back, and the project is as it was
+> before exec`), verified at byte level: **0 of 436 files changed**. The
+> re-runnability complaint stands; the data-loss hazard behind it does not.
 
 **Limitation.** `alter entity ... add attribute` fails if the attribute exists,
 and there is no `add attribute if not exists` (nor `create or replace` for
@@ -3088,28 +3094,30 @@ a regression would be visible rather than silently overwritten — which is exac
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `a059cb3c7` | `c289c6e25` | `main @ 9a8cf0b` | `9a8cf0b` + PR 1798 |
+| Finding | `main @ 9a8cf0b` | `9a8cf0b` + PR 1798 | `main @ e3f7f061e` | `e3f7f061e` + PR 1802 |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
 | 54A / 54B / 54C — the page round-trip | closed | closed | closed | closed |
-| 56 — written widget nodes build to CE0463 | open, 4 on 4 | open, 4 on 4 | not re-measured | not re-measured |
-| `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) | open, 2 |
+| 56 — written widget nodes build to CE0463 | not re-measured | not re-measured | not re-measured | not re-measured |
+| `layout flows` introduces MPR008 overlaps | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) | open, 2 | open, 2 | open, 2 |
 | 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
-| page round-trip pass 1, pages reported `Unchanged` | 11 of 20 | 11 of 20 | **3 REFUSED**, 15 of 17 — see #69 | 3 refused, 15 of 17 → **16 of 20 after the fix** |
-| page round-trip pass 2 — the number that matters (#67) | 20 of 20 | 20 of 20 | 17 of 17, 3 refused | **20 of 20 after the fix** |
+| page round-trip pass 1, pages reported `Unchanged` | **3 REFUSED** (#69) | 16 of 20 after the fix | 16 of 20 | 16 of 20 |
+| page round-trip pass 2 — the number that matters (#67) | 17 of 17, 3 refused | **20 of 20** | 20 of 20 | 20 of 20 |
 | 65 — `fieldset`'s false `NOT SHOWN` note | fixed | fixed | fixed | fixed |
-| 65 — `make sync-mods` needs `rsync` | open | open | **FIXED** — all 5 sync targets have a `cp -R` fallback ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed |
+| 65 — `make sync-mods` needs `rsync` | **FIXED** ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed | fixed | fixed |
 | 66 — PR 1497's BSON v1 → v2 migration | merged, no-op holds | merged, no-op holds | merged, no-op holds | merged, no-op holds |
-| 10 — `alter entity … add attribute` not re-runnable | open | open | open | open |
-| 69 — `MDL-WIDGET08` refuses a page over a stored `pagingPosition: 'below'` | — | — | **new** | new (from main) — **project fixed** |
-| 68 — PR 1798's source catalog build | — | — | — | **new**, verified: 32× fewer file opens, identical rows |
+| 10 — `alter entity … add attribute` not re-runnable | open | open | open, but **exec now rolls back** — 0 files changed on abort | same |
+| 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | **new** | **project fixed** | fixed, stays fixed | fixed |
+| 68 — PR 1798's source catalog build | — | **new**, 32× fewer opens | **MERGED** into main | merged |
+| #1801 — a single `describe` opened 116 unit files | 116 | 116 | **31** (3.7× fewer) | 31 |
+| 70 — PR 1802's incremental source rebuild | — | — | — | **new**, verified across 8 edit kinds |
+| 71 — `check --references` misses the target of 9 of 11 statement forms | present | present | present | **new** (found this pass) |
 
-`9a8cf0b` is the first build in this series to **break** something: three pages
-stop round-tripping. The cause is a correct new diagnostic meeting an invalid
-value an older mxcli wrote into this project's model — see #69, now fixed here.
-PR 1798 measures identically to its base on every row above; it only makes the
-source catalog build cheaper (#68).
+`e3f7f061e` and PR 1802 measure identically on every correctness row, and both
+are clean: no refusals, 20 of 20 on pass 2, 44 of 44 tests. The movement this
+pass is all performance (#68 merged, #1801, #70) plus one pre-existing gap this
+pass happened to find (#71).
 
 Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
 large cluster of describe-round-trip commits and `c289c6e25` adds one more
@@ -5774,6 +5782,137 @@ cosmetic; pass 2 is the one that matters, and it is back to 20 of 20.
   `alter page X set …`. The parse error says `missing '{' at 'set'`, which is
   precise, but the skill docs' table of operations shows the ops without the
   surrounding block.
+
+---
+
+## 70. PR 1802: a source rebuild now re-describes only what changed, and agrees with a full rebuild on every edit I could think of
+
+> **Verified across eight kinds of edit.** Every row of the incremental catalog
+> matches a forced full rebuild of the same state. The reuse is real: 139 of 182
+> documents carried over after an entity change, 179 of 182 after a flow edit.
+
+[PR 1802](https://github.com/ako/mxcli/pull/1802) (`3e6025894`, base
+`e3f7f061e`) makes `refresh catalog` reuse the rows a previous source build
+described, instead of describing all 182 documents again on every save.
+
+**The reuse works.** Seeding a source index, making one edit, then running a
+plain `refresh catalog`:
+
+| edit | reported |
+|---|---|
+| nothing | no rebuild at all |
+| insert an activity into `ACT_Hint` | 179 reused, 3 described |
+| `alter entity Game add attribute` | 139 reused, 43 described |
+| change `Home`'s title | 178 reused, 4 described |
+| rename `ACT_NewEasy` | 173 reused, 9 described |
+| move `ACT_Hint` to a folder | *(no reuse — describes all 182)* |
+| drop `ACT_LogMove` | 179 reused, 2 described |
+| add an enumeration value | rebuilt, value present |
+
+The folder move describing everything is the documented structural case, not a
+miss.
+
+**The correctness test.** For each edit: seed the index, edit, run a plain
+(incremental) refresh, dump all 84 `CATALOG.*` tables; then force a full rebuild
+of the *same state* and dump again; compare.
+
+```
+tables differing by content: 0 of 84     — on all eight edits
+```
+
+**One caveat on the PR's wording.** The PR says the incremental `catalog.source`
+is "byte-identical" to a forced full rebuild. Its *content* is — every row
+matches — but the **row order differs** on five of the eight edits, because
+re-described rows land in a different position than a full rebuild puts them.
+`SELECT *` without `ORDER BY` has no promised order, so this is a wording
+quibble rather than a defect; it is worth knowing only because anyone verifying
+this PR by diffing raw query output will see five tables "differ" and have to
+work out why, as I did.
+
+**What this test cannot see.** Comparing incremental against full only catches
+staleness the incremental path introduces. If `describe` itself were stale, both
+sides would be wrong together and the diff would still be empty. So I also
+checked the riskiest case positively: after renaming `ACT_NewEasy`, the
+incremental catalog shows the **new** name in both pages that call it
+(`Game_Play`, `Home`). The one surviving mention of the old name is a string
+literal inside a log activity, which a rename correctly does not rewrite, and it
+is identical in the full rebuild.
+
+**A case this project cannot test.** The PR's headline dependency example is a
+page that prints its data-source microflow's return entity. No page here uses a
+microflow data source — all four use `$Game` or a database source — so that
+specific path is unverified by this project. The entity-attribute and rename
+cases exercise the same machinery from a different angle.
+
+**Scale.** 2.6 s → 2.2 s here, which is nearly nothing; the project has 182
+documents. The ratio that generalises is 139 of 182 reused, against the PR's
+3,525 of 3,718 on a 4,753-unit app.
+
+**Also in this build, from `main`.** #1801 (the v2 header index) cut what a
+single interactive command opens:
+
+| | `9a8cf0b` | `+PR 1798` | `e3f7f061e` | `+PR 1802` |
+|---|---|---|---|---|
+| `.mxunit` opens, one `describe page` | 116 | 116 | **31** | 31 |
+| `.mxunit` opens, `refresh catalog full source force` | 14,211 | 441 | 441 | 441 |
+
+PR 1798 is merged into `main`; its 32× reduction holds.
+
+---
+
+## 71. `check --references` validates the target of 2 of 11 statement forms
+
+> **A pre-flight gap, not a safety hole** — `exec` refuses every one of these,
+> and now rolls back cleanly (see #10). The cost is that the documented
+> pre-flight gate passes a script that cannot run.
+
+Found while building the #70 harness: a test script named
+`Sudoku.ENUM_Difficulty`, an enumeration that does not exist in this project.
+`check --references` said `✓ All references valid` / `Check passed!`, and
+`exec` then refused with `enumeration not found`.
+
+Sweeping every statement form that names an existing document, against a target
+that does not exist:
+
+| statement | `check --references` | `exec` |
+|---|---|---|
+| `alter entity` | **CAUGHT** — and names the alternatives: *"Sudoku has Cell, Game, Move"* | refused |
+| `alter page` | **CAUGHT** — likewise | refused |
+| `alter enumeration` | missed | refused |
+| `alter microflow` | missed | refused |
+| `drop microflow` | missed | refused |
+| `drop page` | missed | refused |
+| `drop entity` | missed | refused |
+| `drop enumeration` | missed | refused |
+| `drop association` | missed | refused |
+| `rename microflow` | missed | refused |
+| `move microflow` | missed | refused |
+
+Nothing is ever written: `exec` refuses all eleven. The two that `check` does
+catch produce an unusually good message, which is what makes the other nine
+conspicuous.
+
+**Why it still matters.** This project's own `CLAUDE.md` instructs
+*"Always validate before presenting to user: `mxcli check script.mdl -p
+Sudoku.mpr --references`"*, and the command's own banner is
+`Validating references against: Sudoku.mpr`. For nine of eleven statement forms
+that promise is not kept, and the error surfaces one step later than the
+workflow is built around.
+
+**Harness note, because I got this wrong twice before reporting it.** My first
+sweep claimed `alter entity` and `alter page` were *applied* rather than
+refused, and that `alter microflow` was missed. Both were artefacts:
+
+- I detected failure by grepping `^Error:`, but these two refuse with
+  `Reference error:` / `Refusing to execute`, so a correct refusal read as
+  silent success — a harness that pointed at a **worse** bug than exists.
+- My `alter microflow` script had a parse error (`drop $X` without `;`), so it
+  never reached reference checking at all; an invalid test reported as a result.
+
+Both were caught by re-running the odd-looking rows individually instead of
+trusting the table. The fix was to detect parse errors separately and fail the
+test loudly, rather than letting a broken script score as a finding — the same
+lesson as the `tail -n +2` harness in #51, in the opposite direction.
 
 ---
 
