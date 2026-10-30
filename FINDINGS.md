@@ -3094,30 +3094,33 @@ a regression would be visible rather than silently overwritten — which is exac
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 9a8cf0b` | `9a8cf0b` + PR 1798 | `main @ e3f7f061e` | `e3f7f061e` + PR 1802 |
+| Finding | `9a8cf0b` + PR 1798 | `main @ e3f7f061e` | `e3f7f061e` + PR 1802 | `main @ 5897690cd` (v0.29.0) |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
 | 54A / 54B / 54C — the page round-trip | closed | closed | closed | closed |
 | 56 — written widget nodes build to CE0463 | not re-measured | not re-measured | not re-measured | not re-measured |
-| `layout flows` introduces MPR008 overlaps | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) | open, 2 | open, 2 | open, 2 |
+| `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
 | 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
-| page round-trip pass 1, pages reported `Unchanged` | **3 REFUSED** (#69) | 16 of 20 after the fix | 16 of 20 | 16 of 20 |
-| page round-trip pass 2 — the number that matters (#67) | 17 of 17, 3 refused | **20 of 20** | 20 of 20 | 20 of 20 |
+| page round-trip pass 1, pages reported `Unchanged` | 16 of 20 after the fix | 16 of 20 | 16 of 20 | 16 of 20 |
+| page round-trip pass 2 — the number that matters (#67) | **20 of 20** | 20 of 20 | 20 of 20 | 20 of 20 |
 | 65 — `fieldset`'s false `NOT SHOWN` note | fixed | fixed | fixed | fixed |
-| 65 — `make sync-mods` needs `rsync` | **FIXED** ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed | fixed | fixed |
+| 65 — `make sync-mods` needs `rsync` | fixed ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed | fixed | fixed |
 | 66 — PR 1497's BSON v1 → v2 migration | merged, no-op holds | merged, no-op holds | merged, no-op holds | merged, no-op holds |
-| 10 — `alter entity … add attribute` not re-runnable | open | open | open, but **exec now rolls back** — 0 files changed on abort | same |
-| 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | **new** | **project fixed** | fixed, stays fixed | fixed |
-| 68 — PR 1798's source catalog build | — | **new**, 32× fewer opens | **MERGED** into main | merged |
-| #1801 — a single `describe` opened 116 unit files | 116 | 116 | **31** (3.7× fewer) | 31 |
-| 70 — PR 1802's incremental source rebuild | — | — | — | **new**, verified across 8 edit kinds |
-| 71 — `check --references` misses the target of 9 of 11 statement forms | present | present | present | **new** (found this pass) |
+| 10 — `alter entity … add attribute` not re-runnable | open | open, but **exec now rolls back** — 0 files changed on abort | same | same |
+| 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | **project fixed** | fixed, stays fixed | fixed | fixed |
+| 68 — PR 1798's source catalog build | **new**, 32× fewer opens | **MERGED** into main | merged | merged |
+| a single `describe` — `.mxunit` files opened | 116 | **31** (#1801) | 31 | **1** (#1804) — 116× fewer than `9a8cf0b` |
+| 70 — PR 1802's incremental source rebuild | — | — | **new**, verified across 8 edit kinds | **MERGED**, plus a unit-level layer (#1804) |
+| 72 — v0.29.0's two-layer incremental catalog | — | — | — | **new**, re-verified across the same 8 edits |
+| 72 — `E015`, a new always-true-comparison warning | — | — | — | **new**, true positive and the guard idiom both correct |
+| 71 — `check --references` misses the target of 9 of 11 statement forms | present | present | **new** | open, reported as [#1821](https://github.com/ako/mxcli/issues/1821) |
 
-`e3f7f061e` and PR 1802 measure identically on every correctness row, and both
-are clean: no refusals, 20 of 20 on pass 2, 44 of 44 tests. The movement this
-pass is all performance (#68 merged, #1801, #70) plus one pre-existing gap this
-pass happened to find (#71).
+`5897690cd` (v0.29.0) carries 40 non-merge commits over `e3f7f061e` and measures
+identically on every correctness row: no refusals, 20 of 20 on pass 2, 50 of 50
+microflows, `mx check` 0 errors, lint 465/0 errors, 44 of 44 tests. Nothing in
+that batch regressed anything this project can see. The movement is performance
+(#1804) and one new warning rule (#72).
 
 Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
 large cluster of describe-round-trip commits and `c289c6e25` adds one more
@@ -5913,6 +5916,128 @@ Both were caught by re-running the odd-looking rows individually instead of
 trusting the table. The fix was to detect parse errors separately and fail the
 test loudly, rather than letting a broken script score as a finding — the same
 lesson as the `tail -n +2` harness in #51, in the opposite direction.
+
+---
+
+## 72. v0.29.0: a describe now opens one unit file, the catalog rebuild has a second layer, and `E015` catches an always-true comparison
+
+> **40 non-merge commits, no regressions.** A single `describe` went from 116
+> unit-file opens to **1**. The incremental catalog gained a unit-level layer on
+> top of #70's document-level one, and still agrees with a forced full rebuild
+> across all eight edit kinds. One new warning rule, verified in both directions.
+
+`5897690cd` merges `mendixlabs:main` into `ako/main` and tags v0.29.0. The hook
+reported `already installed — skipping build`, which made it look like nothing
+had changed; `origin/main` was indeed unmoved since the previous pass, but the
+previous pass had only run the #71 reference sweep against this build, never the
+full battery. The 40 commits behind that merge had never been measured here.
+
+**Reading the build right.** The comparison that matters is against the last
+build given a *full battery* (`e3f7f061e`), not against the last binary built.
+Those are not the same commit, and conflating them would have skipped this
+entire batch.
+
+### A single `describe` now opens one file
+
+`ef49cdfcc fix(mpr): serve unchanged v2 units from one store file (#1804)`,
+measured with `strace -e trace=openat`:
+
+| | `9a8cf0b` | `e3f7f061e` | `5897690cd` |
+|---|---|---|---|
+| `.mxunit` opens, one `describe page` | 116 | 31 (#1801) | **1** |
+| `.mxunit` opens, `refresh catalog full source force` | 14,211 | 441 | 441 |
+
+116× fewer opens for the single most common interactive command, in two steps a
+day apart.
+
+### The incremental rebuild now has two layers
+
+PR 1802 (#70) **merged**, and #1804 added a unit-level filter above it. The two
+report separately:
+
+```
+✓ source: 4 reused, 40 described: 40
+✓ incremental: 42 units rebuilt, 411 carried over: 42
+```
+
+The `4 reused` looks alarming beside PR 1802's `139 reused` on the same edit,
+and it is not a regression: the denominators differ. The unit layer carries over
+411 of 453 units first, so only 44 documents reach the describe stage at all.
+Net work went **down** — 40 described against PR 1802's 43 — and the rebuild is
+faster (1.84 s against 2.46 s).
+
+### Re-verified across the same eight edits
+
+The same matrix as #70 — no-op, flow body, entity attribute, page property,
+rename, folder move, drop, enumeration value — comparing the incremental catalog
+against a forced full rebuild of the same state, all 84 tables:
+
+**Five tables differ on every edit that rebuilds**, and all five are
+semantically identical:
+
+| table | why it differs |
+|---|---|
+| `USER_ROLES`, `ROLE_MAPPINGS`, `PERMISSIONS`, `REFS` | the surrogate autoincrement `Id` only — incremental re-inserts, so roles come back as 3,4 where a full build has 1,2. Row counts match and every other column matches. These tables join by **name**, not by `Id`, so nothing dangles. |
+| `GRAPH_MODULE_COUPLING` | item order *inside* the comma-joined `RefKinds` string: `member,datasource` against `datasource,member`. Same set, same `Edges` count. |
+
+With the `Id` column blanked, four are byte-identical. With the `RefKinds` items
+sorted, the fifth is too. **No stale row on any edit.**
+
+**A small real defect in that last one.** `RefKinds` is a set rendered as a
+string without sorting, so the same model yields different text depending on how
+the catalog was built. Two forced-full builds of the same state agree with each
+other, so this is specifically an incremental-vs-full difference, not run-to-run
+noise. It costs nothing at runtime and would be fixed by sorting the items; it
+matters only to someone diffing `GRAPH_*` output across builds, which is exactly
+what this document does. Not filed on its own — too small — but it is the reason
+a naive diff of this table reports a change that is not one.
+
+### `E015`: a String function compared with `empty`
+
+New in `efc539ec7` / `07a869ac7`. `trim()`, `toLowerCase()`, `toUpperCase()`,
+`substring()`, `replaceAll()` and `toString()` never return `empty` — for empty
+input they return `''` — so `trim($x) != empty` is **always true** and the
+decision never takes the branch the author meant.
+
+Verified in three directions on this project:
+
+| probe | `5897690cd` | `e3f7f061e` |
+|---|---|---|
+| `if trim($Game/DateLabel) != empty` | **warns** | silent (rule did not exist) |
+| `if trim($Game/DateLabel) != ''` | silent — correct form | silent |
+| `FeedbackModule.VAL_Feedback`, real Studio Pro code | **silent** | silent |
+
+The message is specific and carries the fix:
+
+```
+⚠ trim() never returns empty — for an empty input it returns '' — so this
+  comparison is always true.                                          [E015]
+    at Sudoku.PROBE_E015
+    → Compare with '' instead: trim(...) != ''
+```
+
+The third row is the interesting one. This project's `FeedbackModule` contains
+the exact guard idiom the rule's own history says the first version of E015
+flagged falsely:
+
+```
+if trim($Feedback/Subject) != empty and trim($Feedback/Subject) != '' then
+```
+
+The dead `empty` half is redundant, but the `''` comparison decides the branch,
+so the code is correct and a warning would be noise. `07a869ac7` teaches E015 to
+skip it — but only when the `''` guard is on the *same* call, which is the right
+line to draw. Confirmed silent on this project's real Studio Pro-authored flow,
+not just on a synthetic case.
+
+### Everything else held
+
+Battery identical to `e3f7f061e`: 20 of 20 page round-trip on pass 2, 50 of 50
+microflows, `mx check` 0 errors, lint 465 issues / 0 errors, `brain check` OK,
+44 of 44 tests. The batch also contains executor write-floor gates and a new
+`check` refusal for a list use of an association retrieve; neither fires on this
+project, which is on 11.13.0 and has no such retrieve. Recorded as untested here
+rather than as passing.
 
 ---
 
