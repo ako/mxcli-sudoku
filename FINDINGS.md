@@ -3115,7 +3115,7 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 72 — v0.29.0's two-layer incremental catalog | — | — | **new**, re-verified across 8 edits | holds |
 | 72 — `E015`, a new always-true-comparison warning | — | — | **new**, correct both ways | holds |
 | 73 — `CONV021`, change/create then commit as two activities | — | — | — | **new**, 20 true positives in this project |
-| 73 — `SEC013`, security level Off ignores every grant | — | — | — | **new**, 1 true positive in this project |
+| 73 — `SEC013`, security level Off ignores every grant | — | — | — | **new**, accurate — but **accepted, not a defect**: security is deliberately off |
 | lint total | 465 | 465 | 465 | **486** — all +21 from the two new rules above |
 | 71 — `check --references` misses the target of 9 of 11 statement forms | present | **new** | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11 caught**, no false positives |
 
@@ -6158,11 +6158,28 @@ level is `Off`, so everything it defines is inert:
 > can open every page and read every row, and no demo user is created
 
 Verified against `SHOW PROJECT SECURITY`: `Security Level: Off`,
-`Demo Users Enabled: true`. This is the most useful single warning this project
-has ever been given — it has accumulated 5 page grants, 51 flow grants and 2
-demo users across this whole document, and none of them do anything. That is a
-real defect in **this project**, not in mxcli, and it was invisible until a rule
-went looking for the combination.
+`Demo Users Enabled: true`. The rule is accurate: the project has accumulated 5
+page grants, 51 flow grants and 2 demo users across this whole document, and at
+level `Off` none of them do anything.
+
+**Resolved as accepted, 2026-11-18.** Asked about it, the owner's answer was
+that this is a Sudoku game with no data worth protecting, so security stays off
+deliberately. That is the right call for this project: `Off` is the development
+default, the app is a single-player puzzle with no accounts of its own, and the
+grants are inherited from the Marketplace modules rather than written here.
+
+So `SEC013` is a **true positive that is not a defect** — the rule found exactly
+what it looks for, and the answer is "yes, on purpose". Recorded here so later
+passes do not re-raise it: the expected state of this project is security `Off`
+with 1 `SEC013` warning standing, and that warning changing or disappearing is
+the thing worth noticing, not its presence.
+
+Worth separating the two halves of its message, though, because only one half is
+accepted. "Every user can open every page and read every row" is intended here.
+"No demo user is created" is a side effect nobody chose — `Demo Users Enabled`
+is `true` and two demo users are configured, so that part of the model is dead
+weight rather than a decision. Not worth changing for a game, but it is why the
+warning is not purely noise.
 
 ### Not reached
 
