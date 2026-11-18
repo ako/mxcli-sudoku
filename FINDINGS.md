@@ -3094,7 +3094,7 @@ a regression would be visible rather than silently overwritten — which is exac
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `9a8cf0b` + PR 1798 | `main @ e3f7f061e` | `e3f7f061e` + PR 1802 | `main @ 5897690cd` (v0.29.0) |
+| Finding | `main @ e3f7f061e` | `e3f7f061e` + PR 1802 | `main @ 5897690cd` (v0.29.0) | **nightly `3eadb56d6`** (v0.32.0+) |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
@@ -3102,25 +3102,28 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 56 — written widget nodes build to CE0463 | not re-measured | not re-measured | not re-measured | not re-measured |
 | `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
 | 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
-| page round-trip pass 1, pages reported `Unchanged` | 16 of 20 after the fix | 16 of 20 | 16 of 20 | 16 of 20 |
-| page round-trip pass 2 — the number that matters (#67) | **20 of 20** | 20 of 20 | 20 of 20 | 20 of 20 |
+| page round-trip pass 1, pages reported `Unchanged` | 16 of 20 | 16 of 20 | 16 of 20 | **17 of 20** — `Account_Overview` joined |
+| page round-trip pass 2 — the number that matters (#67) | 20 of 20 | 20 of 20 | 20 of 20 | 20 of 20 |
 | 65 — `fieldset`'s false `NOT SHOWN` note | fixed | fixed | fixed | fixed |
 | 65 — `make sync-mods` needs `rsync` | fixed ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed | fixed | fixed |
 | 66 — PR 1497's BSON v1 → v2 migration | merged, no-op holds | merged, no-op holds | merged, no-op holds | merged, no-op holds |
-| 10 — `alter entity … add attribute` not re-runnable | open | open, but **exec now rolls back** — 0 files changed on abort | same | same |
-| 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | **project fixed** | fixed, stays fixed | fixed | fixed |
-| 68 — PR 1798's source catalog build | **new**, 32× fewer opens | **MERGED** into main | merged | merged |
-| a single `describe` — `.mxunit` files opened | 116 | **31** (#1801) | 31 | **1** (#1804) — 116× fewer than `9a8cf0b` |
-| 70 — PR 1802's incremental source rebuild | — | — | **new**, verified across 8 edit kinds | **MERGED**, plus a unit-level layer (#1804) |
-| 72 — v0.29.0's two-layer incremental catalog | — | — | — | **new**, re-verified across the same 8 edits |
-| 72 — `E015`, a new always-true-comparison warning | — | — | — | **new**, true positive and the guard idiom both correct |
-| 71 — `check --references` misses the target of 9 of 11 statement forms | present | present | **new** | open, reported as [#1821](https://github.com/ako/mxcli/issues/1821) |
+| 10 — `alter entity … add attribute` not re-runnable | open, but **exec now rolls back** | same | same | same — still the 4 re-run collisions |
+| 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | fixed, stays fixed | fixed | fixed | fixed |
+| 68 — PR 1798's source catalog build | **MERGED** into main | merged | merged | merged — now **436 opens for 436 units**, 1.00 per unit |
+| a single `describe` — `.mxunit` files opened | **31** (#1801) | 31 | **1** (#1804) | **0** — served entirely from the index |
+| 70 — PR 1802's incremental source rebuild | — | **new**, verified across 8 edit kinds | **MERGED** + unit layer (#1804) | merged; incremental rebuild **2× faster again** (1.55 s → 0.82 s) |
+| 72 — v0.29.0's two-layer incremental catalog | — | — | **new**, re-verified across 8 edits | holds |
+| 72 — `E015`, a new always-true-comparison warning | — | — | **new**, correct both ways | holds |
+| 73 — `CONV021`, change/create then commit as two activities | — | — | — | **new**, 20 true positives in this project |
+| 73 — `SEC013`, security level Off ignores every grant | — | — | — | **new**, 1 true positive in this project |
+| lint total | 465 | 465 | 465 | **486** — all +21 from the two new rules above |
+| 71 — `check --references` misses the target of 9 of 11 statement forms | present | **new** | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11 caught**, no false positives |
 
-`5897690cd` (v0.29.0) carries 40 non-merge commits over `e3f7f061e` and measures
-identically on every correctness row: no refusals, 20 of 20 on pass 2, 50 of 50
-microflows, `mx check` 0 errors, lint 465/0 errors, 44 of 44 tests. Nothing in
-that batch regressed anything this project can see. The movement is performance
-(#1804) and one new warning rule (#72).
+The nightly `3eadb56d6` carries **544 non-merge commits** over `5897690cd`, across
+three releases (v0.30.0, v0.31.0, v0.32.0) — by far the largest hop this document
+has measured. Nothing regressed. Every correctness row held, one improved, the
+performance rows improved again, and the one issue this project filed upstream
+([#1821](https://github.com/ako/mxcli/issues/1821)) came back fixed. Full write-up in #73.
 
 Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
 large cluster of describe-round-trip commits and `c289c6e25` adds one more
@@ -6038,6 +6041,136 @@ microflows, `mx check` 0 errors, lint 465 issues / 0 errors, `brain check` OK,
 `check` refusal for a list use of an association retrieve; neither fires on this
 project, which is on 11.13.0 and has no such retrieve. Recorded as untested here
 rather than as passing.
+
+---
+
+## 73. The nightly, 544 commits on: #1821 fixed, a describe opens no files at all, and two new rules that are right about this project
+
+> **The largest hop measured here — three releases — with no regressions.** All
+> eleven forms of #1821 now caught, with no false positives. A single `describe`
+> opens **0** unit files. Two new lint rules add 21 warnings, and every one of
+> them is a true positive on real code.
+
+Build under test: the **`nightly` tag**, `3eadb56d6` (2026-11-17). Main HEAD was
+one day further on (`c4666c2f0`), which the hook had built; the nightly is what
+was asked for, so the nightly is what was measured.
+
+**A trap worth recording first.** `git fetch --tags origin` left the `nightly`
+tag pointing at `1d0fc4f41` from 2026-10-29 — *older* than the build already
+measured here. Git does not move an existing tag ref on a plain fetch, and
+nothing warns you. Only `git fetch --tags --force` moved it to the real tip:
+
+```
+before --force:  1d0fc4f41  2026-10-29
+after  --force:  3eadb56d6  2026-11-17
+```
+
+Reading the stale tag would have "verified the nightly" against a three-week-old
+commit and reported it as current. The same class of mistake as the shallow-clone
+graft in #51's aftermath: **a ref that resolves is not the same as a ref that is
+current.**
+
+### Nothing regressed across 544 commits
+
+| | `5897690cd` | nightly `3eadb56d6` |
+|---|---|---|
+| page round-trip pass 1 | 16 of 20 | **17 of 20** |
+| page round-trip pass 2 (#67) | 20 of 20 | 20 of 20 |
+| microflow round-trip | 50 of 50 | 50 of 50 |
+| gates (`mdl 2` / `mdl 1` / parse) | 0 | 0 |
+| `mx check` | 0 errors | 0 errors |
+| lint | 465, 0 errors | 486, 0 errors |
+| `brain check` | OK | OK |
+| tests | 44 of 44 | 44 of 44 |
+
+The pass-1 gain is `Administration.Account_Overview` joining the lossless set;
+nothing left it. Per #67 that number is cosmetic, but it moves in the right
+direction and pass 2 stayed at 20 of 20.
+
+### #1821 is fixed, and fixed the way the issue asked
+
+Filed on 2026-10-30: `check --references` validated the statement's own target
+document for only `alter entity` and `alter page`. On the nightly, all eleven
+forms are caught:
+
+| statement | at filing | nightly |
+|---|---|---|
+| `alter entity`, `alter page` | caught | caught |
+| `alter enumeration`, `alter microflow` | missed | **caught** |
+| `drop microflow` / `page` / `entity` / `enumeration` / `association` | missed | **caught** |
+| `rename microflow`, `move microflow` | missed | **caught** |
+
+It also adopted the message style the issue held up as the model — the
+construct that referenced it, plus what the module actually has, now with
+sensible truncation:
+
+```
+statement 1: microflow not found: Sudoku.NoSuch (referenced by drop microflow)
+  — Sudoku has ACT_ApplyValue, ACT_ClearValue, ACT_DealGame, ACT_DealMix,
+    ACT_Hint, ACT_LogMove, ACT_MarkPeers, ACT_NewDiagonal and 42 more
+```
+
+**Controlled for over-catching**, because a gate that suddenly catches
+everything is the suspicious kind of fix. A valid `drop`, `rename`, `move` and
+`alter enumeration` against documents that *do* exist all still pass, and the
+project's own 11 `mdlsource/` scripts report only the four re-run collisions of
+#10 — the same four as always, no new noise.
+
+### Performance improved again
+
+| | `9a8cf0b` | `5897690cd` | nightly |
+|---|---|---|---|
+| `.mxunit` opens, one `describe page` | 116 | 1 | **0** |
+| `.mxunit` opens, full source build | 14,211 | 441 | **436** (= 436 units, 1.00 each) |
+| full source build | — | 4.4 s | **3.2 s** |
+| incremental rebuild after one edit | — | 1.55 s | **0.82 s** |
+
+A describe now opens no unit file at all — it is served entirely from the index —
+and the full build has reached exactly one read per unit, which is the floor.
+The incremental rebuild halved again, and still reports the same two layers
+(`source: 4 reused, 40 described`, `incremental: 42 units rebuilt, 412 carried
+over`).
+
+### Two new lint rules, both right about this project
+
+All 21 new warnings come from two rules, and neither is noise:
+
+**`CONV021` (CreateChangeThenCommit) — 20 occurrences.** A create or change
+activity immediately followed by a commit of the same object, where one activity
+with `Commit` set does both. Spot-checked against the stored model rather than
+trusting the count — `ACT_ApplyValue` really is adjacent:
+
+```
+36:  change $Cell (Value = $Digit, N1 = false, …) refresh;
+37:  commit $Cell without events refresh;
+```
+
+The remedy it prints is exact MDL: `change $Cell (…) commit without events
+refresh;`. Twenty flows in `03-microflows-engine.mdl` are shaped this way.
+**Not acted on** — collapsing 20 flows is a refactor, not a verification, and
+nobody asked for it. Recorded as available work.
+
+**`SEC013` (SecurityLevelIgnoresRules) — 1 occurrence.** The project's security
+level is `Off`, so everything it defines is inert:
+
+> Security level is Off, so the runtime ignores the project's 5 pages granted to
+> roles, 51 microflows or nanoflows granted to roles, 2 demo users: every user
+> can open every page and read every row, and no demo user is created
+
+Verified against `SHOW PROJECT SECURITY`: `Security Level: Off`,
+`Demo Users Enabled: true`. This is the most useful single warning this project
+has ever been given — it has accumulated 5 page grants, 51 flow grants and 2
+demo users across this whole document, and none of them do anything. That is a
+real defect in **this project**, not in mxcli, and it was invisible until a rule
+went looking for the combination.
+
+### Not reached
+
+The batch contains far more than one project can exercise. Business-event
+contract refusals, Kafka/CDC proposals, new `CE0023` / `CE0295` / `CE0002`
+refusals and the K2 migration skills are all untouched here — this project has
+no business events, no mappings and no OData. Recorded as untested rather than
+as passing.
 
 ---
 

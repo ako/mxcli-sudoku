@@ -32,7 +32,7 @@ this page.
 | `PLUGGABLEWIDGET` | [SPRINTRFEEDBACK](sprintrfeedback.md) | `SprintrFeedbackWidget.SprintrFeedback` | Feedback | 13 |
 | `PLUGGABLEWIDGET` | [STARRATING](starrating.md) | `com.mendix.widget.custom.starrating.StarRating` | Rating | 6 |
 | `PLUGGABLEWIDGET` | [SWITCH](switch.md) | `com.mendix.widget.custom.switch.Switch` | Switch | 2 |
-| `PLUGGABLEWIDGET` | [FEEDBACK](feedback.md) | `com.mendix.widget.native.feedback.Feedback` | Feedback | 0 |
+| `PLUGGABLEWIDGET` | [NATIVEFEEDBACK](nativefeedback.md) | `com.mendix.widget.native.feedback.Feedback` | Feedback | 0 |
 | `PLUGGABLEWIDGET` | [ACCESSIBILITYHELPER](accessibilityhelper.md) | `com.mendix.widget.web.accessibilityhelper.AccessibilityHelper` | Accessibility helper | 3 |
 | `PLUGGABLEWIDGET` | [ACCORDION](accordion.md) | `com.mendix.widget.web.accordion.Accordion` | Accordion | 10 |
 | `PLUGGABLEWIDGET` | [BARCODESCANNER](barcodescanner.md) | `com.mendix.widget.web.barcodescanner.BarcodeScanner` | Barcode Scanner | 10 |
