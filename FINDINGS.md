@@ -3114,7 +3114,7 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 70 — PR 1802's incremental source rebuild | — | **new**, verified across 8 edit kinds | **MERGED** + unit layer (#1804) | merged; incremental rebuild **2× faster again** (1.55 s → 0.82 s) |
 | 72 — v0.29.0's two-layer incremental catalog | — | — | **new**, re-verified across 8 edits | holds |
 | 72 — `E015`, a new always-true-comparison warning | — | — | **new**, correct both ways | holds |
-| 73 — `CONV021`, change/create then commit as two activities | — | — | — | **new**, 20 true positives in this project |
+| 73 — `CONV021`, change/create then commit as two activities | — | — | — | **new**, 20 true positives — **all fixed, see #74** |
 | 73 — `SEC013`, security level Off ignores every grant | — | — | — | **new**, accurate — but **accepted, not a defect**: security is deliberately off |
 | lint total | 465 | 465 | 465 | **486** — all +21 from the two new rules above |
 | 71 — `check --references` misses the target of 9 of 11 statement forms | present | **new** | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11 caught**, no false positives |
@@ -6146,9 +6146,8 @@ trusting the count — `ACT_ApplyValue` really is adjacent:
 ```
 
 The remedy it prints is exact MDL: `change $Cell (…) commit without events
-refresh;`. Twenty flows in `03-microflows-engine.mdl` are shaped this way.
-**Not acted on** — collapsing 20 flows is a refactor, not a verification, and
-nobody asked for it. Recorded as available work.
+refresh;`. Twenty sites across 13 flows are shaped this way. Not acted on in
+that pass — a refactor is not a verification — and **fixed in #74** once asked.
 
 **`SEC013` (SecurityLevelIgnoresRules) — 1 occurrence.** The project's security
 level is `Off`, so everything it defines is inert:
@@ -6188,6 +6187,124 @@ contract refusals, Kafka/CDC proposals, new `CE0023` / `CE0295` / `CE0002`
 refusals and the K2 migration skills are all untouched here — this project has
 no business events, no mappings and no OData. Recorded as untested rather than
 as passing.
+
+---
+
+## 74. Folding `CONV021`'s 20 create/change-then-commit pairs: 20 → 0, and what the splice refused
+
+> **Done: `CONV021` 20 → 0, `mx check` 0 errors, 44 of 44 tests, flow layout
+> untouched.** Two of the twenty needed more than the obvious edit, and the
+> interesting part is which two and why.
+
+`CONV021` flags a create or change activity immediately followed by a commit of
+the same object, where one activity with `Commit` set does both. 20 sites across
+13 flows, all in `mdlsource/03-microflows-engine.mdl`,
+`04-microflows-moves.mdl` and `09-test-helpers.mdl`.
+
+**The mechanical part.** The grammar allows the modifier on the activity itself:
+
+```
+CHANGE $Obj (Attr = value) [COMMIT [WITHOUT EVENTS]] [REFRESH];
+$Obj = CREATE Module.Entity (Attr = value) [COMMIT [WITHOUT EVENTS]] [REFRESH];
+```
+
+So each pair folds by moving `commit without events [refresh]` onto the
+preceding statement and deleting the commit line. Written as a script rather
+than 20 hand edits, because the statements span up to ten lines each and the
+edit is positional.
+
+**The script was wrong twice before it was right**, and both mistakes are the
+kind that would have shipped quietly:
+
+| attempt | folds | what was wrong |
+|---|---|---|
+| 1 | **17** | A comment line between a statement and its start broke the "find the statement's first line" walk, so three multi-line sites were skipped. Under-folding is visible — 17 ≠ 20 — so it self-reported. |
+| 2 | **23** | Relaxing the boundary check let the walk step *past* `end if;` and fold onto a conditional's terminator, producing the nonsense `end if commit without events;` for three sites whose change sits **inside** an `if`. Over-folding would have corrupted three flows. |
+| 3 | **20** | Added a contiguity test: every line between the statement's start and the commit must be a continuation (none ending a statement, none a block keyword), and the parentheses must balance across the span, with quoted text blanked first so apostrophes in `'Pick a square, then tap a number.'` do not count. |
+
+The count was the control throughout: `CONV021` said 20, I had derived 20 by
+hand from the source, and only attempt 3 produced 20 **and** the same 20. A
+script that agrees with the tool on the total but not on the set would have
+looked finished.
+
+### The two sites that were not mechanical
+
+**1. `ACT_DealMix` — the splice refused the change.** One folded create sits
+inside an `if` inside a `while`, and `create or modify microflow` would not
+write it:
+
+```
+✗ exec would refuse this statement: … the While at (2525, 1025) changes inside
+  its body: a decision in it (the If at (750, 80)) is changed or taken out;
+  inside a loop body the splice inserts, drops and replaces plain activities
+  only — not a decision, a loop, a return, break or continue …   [MDL-V1-REBUILD]
+```
+
+The message names three remedies and ranks them, which is the useful part: a
+full rebuild would reset positions, curves and element IDs; dropping and
+recreating rewrites the flow on every run; and the surgical option is
+`replace body of while`, which keeps the loop's element ID, position, iterator
+and condition and rebuilds only its body. Took the surgical one, extracting the
+59-line body straight out of the edited source rather than retyping it. Worth
+noting the refusal is right: this is exactly the "a gate answers the question it
+was built for" pattern from #67, except here the gate protected the flow's
+layout from an edit that looked trivial.
+
+**2. `ACT_SelectCell` — I had classified it as not foldable, and the linter was
+right.** Reading the source, the commit's previous *statement* is a `set`:
+
+```
+change $Game ("SelRow" = …, "SelEditable" = $Cell/"IsEditable");
+set $Game/Sudoku."Game_SelectedCell" = $Cell;
+commit $Game without events refresh;
+```
+
+So a text-adjacency rule says "not a change, skip it". But `set $Obj/Assoc = $X`
+**is** a Change object activity on `$Game`, so in the flow the commit's previous
+activity is a change of the same object and `CONV021` fires correctly. The fix
+folds all three into one activity by moving the association into the change:
+
+```
+change $Game (…, Sudoku."Game_SelectedCell" = $Cell) commit without events refresh;
+```
+
+**The lesson, and it is the same one as #67 in a new costume:** my classifier
+read the *source text*; the linter reads the *flow*. Those disagree wherever MDL
+sugar compiles to an activity — a `set` on an association here. The rule found
+one I would have left behind, which is the best argument for the rule.
+
+### Result
+
+| | before | after |
+|---|---|---|
+| `CONV021` | 20 | **0** |
+| `CONV010` — non-UI activity in an `ACT_` flow | 335 | 316 (−19) |
+| `CONV009` — flow over 15 activities | 15 | 14 (−1) |
+| lint total | 486 | **446**, 0 errors |
+| `mx check` | 0 errors | 0 errors |
+| tests | 44 of 44 | 44 of 44 |
+| page round-trip pass 2 | 20 of 20 | 20 of 20 |
+| `MPR008` / `MPR011` | 2 / 13 | **2 / 13** — layout untouched |
+
+The lint total fell by 40, twice what was changed, so it was worth accounting
+for the other 20 before believing it: removing 21 commit activities removes 19
+`CONV010` instances (a commit is not a UI action, and these are `ACT_` flows)
+and drops one flow under `CONV009`'s 15-activity threshold. Both are honest
+consequences of deleting activities, not suppression — checked by diffing
+rule-code counts rather than reading the total.
+
+Flow layout is byte-identical in its lint signature (2 `MPR008`, 13 `MPR011`,
+the same counts as before and still the two false-ish overlaps of
+[#684](https://github.com/ako/mxcli/issues/684)), which is what the splice and
+the `replace body of while` promised. The running app picked the change up as
+build #3 via reload and still serves 200.
+
+**The migration script is not in the repo.** `mdlsource/` now holds the folded
+form, so a replay from scratch produces the right model and needs nothing extra.
+The `replace body of while` script was only needed to move an *already built*
+model across, and anyone replaying `03-microflows-engine.mdl` onto a pre-fold
+`.mpr` will meet the same `MDL-V1-REBUILD` refusal and the same three remedies
+printed with it.
 
 ---
 
