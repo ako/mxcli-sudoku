@@ -3116,8 +3116,8 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 72 — `E015`, a new always-true-comparison warning | — | **new**, correct both ways | holds | holds |
 | 73 — `CONV021`, change/create then commit as two activities | — | — | **new**, 20 true positives | **0 — fixed in #74** |
 | 73 — `SEC013`, security level Off ignores every grant | — | — | **new** | accepted, not a defect — security is deliberately off |
-| 75 — `verify`, a single regression gate | — | — | — | **new command**, verified: silent on 451 known, catches 1 new |
-| 75 — `verify` drops the lint stage's resolved count | — | — | — | **new defect**: `lint` says "1 fixed", verify's JSON says `resolved: 0` |
+| 75 — `verify`, a single regression gate | — | — | — | **new command**, verified — and **adopted** as `scripts/verify.sh` |
+| 75 — `verify` drops the lint stage's resolved count | — | — | — | **new defect**, filed as [#2506](https://github.com/ako/mxcli/issues/2506) |
 | 75 — `MDL108`, dropping a member a document still uses | — | — | — | **new**, names all 7 users and the exact mxbuild errors |
 | 75 — `MPR019`, unindexed XPath constraint | — | — | — | **new**, 5 info — rates itself "a candidate, not a defect" |
 | lint total | 465 | 465 | 486 → **446** after #74 | **451** — +5, all `MPR019` info |
@@ -6403,7 +6403,14 @@ help points a pipeline at, and a consumer reading it cannot tell that a change
 stale and should be re-recorded, and it is the only positive number the gate
 produces — everything else it reports is damage. Low severity, no wrong gate
 decision results from it, but it is a real gap between what the tool computes
-and what it hands over. **Not filed yet.**
+and what it hands over.
+
+**Filed as [#2506](https://github.com/ako/mxcli/issues/2506).** Checked against
+the existing `verify` work first: this is not [#2458](https://github.com/ako/mxcli/issues/2458),
+which fixed what `fixed` *means* for a lint baseline (recording which rules ran,
+so a rule that did not run is not counted as fixed) — here the computation is
+right and only the propagation is missing. Related to #2479 and the gate's
+umbrella issue #2333 as the same reporting surface.
 
 ### `MDL108`: dropping a member a document still uses
 
@@ -6438,6 +6445,57 @@ For an 81-cell board that is exactly right, which is why these land as `info`
 and why no action is taken. A rule that knows the limits of its own advice is
 rarer than it should be; noting it here as the counter-example to #63, where the
 message named a replacement that changed the meaning.
+
+### Adopted: `verify` is now this project's gate
+
+Three findings' worth of hand-rolled sweeping retired in favour of the tool.
+
+- **`Sudoku/verify-baseline/` is recorded and committed** — 451 findings from 64
+  rules, and 0 `mx check` errors. The baseline now holds this project's accepted
+  state *mechanically* rather than in prose, which closes a loop opened two
+  findings ago: `SEC013` (security `Off` on purpose, #73) is in it, so it stops
+  being re-raised on every pass. A deliberate change re-records with
+  `--update-baseline`, which refuses to absorb new `mx check` errors unless
+  `--accept-errors` says so, so a baseline cannot quietly bless a broken model.
+- **`scripts/verify.sh`** is the committed gate. Stage 1 is `mxcli verify` at
+  `--fail-on warning` — deliberate, because the baseline already absorbs every
+  standing warning, so any warning it reports is one the change introduced.
+  Stage 2 is what `verify` does not cover and this document does: the page round
+  trip over **two** passes (#67), the microflow round trip, the 44 unit tests and
+  `brain check`. Full run ~1m47s; `--quick` is stage 1 only, in seconds.
+- **`Sudoku/CLAUDE.md`** documents it, and the "always validate" line now points
+  at the gate as well as at `check` — `check` proves a script parses and
+  resolves, the gate proves the change did not break the project.
+
+It reproduces the hand-rolled numbers exactly: pass 1 17 of 20, pass 2 **20 of
+20**, microflows 50 of 50, tests 44 of 44, brain OK, lint `0 new, 451
+pre-existing`.
+
+**Proven in both directions, because a gate that cannot fail is worthless:**
+
+| probe | result |
+|---|---|
+| a new empty microflow (one new `MPR002`) | **exit 18**, names it, stops before stage 2 |
+| a script naming a microflow that does not exist | **exit 17** (`16+1`, check) |
+| both at once | **exit 19** (`16+1+2`) — the bits compose, which I only learned by predicting 17 and getting 19 |
+| probe reverted | exit 0, `0 new, 451 pre-existing` |
+
+That 19 is worth recording as a small lesson in reading one's own expectations:
+I called it a mismatch for a moment before noticing the first probe was still in
+the project, so check *and* lint were failing together and the exit code said so
+precisely.
+
+**Probe hygiene.** The add/drop cycle left `Sudoku.mpr` modified with zero
+`mprcontents` changes — metadata churn only, same byte size — so it was restored
+to `HEAD` rather than committed, and `ACT_Probe` is absent and `mx check` clean
+afterwards. Worth checking rather than assuming: a stray probe flow committed
+into the model would have been a silly thing to find three passes later.
+
+**One stale line left alone.** `Sudoku/CLAUDE.md`'s "Important: mxcli Location"
+still says to call `./mxcli` from the project root, and there is no such binary
+in this environment — `mxcli` is on `PATH`, which is what `scripts/run-app.sh`
+and the new gate both use. Pre-existing and outside what was asked, so noted
+here rather than silently rewritten.
 
 ### Not reached
 

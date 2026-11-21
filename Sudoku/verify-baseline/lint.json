@@ -1,0 +1,2800 @@
+{
+  "version": 1,
+  "rules": [
+    "ARCH001",
+    "ARCH002",
+    "ARCH003",
+    "CONV001",
+    "CONV002",
+    "CONV003",
+    "CONV004",
+    "CONV005",
+    "CONV006",
+    "CONV007",
+    "CONV008",
+    "CONV009",
+    "CONV010",
+    "CONV011",
+    "CONV012",
+    "CONV013",
+    "CONV014",
+    "CONV015",
+    "CONV016",
+    "CONV017",
+    "CONV020",
+    "CONV021",
+    "CUSTOM001",
+    "CUSTOM002",
+    "DESIGN001",
+    "MDL-FLOW01",
+    "MDL-MAP04",
+    "MPR001",
+    "MPR002",
+    "MPR003",
+    "MPR004",
+    "MPR005",
+    "MPR006",
+    "MPR007",
+    "MPR008",
+    "MPR009",
+    "MPR010",
+    "MPR011",
+    "MPR012",
+    "MPR013",
+    "MPR014",
+    "MPR015",
+    "MPR016",
+    "MPR017",
+    "MPR018",
+    "MPR019",
+    "QUAL001",
+    "QUAL002",
+    "QUAL003",
+    "QUAL004",
+    "QUAL006",
+    "SEC001",
+    "SEC002",
+    "SEC003",
+    "SEC004",
+    "SEC005",
+    "SEC006",
+    "SEC007",
+    "SEC008",
+    "SEC009",
+    "SEC010",
+    "SEC011",
+    "SEC012",
+    "SEC013"
+  ],
+  "config": "4547f00a92b4a203",
+  "findings": [
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N1' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N2' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N3' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N4' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N5' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N6' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N7' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N8' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Cell.N9' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Game.NotesMode' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV001",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Boolean attribute 'Game.SelEditable' should start with Is, Has, Can, Should, Was, or Will"
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Attribute 'Cell.Col' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Attribute 'Cell.Row' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Attribute 'Cell.SolutionValue' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.BarBucket' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.ElapsedSeconds' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.EmptyCount' has default value '81'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.ErrorCount' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.FilledCount' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.GivenCount' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.HintCount' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.MaxSeq' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.MoveSeq' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.ProgressBucket' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining1' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining2' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining3' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining4' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining5' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining6' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining7' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining8' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.Remaining9' has default value '9'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.SelBox' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.SelCol' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Attribute 'Game.SelRow' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV002",
+      "document": "Sudoku.Move",
+      "documentType": "Entity",
+      "message": "Attribute 'Move.Seq' has default value '0'. Use a BCR_ microflow to set defaults instead."
+    },
+    {
+      "rule": "CONV003",
+      "document": "MyFirstModule.Home_Web",
+      "documentType": "Page",
+      "message": "Page 'Home_Web' does not end with a recognized suffix (_NewEdit, _View, _Overview, _Select, _Details, _Dashboard)"
+    },
+    {
+      "rule": "CONV003",
+      "document": "Sudoku.Game_Done",
+      "documentType": "Page",
+      "message": "Page 'Game_Done' does not end with a recognized suffix (_NewEdit, _View, _Overview, _Select, _Details, _Dashboard)"
+    },
+    {
+      "rule": "CONV003",
+      "document": "Sudoku.Game_Mix",
+      "documentType": "Page",
+      "message": "Page 'Game_Mix' does not end with a recognized suffix (_NewEdit, _View, _Overview, _Select, _Details, _Dashboard)"
+    },
+    {
+      "rule": "CONV003",
+      "document": "Sudoku.Game_Play",
+      "documentType": "Page",
+      "message": "Page 'Game_Play' does not end with a recognized suffix (_NewEdit, _View, _Overview, _Select, _Details, _Dashboard)"
+    },
+    {
+      "rule": "CONV003",
+      "document": "Sudoku.Home",
+      "documentType": "Page",
+      "message": "Page 'Home' does not end with a recognized suffix (_NewEdit, _View, _Overview, _Select, _Details, _Dashboard)"
+    },
+    {
+      "rule": "CONV004",
+      "document": "Sudoku.Difficulty",
+      "documentType": "Enumeration",
+      "message": "Enumeration 'Difficulty' does not start with ENUM_ prefix"
+    },
+    {
+      "rule": "CONV004",
+      "document": "Sudoku.GameStatus",
+      "documentType": "Enumeration",
+      "message": "Enumeration 'GameStatus' does not start with ENUM_ prefix"
+    },
+    {
+      "rule": "CONV004",
+      "document": "Sudoku.Variant",
+      "documentType": "Enumeration",
+      "message": "Enumeration 'Variant' does not start with ENUM_ prefix"
+    },
+    {
+      "rule": "CONV008",
+      "document": "ProjectSecurity",
+      "documentType": "security",
+      "message": "Module role 'MyFirstModule.User' is mapped to 2 user roles: Administrator, User. Each module role should map to exactly one user role."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_DealGame' has 32 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_DealMix' has 34 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_Refresh' has 46 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_SelectCell' has 27 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_SolveGrid' has 42 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_ToggleNote' has 23 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_BlankSquares",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_BlankSquares' has 19 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_RepairToSolvable",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_RepairToSolvable' has 37 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_ShuffleSolution",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolution' has 22 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_ShuffleSolutionJ",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolutionJ' has 28 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_ShuffleSolutionMix",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolutionMix' has 28 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_ShuffleSolutionX",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolutionX' has 22 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.SUB_ValidateGrid",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ValidateGrid' has 26 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV009",
+      "document": "Sudoku.TST_GenMixValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenMixValid' has 17 activities (convention max: 15). Split into sub-microflows."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ApplyValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ApplyValue' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ClearValue",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ClearValue' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CommitObjectsAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateListAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealGame' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_DealMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Hint",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Hint' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'CreateObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'DeleteObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_LogMove",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_LogMove' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'CommitObjectsAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'CreateListAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_MarkPeers",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_MarkPeers' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewDiagonal",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewDiagonal' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewDiagonal",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewDiagonal' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewDiagonal",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewDiagonal' contains 'ShowPageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewEasy",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewEasy' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewEasy",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewEasy' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewEasy",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewEasy' contains 'ShowPageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewHard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewHard' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewHard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewHard' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewHard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewHard' contains 'ShowPageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewJigsaw",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewJigsaw' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewJigsaw",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewJigsaw' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewJigsaw",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewJigsaw' contains 'ShowPageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewMedium",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewMedium' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewMedium",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewMedium' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewMedium",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewMedium' contains 'ShowPageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewMix' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewMix' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_NewMix",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_NewMix' contains 'ShowPageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Redo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Redo' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CommitObjectsAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CommitObjectsAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateListAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Refresh' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'CommitObjectsAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'CreateListAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'DeleteObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ResetBoard",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ResetBoard' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SelectCell' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set1",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set1' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set1",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set1' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set2",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set2' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set2",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set2' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set3",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set3' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set3",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set3' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set4",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set4' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set4",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set4' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set5",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set5' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set5",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set5' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set6",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set6' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set6",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set6' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set7",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set7' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set7",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set7' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set8",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set8' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set8",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set8' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set9",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set9' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Set9",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Set9' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_SolveGrid' contains 'LoopedActivity' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'CommitObjectsAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNote' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNotes",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNotes' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNotes",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNotes' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNotes",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNotes' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_ToggleNotes",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_ToggleNotes' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'ChangeObjectAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'ChangeVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'CreateVariableAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'ExclusiveMerge' activity. Delegate to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'LogMessageAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'MicroflowCallAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV010",
+      "document": "Sudoku.ACT_Undo",
+      "documentType": "Microflow",
+      "message": "ACT_ microflow 'ACT_Undo' contains 'RetrieveAction' action. Delegate business logic to a SUB_ microflow."
+    },
+    {
+      "rule": "CONV011",
+      "document": "Sudoku.ACT_DealMix",
+      "documentId": "76374d2f-9033-4fd4-b9ac-1fa9cd0e9810",
+      "documentType": "microflow",
+      "message": "Microflow 'Sudoku.ACT_DealMix' has a Commit action inside a loop. This causes N+1 database operations."
+    },
+    {
+      "rule": "CONV011",
+      "document": "Sudoku.ACT_DealMix",
+      "documentId": "76374d2f-9033-4fd4-b9ac-1fa9cd0e9810",
+      "documentType": "microflow",
+      "message": "Microflow 'Sudoku.ACT_DealMix' has a Create object action with Commit enabled inside a loop. This causes N+1 database operations."
+    },
+    {
+      "rule": "CONV011",
+      "document": "Sudoku.TST_FixedGame",
+      "documentId": "e7d594c7-70e9-48a5-bd49-1b04f02926ad",
+      "documentType": "microflow",
+      "message": "Microflow 'Sudoku.TST_FixedGame' has a Commit action inside a loop. This causes N+1 database operations."
+    },
+    {
+      "rule": "CONV011",
+      "document": "Sudoku.TST_RefreshCounters",
+      "documentId": "ffbb1f32-3bb5-4b2a-89d4-78fccece79a3",
+      "documentType": "microflow",
+      "message": "Microflow 'Sudoku.TST_RefreshCounters' has a Commit action inside a loop. This causes N+1 database operations."
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "MyFirstModule.MyFirstLogic",
+      "documentType": "Microflow",
+      "message": "Microflow 'MyFirstLogic' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.NF_ToggleNotes",
+      "documentType": "Microflow",
+      "message": "Microflow 'NF_ToggleNotes' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_DealValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_DealValid' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_Describe",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_Describe' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_FixedGame",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_FixedGame' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_GenClassicValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenClassicValid' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_GenDiagonalValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenDiagonalValid' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_GenJigsawValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenJigsawValid' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_GenMixValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenMixValid' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_Hint",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_Hint' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_NoteMark",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_NoteMark' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_Play",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_Play' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_PlayThen",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_PlayThen' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_RefreshCounters",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_RefreshCounters' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "CUSTOM002",
+      "document": "Sudoku.TST_RepairSolvesBack",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_RepairSolvesBack' should start with a standard prefix (ACT_, SUB_, DS_, VAL_, SCH_, IVK_, OCH_)"
+    },
+    {
+      "rule": "DESIGN001",
+      "document": "Sudoku.Cell",
+      "documentType": "Entity",
+      "message": "Entity 'Cell' has 19 attributes (max: 10). Consider splitting into smaller entities."
+    },
+    {
+      "rule": "DESIGN001",
+      "document": "Sudoku.Game",
+      "documentType": "Entity",
+      "message": "Entity 'Game' has 36 attributes (max: 10). Consider splitting into smaller entities."
+    },
+    {
+      "rule": "MPR008",
+      "document": "Sudoku.ACT_DealGame",
+      "documentId": "d359e4fb-b6b8-4c06-a759-535f06aa5be1",
+      "documentType": "microflow",
+      "message": "Activities '(merge)' (2355,80) and '(merge)' (2360,80) overlap in microflow 'Sudoku.ACT_DealGame'. Each MDL statement that creates a canvas activity needs its own @position annotation."
+    },
+    {
+      "rule": "MPR008",
+      "document": "Sudoku.ACT_Refresh",
+      "documentId": "5e7b80bc-f563-4785-a8c6-6818d19ca51b",
+      "documentType": "microflow",
+      "message": "Activities '(merge)' (2815,1730) and '(unnamed)' (2740,1730) overlap in microflow 'Sudoku.ACT_Refresh'. Each MDL statement that creates a canvas activity needs its own @position annotation."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentId": "848d4a49-4b61-4d3b-ab1f-8a97d323c326",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (2455,80) lies outside the loop 'loop' that contains it (box 14305x860) in microflow 'Sudoku.ACT_SolveGrid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentId": "848d4a49-4b61-4d3b-ab1f-8a97d323c326",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (4712,80) lies outside the loop 'loop' that contains it (box 23619x1060) in microflow 'Sudoku.ACT_SolveGrid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentId": "848d4a49-4b61-4d3b-ab1f-8a97d323c326",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (630,80) lies outside the loop 'loop' that contains it (box 1260x335) in microflow 'Sudoku.ACT_SolveGrid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ShuffleSolution",
+      "documentId": "4b961557-efb8-400f-b842-78772cf7a953",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (2065,80) lies outside the loop 'loop' that contains it (box 4130x260) in microflow 'Sudoku.SUB_ShuffleSolution'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ShuffleSolution",
+      "documentId": "4b961557-efb8-400f-b842-78772cf7a953",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (3340,80) lies outside the loop 'loop' that contains it (box 6680x260) in microflow 'Sudoku.SUB_ShuffleSolution'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ShuffleSolution",
+      "documentId": "4b961557-efb8-400f-b842-78772cf7a953",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (3985,80) lies outside the loop 'loop' that contains it (box 6260x260) in microflow 'Sudoku.SUB_ShuffleSolution'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ShuffleSolutionJ",
+      "documentId": "63090987-867e-4b76-baf0-344f46d26534",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (1335,80) lies outside the loop 'loop' that contains it (box 2670x260) in microflow 'Sudoku.SUB_ShuffleSolutionJ'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ShuffleSolutionMix",
+      "documentId": "d292a2b5-2dcc-4002-a28f-b6cf27166581",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (925,80) lies outside the loop 'loop' that contains it (box 1850x260) in microflow 'Sudoku.SUB_ShuffleSolutionMix'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ShuffleSolutionX",
+      "documentId": "88452fe2-3fa7-461e-bd18-a725430e4ae5",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (1255,80) lies outside the loop 'loop' that contains it (box 2510x260) in microflow 'Sudoku.SUB_ShuffleSolutionX'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ValidateGrid",
+      "documentId": "996145a0-157f-46b3-af41-ac50bd2f7cf3",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (1242,80) lies outside the loop 'loop' that contains it (box 2735x335) in microflow 'Sudoku.SUB_ValidateGrid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ValidateGrid",
+      "documentId": "996145a0-157f-46b3-af41-ac50bd2f7cf3",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (765,80) lies outside the loop 'loop' that contains it (box 1370x260) in microflow 'Sudoku.SUB_ValidateGrid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.SUB_ValidateGrid",
+      "documentId": "996145a0-157f-46b3-af41-ac50bd2f7cf3",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (765,80) lies outside the loop 'loop' that contains it (box 1370x260) in microflow 'Sudoku.SUB_ValidateGrid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR011",
+      "document": "Sudoku.TST_GenMixValid",
+      "documentId": "97b5f210-f0e7-44db-872d-59f492f7d9e2",
+      "documentType": "microflow",
+      "message": "Activity '(unnamed)' at (525,80) lies outside the loop 'loop' that contains it (box 1050x260) in microflow 'Sudoku.TST_GenMixValid'. The flow renders wrong in Studio Pro; mx check does not detect this."
+    },
+    {
+      "rule": "MPR019",
+      "document": "Sudoku.Cell",
+      "documentType": "entity",
+      "message": "'Sudoku.Cell.Col' is filtered on by an XPath constraint (retrieve action in Sudoku.TST_Describe) and no index leads with it, so each query scans the table."
+    },
+    {
+      "rule": "MPR019",
+      "document": "Sudoku.Cell",
+      "documentType": "entity",
+      "message": "'Sudoku.Cell.Row' is filtered on by an XPath constraint (retrieve action in Sudoku.TST_Describe) and no index leads with it, so each query scans the table."
+    },
+    {
+      "rule": "MPR019",
+      "document": "Sudoku.Cell",
+      "documentType": "entity",
+      "message": "'Sudoku.Cell.Value' is filtered on by an XPath constraint (retrieve action in Sudoku.ACT_Hint) and no index leads with it, so each query scans the table."
+    },
+    {
+      "rule": "MPR019",
+      "document": "Sudoku.Game",
+      "documentType": "entity",
+      "message": "'Sudoku.Game.Status' is filtered on by an XPath constraint (widget in Sudoku.Game_Done) and no index leads with it, so each query scans the table."
+    },
+    {
+      "rule": "MPR019",
+      "document": "Sudoku.Move",
+      "documentType": "entity",
+      "message": "'Sudoku.Move.Seq' is filtered on by an XPath constraint (retrieve action in Sudoku.ACT_LogMove) and no index leads with it, so each query scans the table."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_DealGame' has complexity 15 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_DealMix' has complexity 11 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_Refresh' has complexity 24 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_SolveGrid' has complexity 57 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.ACT_ToggleNote",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_ToggleNote' has complexity 11 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.SUB_RepairToSolvable",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_RepairToSolvable' has complexity 21 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.SUB_ShuffleSolution",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolution' has complexity 13 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL001",
+      "document": "Sudoku.SUB_ValidateGrid",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ValidateGrid' has complexity 20 (max: 10). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.ACT_DealGame",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_DealGame' has 32 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.ACT_DealMix",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_DealMix' has 34 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.ACT_Refresh",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_Refresh' has 46 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.ACT_SelectCell",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_SelectCell' has 27 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.ACT_SolveGrid",
+      "documentType": "Microflow",
+      "message": "Microflow 'ACT_SolveGrid' has 42 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.SUB_RepairToSolvable",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_RepairToSolvable' has 37 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.SUB_ShuffleSolutionJ",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolutionJ' has 28 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.SUB_ShuffleSolutionMix",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ShuffleSolutionMix' has 28 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL003",
+      "document": "Sudoku.SUB_ValidateGrid",
+      "documentType": "Microflow",
+      "message": "Microflow 'SUB_ValidateGrid' has 26 activities (max: 25). Consider splitting into smaller microflows."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "MyFirstModule.MyFirstLogic",
+      "documentType": "Microflow",
+      "message": "Microflow 'MyFirstLogic' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.NF_ToggleNotes",
+      "documentType": "Microflow",
+      "message": "Microflow 'NF_ToggleNotes' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_DealValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_DealValid' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_Describe",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_Describe' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_GenClassicValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenClassicValid' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_GenDiagonalValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenDiagonalValid' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_GenJigsawValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenJigsawValid' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_GenMixValid",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_GenMixValid' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_Hint",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_Hint' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_NoteMark",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_NoteMark' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_PlayThen",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_PlayThen' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_RefreshCounters",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_RefreshCounters' is not called from anywhere."
+    },
+    {
+      "rule": "QUAL004",
+      "document": "Sudoku.TST_RepairSolvesBack",
+      "documentType": "Microflow",
+      "message": "Microflow 'TST_RepairSolvesBack' is not called from anywhere."
+    },
+    {
+      "rule": "SEC001",
+      "document": "Sudoku.Cell",
+      "documentId": "ffeb4502-e66d-4f19-8e53-25436b648095",
+      "documentType": "entity",
+      "message": "Persistent entity 'Sudoku.Cell' has no access rules"
+    },
+    {
+      "rule": "SEC001",
+      "document": "Sudoku.Game",
+      "documentId": "b5d6e347-676a-4574-8095-71ecab2c117b",
+      "documentType": "entity",
+      "message": "Persistent entity 'Sudoku.Game' has no access rules"
+    },
+    {
+      "rule": "SEC001",
+      "document": "Sudoku.Move",
+      "documentId": "fc618de7-949e-4cae-addb-03c5ed5f98a1",
+      "documentType": "entity",
+      "message": "Persistent entity 'Sudoku.Move' has no access rules"
+    },
+    {
+      "rule": "SEC013",
+      "document": "ProjectSecurity",
+      "documentType": "security",
+      "message": "Security level is Off, so the runtime ignores the project's 5 pages granted to roles, 51 microflows or nanoflows granted to roles, 2 demo users: every user can open every page and read every row, and no demo user is created"
+    }
+  ]
+}
