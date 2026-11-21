@@ -3094,7 +3094,7 @@ a regression would be visible rather than silently overwritten — which is exac
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ e3f7f061e` | `e3f7f061e` + PR 1802 | `main @ 5897690cd` (v0.29.0) | **nightly `3eadb56d6`** (v0.32.0+) |
+| Finding | `e3f7f061e` + PR 1802 | `main @ 5897690cd` (v0.29.0) | nightly `3eadb56d6` | **`main @ 8bf601162`** |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
@@ -3102,28 +3102,30 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 56 — written widget nodes build to CE0463 | not re-measured | not re-measured | not re-measured | not re-measured |
 | `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
 | 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
-| page round-trip pass 1, pages reported `Unchanged` | 16 of 20 | 16 of 20 | 16 of 20 | **17 of 20** — `Account_Overview` joined |
+| page round-trip pass 1, pages reported `Unchanged` | 16 of 20 | 16 of 20 | **17 of 20** | 17 of 20 |
 | page round-trip pass 2 — the number that matters (#67) | 20 of 20 | 20 of 20 | 20 of 20 | 20 of 20 |
 | 65 — `fieldset`'s false `NOT SHOWN` note | fixed | fixed | fixed | fixed |
-| 65 — `make sync-mods` needs `rsync` | fixed ([#1214](https://github.com/ako/mxcli/issues/1214)) | fixed | fixed | fixed |
+| 65 — `make sync-mods` needs `rsync` | fixed | fixed | fixed | fixed ([#1214](https://github.com/ako/mxcli/issues/1214)) |
 | 66 — PR 1497's BSON v1 → v2 migration | merged, no-op holds | merged, no-op holds | merged, no-op holds | merged, no-op holds |
-| 10 — `alter entity … add attribute` not re-runnable | open, but **exec now rolls back** | same | same | same — still the 4 re-run collisions |
+| 10 — `alter entity … add attribute` not re-runnable | **exec rolls back** | same | same | same — and `MDL108` now catches a drop still in use (#75) |
 | 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | fixed, stays fixed | fixed | fixed | fixed |
-| 68 — PR 1798's source catalog build | **MERGED** into main | merged | merged | merged — now **436 opens for 436 units**, 1.00 per unit |
-| a single `describe` — `.mxunit` files opened | **31** (#1801) | 31 | **1** (#1804) | **0** — served entirely from the index |
-| 70 — PR 1802's incremental source rebuild | — | **new**, verified across 8 edit kinds | **MERGED** + unit layer (#1804) | merged; incremental rebuild **2× faster again** (1.55 s → 0.82 s) |
-| 72 — v0.29.0's two-layer incremental catalog | — | — | **new**, re-verified across 8 edits | holds |
-| 72 — `E015`, a new always-true-comparison warning | — | — | **new**, correct both ways | holds |
-| 73 — `CONV021`, change/create then commit as two activities | — | — | — | **new**, 20 true positives — **all fixed, see #74** |
-| 73 — `SEC013`, security level Off ignores every grant | — | — | — | **new**, accurate — but **accepted, not a defect**: security is deliberately off |
-| lint total | 465 | 465 | 465 | **486** — all +21 from the two new rules above |
-| 71 — `check --references` misses the target of 9 of 11 statement forms | present | **new** | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11 caught**, no false positives |
+| 68 — PR 1798's source catalog build | merged | merged | **436 opens / 436 units** | holds |
+| a single `describe` — `.mxunit` files opened | 31 | **1** (#1804) | **0** | 0 |
+| 70 — PR 1802's incremental source rebuild | **new**, verified across 8 edits | merged + unit layer | **0.82 s** | holds |
+| 72 — v0.29.0's two-layer incremental catalog | — | **new** | holds | holds |
+| 72 — `E015`, a new always-true-comparison warning | — | **new**, correct both ways | holds | holds |
+| 73 — `CONV021`, change/create then commit as two activities | — | — | **new**, 20 true positives | **0 — fixed in #74** |
+| 73 — `SEC013`, security level Off ignores every grant | — | — | **new** | accepted, not a defect — security is deliberately off |
+| 75 — `verify`, a single regression gate | — | — | — | **new command**, verified: silent on 451 known, catches 1 new |
+| 75 — `verify` drops the lint stage's resolved count | — | — | — | **new defect**: `lint` says "1 fixed", verify's JSON says `resolved: 0` |
+| 75 — `MDL108`, dropping a member a document still uses | — | — | — | **new**, names all 7 users and the exact mxbuild errors |
+| 75 — `MPR019`, unindexed XPath constraint | — | — | — | **new**, 5 info — rates itself "a candidate, not a defect" |
+| lint total | 465 | 465 | 486 → **446** after #74 | **451** — +5, all `MPR019` info |
+| 71 — `check --references` misses the target of 9 of 11 statement forms | **new** | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11** | stays fixed |
 
-The nightly `3eadb56d6` carries **544 non-merge commits** over `5897690cd`, across
-three releases (v0.30.0, v0.31.0, v0.32.0) — by far the largest hop this document
-has measured. Nothing regressed. Every correctness row held, one improved, the
-performance rows improved again, and the one issue this project filed upstream
-([#1821](https://github.com/ako/mxcli/issues/1821)) came back fixed. Full write-up in #73.
+`8bf601162` carries 127 non-merge commits over `8da40b5a1`, and every correctness
+row held. The news is a **new command**, `verify`, which is the gate this document
+has been hand-rolling for 75 findings — tested in #75, along with one defect in it.
 
 Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
 large cluster of describe-round-trip commits and `c289c6e25` adds one more
@@ -6305,6 +6307,144 @@ The `replace body of while` script was only needed to move an *already built*
 model across, and anyone replaying `03-microflows-engine.mdl` onto a pre-fold
 `.mpr` will meet the same `MDL-V1-REBUILD` refusal and the same three remedies
 printed with it.
+
+---
+
+## 75. `verify` is this document's battery as one command — and it drops the one number that says you improved something
+
+> **The new `verify` command does what 75 findings of hand-rolled sweeping were
+> for, and it works.** Silent on 451 pre-existing findings, catches exactly the
+> one a change introduces, refuses to write when `check` fails, and records
+> accepted errors on purpose. One defect: the lint stage's "fixed" count is
+> computed, printed, and then dropped from both the stage summary and the JSON.
+
+Build under test: `main` at `8bf601162`, 127 non-merge commits over `8da40b5a1`.
+Every correctness row of the battery held — 20 of 20 page round-trip on pass 2,
+50 of 50 microflows, gates 0, `mx check` 0 errors, 44 of 44 tests, layout
+2 `MPR008` / 13 `MPR011`. Lint went 446 → 451, all five from one new info rule.
+
+### `verify`: one gate, reporting only what got worse
+
+```
+check     mxcli check on the scripts given as arguments
+exec      apply the scripts; only with --apply, and only if check passed
+lint      mxcli lint on the project, against its baseline
+mxcheck   mx check on a copy of the project, against its baseline
+```
+
+This is, almost line for line, the sequence this document has been running by
+hand since #51 — and the baseline-difference framing is the thing that was
+always missing. A project with 451 standing lint findings cannot use a raw lint
+count as a gate; only the delta means anything.
+
+Tested against this project's 451 findings:
+
+| what was run | result |
+|---|---|
+| no baseline recorded | reports all 451 as new, **and says so**: "no lint baseline …: every finding is reported as new; record one with `--update-baseline`" |
+| `--update-baseline` | `Recorded 451 finding(s) from 64 rule(s)`, exit 0 |
+| re-run, no change | **`0 new, 451 pre-existing`** — the claim, delivered |
+| `--apply` a script adding an empty microflow | **`1 new`**, 451 known; names it: `[warning] MPR002 ACT_VerifyProbe: Microflow 'ACT_VerifyProbe' has no activities` |
+| the same with `--fail-on warning` | `Result: FAILED (exit 18)` — and the real process exit **is** 18, matching the documented `16+2` bit scheme |
+| `--apply` a script with an unresolvable reference | `check FAILED`, then `exec`/`lint`/`mxcheck` all `SKIPPED — check failed; nothing was written`, exit 17; **437 `.mxunit` files before and after**, so nothing was written in fact, not just in the message |
+| `--update-baseline` while 9 real `mx check` errors stand | **refuses**, exit 2, listing the errors it would have accepted with full element paths, and ends "Fix them, or record them on purpose with `--accept-errors`" |
+| `--accept-errors` | records them: "accepted 9 error(s): they will not fail the gate again" |
+
+Two details worth singling out. The refusal to silently bless 9 errors into a
+baseline is the right default and the message does the whole job — it names what
+it would have accepted rather than just refusing. And the `check`-fails path was
+checked on disk, not taken on trust: the unit count is identical either side, so
+"nothing was written" is true.
+
+**A harness note on myself.** My first exit-code reading said 0 where the tool
+printed 18, which looked like a tool bug for about a minute. It was
+`echo "exit=$?"` after a pipe, reading `head`'s status, not mxcli's. Re-run
+without the pipe and the exit codes are exactly as documented. The lesson is the
+one from #71: **when a measurement disagrees with the tool's own words, suspect
+the measurement first.**
+
+### The defect: the lint stage's resolved count never arrives
+
+Remove a finding the baseline holds, and the lint baseline comparison notices:
+
+```
+$ mxcli lint -p Sudoku.mpr --baseline verify-baseline/lint.json
+0 new, 451 already known, 1 fixed
+```
+
+`verify` runs that same comparison and prints that same line. But its own stage
+summary and its JSON both lose the `1 fixed`:
+
+```
+Lint baseline verify-baseline/lint.json: 0 new, 451 already known, 1 fixed   <- passthrough
+  lint     PASSED   0 new, 451 pre-existing (358 warnings, 93 info)          <- no mention
+```
+```json
+{ "name": "lint", "status": "passed", "new": [], "resolved": 0, "preExisting": 451 }
+```
+
+**`mxcheck` is the control, and it proves the field is meant to be filled.**
+Dropping an attribute seven documents still use put 9 `CE1613` errors in a
+baseline; restoring the attribute gave:
+
+```
+  mxcheck  PASSED   0 new, 0 pre-existing, 9 resolved
+```
+```json
+{ "name": "mxcheck", "resolved": 9, "preExisting": 0 }
+```
+
+So `resolved` is wired for `mxcheck` and not for `lint`, while the lint number
+exists one line above in the same output. Reproducible across runs.
+
+Why it matters rather than being cosmetic: `verify --format json` is what the
+help points a pipeline at, and a consumer reading it cannot tell that a change
+*fixed* a baseline finding. That is the signal that says the baseline is now
+stale and should be re-recorded, and it is the only positive number the gate
+produces — everything else it reports is damage. Low severity, no wrong gate
+decision results from it, but it is a real gap between what the tool computes
+and what it hands over. **Not filed yet.**
+
+### `MDL108`: dropping a member a document still uses
+
+New, and it does the whole job in one message:
+
+```
+✗ `alter entity Sudoku.Game drop attribute "Message"` leaves microflow
+  Sudoku.ACT_DealGame, microflow Sudoku.ACT_DealMix, microflow Sudoku.ACT_Refresh,
+  microflow Sudoku.TST_FixedGame, microflow Sudoku.TST_RefreshCounters,
+  page Sudoku.Game_Mix and 1 more still using it — mxbuild reports CE1613 … on
+  each (CE0117 where it is in an expression, CE0161 in an XPath), and exec applies
+  the drop and only warns                                            [MDL108]
+```
+
+Verified true: forcing it through with `--no-check` applied the drop with only a
+generic warning, and `mx check` then reported **9 errors**. So the rule's claim
+about what it is protecting against is exactly right, down to the
+"exec applies the drop and only warns" part. This is the strongest single
+addition in this batch for anyone refactoring a domain model.
+
+### `MPR019`: unindexed XPath constraint — 5 info, and honest about itself
+
+All five of this build's new lint findings are one rule: an attribute an XPath
+constraint filters on with no index leading with it. Accurate on this project —
+`Cell.Row`, `Cell.Col`, `Cell.Value`, `Game.Status` are each filtered without a
+leading index. And the rule rates itself correctly:
+
+> On a small reference table the scan is cheaper than the index; **this is a
+> candidate, not a defect.**
+
+For an 81-cell board that is exactly right, which is why these land as `info`
+and why no action is taken. A rule that knows the limits of its own advice is
+rarer than it should be; noting it here as the counter-example to #63, where the
+message named a replacement that changed the meaning.
+
+### Not reached
+
+The batch is heavily `report` (10 `feat` + 7 `fix`, plus security, tests and
+architecture sub-reports) and `odata`/`sql`. `report` was not exercised beyond
+the battery, and this project has no OData, no REST and no SQL connections.
+Recorded as untested rather than as passing.
 
 ---
 
