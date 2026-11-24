@@ -374,8 +374,7 @@ begin
     "Status" = Sudoku."GameStatus".Playing,
     "DealtAt" = [%CurrentDateTime%],
     "GivenCount" = 40,
-    "Message" = 'fixture');
-  commit $Game without events;
+    "Message" = 'fixture') commit without events;
 
   set $i = 0;
   while $i < 81
@@ -494,8 +493,7 @@ begin
     "Variant" = Sudoku."Variant".Mix,
     "Status" = Sudoku."GameStatus".Playing,
     "DealtAt" = [%CurrentDateTime%],
-    "Message" = 'fixture');
-  commit $Game without events;
+    "Message" = 'fixture') commit without events;
 
   set $i = 0;
   while $i < 120

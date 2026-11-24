@@ -205,7 +205,13 @@ practice anyway, but it is not what the documentation promises.
 
 ## 10. Scripts are not re-runnable, and exec stops at the first error
 
-> **Open — and the suggested remedy is dangerous, see #24.** `alter entity … add attribute` is still non-idempotent and `exec` still halts at the first error.
+> **Half fixed as of `e3f7f061e`; the remedy is still dangerous, see #24.**
+> `alter entity … add attribute` is still non-idempotent and `exec` still halts
+> at the first error — but it no longer leaves the project half-applied. A script
+> that aborts at statement 2 now rolls statement 1 back and says so
+> (`Nothing was written: statement 1 was rolled back, and the project is as it was
+> before exec`), verified at byte level: **0 of 436 files changed**. The
+> re-runnability complaint stands; the data-loss hazard behind it does not.
 
 **Limitation.** `alter entity ... add attribute` fails if the attribute exists,
 and there is no `add attribute if not exists` (nor `create or replace` for
@@ -3073,30 +3079,64 @@ That workaround is retired.
 
 ## 50. Status of the open items — a running tally
 
-> **Update, `main` at `020f4572b`** (118 commits on): the `fieldset` false
-> `NOT SHOWN` note is **fixed** (`43f3a3759`), and PR 1158 is merged. Everything
-> else re-ran unchanged. Three items stay open: #56, the 2 `layout flows`
-> overlaps, and `sync-mods`' missing `rsync` fallback.
+> **Update, `main` at `4c0e494e8` + PR 1497** (272 commits on): **PR 1497's BSON
+> v1 → v2 driver migration writes a byte-identical model** — the
+> highest-blast-radius change tested here, and a clean no-op. **#56 narrowed to
+> four widget types.** Everything else re-ran unchanged. Three items open: #56,
+> the 2 `layout flows` overlaps, and `sync-mods`' missing `rsync` fallback
+> ([#1214](https://github.com/ako/mxcli/issues/1214)).
 
 So a reader does not have to diff five findings to learn what is still true.
 Every row is re-run against each build, not inferred.
 
-Last retested on **`main` at `020f4572b`** (2026-10-14). Previous columns kept so
+Last retested on **`main` at `a059cb3c7` and `c289c6e25`** (2026-10-23). Previous columns kept so
 a regression would be visible rather than silently overwritten — which is exactly
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `main @ 28a3b1bf6` | `main @ ce5b66fb0` | `7196b88bf` + PR 1158 | `main @ 020f4572b` |
+| Finding | `main @ 5897690cd` (v0.29.0) | nightly `3eadb56d6` | `main @ 8bf601162` | **`main @ 04785b2ae`** |
 |---|---|---|---|---|
-| 46–53, 55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
+| 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
-| 54A / 54B / 54C — the page round-trip | A,B fixed | A,B fixed | **all three closed** | closed |
-| 56 — written widget nodes build to CE0463 | **open** without `fix widgets` | open | open | **open**, 6 CE0463 |
-| `layout flows` introduces MPR008 overlaps | **2** — 2 were lint false positives | open, 2 | open, 2 | **open**, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
-| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / **new** | 0 / **MIGRATED** | 0 / 0 | 0 / 0 |
-| page round-trip, pages reported `Unchanged` | — | **11 of 20** | 11 of 20 | 11 of 20 |
-| 65 — `fieldset`'s false `NOT SHOWN` note | — | — | **new** | **FIXED** (`43f3a3759`) |
-| 65 — `make sync-mods` needs `rsync`, no fallback | — | — | **new** | **open**, unchanged |
+| 54A / 54B / 54C — the page round-trip | closed | closed | closed | closed |
+| 56 — written widget nodes build to CE0463 | not re-measured | not re-measured | not re-measured | not re-measured |
+| `layout flows` introduces MPR008 overlaps | open, 2 | open, 2 | open, 2 | open, 2 ([#684](https://github.com/ako/mxcli/issues/684)) |
+| 62 / 64 — `mdl 2` and `mdl 1` readiness | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| page round-trip pass 1, pages reported `Unchanged` | 16 of 20 | 16 of 20 | **17 of 20** | 17 of 20 |
+| page round-trip pass 2 — the number that matters (#67) | 20 of 20 | 20 of 20 | 20 of 20 | 20 of 20 |
+| 65 — `fieldset`'s false `NOT SHOWN` note | fixed | fixed | fixed | fixed |
+| 65 — `make sync-mods` needs `rsync` | fixed | fixed | fixed | fixed ([#1214](https://github.com/ako/mxcli/issues/1214)) |
+| 66 — PR 1497's BSON v1 → v2 migration | merged, no-op holds | merged, no-op holds | merged, no-op holds | merged, no-op holds |
+| 10 — `alter entity … add attribute` not re-runnable | **exec rolls back** | same | same | same — and `MDL108` now catches a drop still in use (#75) |
+| 69 — `MDL-WIDGET08` refuses a stored `pagingPosition: 'below'` | fixed, stays fixed | fixed | fixed | fixed |
+| 68 — PR 1798's source catalog build | merged | merged | **436 opens / 436 units** | holds |
+| a single `describe` — `.mxunit` files opened | 31 | **1** (#1804) | **0** | 0 |
+| 70 — PR 1802's incremental source rebuild | **new**, verified across 8 edits | merged + unit layer | **0.82 s** | holds |
+| 72 — v0.29.0's two-layer incremental catalog | — | **new** | holds | holds |
+| 72 — `E015`, a new always-true-comparison warning | — | **new**, correct both ways | holds | holds |
+| 73 — `CONV021`, change/create then commit as two activities | — | — | **new**, 20 true positives | **0 — fixed in #74** |
+| 73 — `SEC013`, security level Off ignores every grant | — | — | **new** | accepted, not a defect — security is deliberately off |
+| 75 — `verify`, a single regression gate | — | — | **new command**, adopted as `scripts/verify.sh` | the gate's first real pass — clean |
+| 76 — `MPR020`, domain model never laid out | — | — | — | **new rule**, 0 findings here |
+| 75 — `verify` drops the lint stage's resolved count | — | — | **new**, [#2506](https://github.com/ako/mxcli/issues/2506) | **FIXED** — `1 resolved` in text and JSON |
+| 75 — `MDL108`, dropping a member a document still uses | — | — | **new** | holds |
+| 75 — `MPR019`, unindexed XPath constraint | — | — | **new**, 5 info | 5 info |
+| lint total | 465 | 486 → **446** after #74 | **451** | 451 — unchanged |
+| 71 — `check --references` misses the target of 9 of 11 statement forms | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11** | stays fixed | stays fixed — issue **closed** |
+
+`04785b2ae` carries 70 non-merge commits over `8bf601162`. Every correctness row
+held, and this was the first pass driven by the committed gate rather than a
+hand-rolled sweep. **Both issues this project filed upstream are now closed and
+verified fixed**: [#1821](https://github.com/ako/mxcli/issues/1821) and
+[#2506](https://github.com/ako/mxcli/issues/2506), the latter two days after
+filing. Full write-up in #76.
+
+Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
+large cluster of describe-round-trip commits and `c289c6e25` adds one more
+(`33ad8ba22`, System associations kept qualified); neither moved any number this
+project can see, because the project has no construct those commits touch. A
+build can be a real fix upstream and a no-op here — that is not a regression, and
+it is not a reason to stop measuring.
 
 **The page round-trip, across four builds.** The single number an app author
 feels, and the reason this document kept re-running the same sweep:
@@ -3108,7 +3148,7 @@ feels, and the reason this document kept re-running the same sweep:
 | reported `Unchanged` — provably lossless | — | — | 9 | **11** |
 | `mx check` after the replay | **5 errors** | 0 | **0** | 0 |
 
-On `020f4572b`: **44/44** under `--require-assertions`, `lint` 0 errors (376
+On `4c0e494e8` + PR 1497: **44/44** under `--require-assertions`, `lint` 0 errors (376
 warnings, 89 info — 50 fewer than before the flow layout), `brain check` OK at 17 entries / 21 anchors / 19
 resolved, all 50 Sudoku microflows `describe` → `check` clean, and the full
 `mdlsource/` pipeline replays to **`mx check` 0 errors**. Every row above was
@@ -4333,6 +4373,21 @@ mx check      →  The app contains: 0 errors.
 Five types remain: Accessibility helper, Data grid 2, Feedback, Maps, Pop-up
 menu.
 
+### Narrowed again on `main` at `4c0e494e8` — four types
+
+| | `0dd7f51a0` | `0a821cf` | `4c0e494e8` |
+|---|---|---|---|
+| CE0463 — the defect | 7, on 6 types | 6, on 5 | **4, on 4** |
+| CE0488 — inherent (no entity to name) | 1 | 1 | 3 |
+
+**Data grid 2** moved out of the defect column: its two errors are now
+`CE0488 "No entity configured for the data source"`, the same inherent class as
+Gallery — a generic example has no project entity to put there. Four remain:
+Accessibility helper, Feedback, Maps, Pop-up menu.
+
+(`mxcli fix widgets` still clears the CE0463s entirely; this is the count without
+it.)
+
 ### Retested on `main` at `5ccbd480` — resolved, by a new tool rather than by the writer
 
 The five remaining types are unchanged if you only run `exec` — still 6 CE0463.
@@ -5459,14 +5514,1115 @@ binary at all. Worked around with the equivalent `cp -R` plus the excludes.
 other four targets already have. One line, and it restores the property that
 `make build` needs only Go.
 
-> **Still open at `020f4572b`.** `make sync-mods` fails identically, and the
-> `Makefile` target is unchanged — still the only one of the five without a
-> fallback. Worked around with `cp -R` again to build this build.
+> **Still open at `4c0e494e8`**, reported as
+> [ako/mxcli#1214](https://github.com/ako/mxcli/issues/1214). `make sync-mods`
+> fails identically and the `Makefile` is unchanged. **Correction to this entry:**
+> I first wrote that `sync-mods` was the only one of the five without a fallback.
+> It is **three** of five — `sync-mods`, `sync-commands` and `sync-lint-rules`.
+> `sync-mods` is simply the first `sync-all` reaches. Measured by clearing all
+> five embed directories and running `make sync-all`: `skills` and `skillpacks`
+> populate through their fallbacks (100 and 52 files), then it dies, leaving the
+> other three empty and `go build` failing on `all:mods`. So a fresh clone cannot
+> build without `rsync`.
 
 ### PR 1158 is merged
 
 `678c8d076` is in `main` as of this range, so the no-op result above now
 describes shipped behaviour rather than a pull request.
+
+---
+
+## 66. PR 1497 moves off the v1 BSON driver, and writes a byte-identical model
+
+**Tested** [PR 1497](https://github.com/ako/mxcli/pull/1497) — four commits, two
+of them *"move off the deprecated v1 BSON driver entirely"* and *"move ALTER
+NAVIGATION's new files off the v1 BSON driver"*. Everything mxcli reads and writes
+in a `.mpr` goes through that layer, so this is the highest-blast-radius change
+this document has tested.
+
+Verified on `main` at `4c0e494e8` + PR 1497, Mendix 11.13.0.
+
+### The result: no-op, against the control that makes that claim mean something
+
+Replaying all 11 `mdlsource/` scripts into two fresh copies, one per build, then
+describing all 58 entities, flows and pages with a single binary:
+
+```
+documents differing: 0 of 58
+```
+
+At byte level **3 of 436** `.mxunit` files differ — and the same 3 differ when
+`main` is compared against **itself**, replayed twice into fresh copies. Same
+three units (`Game_Mix`, `Game_Done`, `Game_Play` pages), both times. So that is
+run-to-run noise in page writing, not the driver swap.
+
+This is the second change in a row where the noise baseline was the difference
+between "no-op" and "3 units changed" (see #65 for PR 1158). It is worth stating
+as a standing rule for this project: **a byte-level model comparison means
+nothing without replaying the same build twice first.** Three units of churn is
+this project's floor.
+
+### The other half of the PR is a test fix, not shipped code
+
+`36f8cc426 "resolve a microflow's module through the container hierarchy"` repairs
+mxcli's **own** CI round-trip test, which had been resolving a microflow's module
+from a flat `ListModules` map — wrong, because a microflow's `ContainerID` is its
+*folder* when it sits in one. The commit message is candid that the test's vacuity
+guard caught it rather than a hint, and that the guard was right.
+
+That matters here only indirectly: this project's flows do sit in folders (the
+`TST_*` helpers are in `Test`), so the `FindModuleID` walk it restores is the one
+this project depends on. The shipped runner is unaffected — **44/44 on both
+builds**.
+
+### Full battery on `main` + PR 1497
+
+20 of 20 pages write back with 11 `Unchanged`, `mx check` 0 errors; 50 of 50
+microflows round-trip; `mdlsource/` at 0 deprecations, 0 `MDL-V1-*`, 0 parse
+errors; full replay to `mx check` 0 errors; 44/44 tests; `lint` 0 errors;
+`brain check` OK; layout steady at 2 MPR008 / 13 MPR011.
+
+### Worth recording: navigation round-trips, and says what it cannot carry
+
+`main` added `ALTER NAVIGATION` menu items (#1495). This project's one profile
+round-trips to `Unchanged`, and the describe output names the one thing it cannot
+express rather than dropping it silently:
+
+```mdl
+menu item 'Play Sudoku' ( OnClick: show page Sudoku.Home with (DisabledDuringExecution: false) )
+-- menu item 'Play Sudoku': a page title override ('') has no MDL form; a rewrite
+--   keeps it while the item's action is unchanged
+```
+
+"A rewrite keeps it while the item's action is unchanged" is the useful half —
+it tells you the condition under which the un-expressible thing survives, which
+is more than a warning that something is missing.
+
+---
+
+## 67. The page round-trip converges: all 20 pages are lossless, and "11 of 20" never meant what this document said it did
+
+> **Not a defect — a correction to the headline metric this document has tracked
+> since #54.** `describe` is lossless for all 20 pages on every build measured.
+> The 9 that report `Replaced page` are being normalised in storage, not
+> degraded, and the second pass proves it.
+
+**What the number actually measures.** Every build since `5ccbd480` has been
+scored on one line: *pages reported `Unchanged`*. It has read `11 of 20` for
+four builds running, and this document has carried it as "9 pages still don't
+round-trip". That reading is wrong.
+
+Replaying each page's own description into a fresh copy of the committed
+project, repeatedly:
+
+| pass | `a059cb3c7` | `c289c6e25` |
+|---|---|---|
+| 1 — from the committed model | `Unchanged` 11, `Replaced` 9, failed 0 | 11 / 9 / 0 |
+| 2 — from pass 1's output | **`Unchanged` 20**, `Replaced` 0, failed 0 | **20 / 0 / 0** |
+| 3 | 20 / 0 / 0 | 20 / 0 / 0 |
+
+`mx check` after the passes: `The app contains: 0 errors.`
+
+**The proof that nothing is lost.** Describing all 20 pages from the committed
+model and again after three replay passes, and diffing:
+
+```
+pages whose description changed: 0 of 20
+```
+
+So `describe` → `exec` → `describe` is a fixed point on the first try for all
+twenty. The 9 pass-1 rewrites change stored bytes without changing a single
+character of what mxcli can say about the page. They are the committed model's
+spelling being normalised to the writer's — a one-time cost on a model that
+Studio Pro wrote, not description loss.
+
+**Why this was missed for four builds.** The metric answers "did `exec` decide
+it had nothing to write?", and that question folds together two different
+things: *the description is faithful* and *the stored form already matches what
+the writer emits*. Only the first matters to an app author. Measuring one pass
+cannot separate them; measuring two does, and the second pass costs one more
+loop over the same 20 pages.
+
+This is the same lesson as #62 and #65, which is why it is worth stating a third
+time: **a gate answers the question it was built for and no other.** Here the
+gate was sound and the reading of it was not, which is the harder version to
+catch — nothing ever failed.
+
+**What to track instead.** Both numbers, because they fail independently:
+
+- *pass-1 `Unchanged`* — how close the committed model is to the writer's
+  normal form. Cosmetic; it moves when the writer's formatting changes.
+- *pass-2 `Unchanged`* — whether the description is lossless. **This is the one
+  that matters**, and it has been 20 of 20 on every build where it was measured.
+
+**Method note.** This was nearly filed as "14 of 20, improved" on `c289c6e25`.
+The scratch copy used for that sweep had already had four pages replayed into it
+by an earlier run in the same directory, so three of its "`Unchanged`" results
+were second-pass. A fresh copy per build and per pass brought both builds back
+to an identical 11. Re-using a scratch project across measurements silently
+mixes passes; copy it fresh or the number drifts upward on its own.
+
+---
+
+## 68. PR 1798: a source catalog build read each unit file 33 times; now it reads each once
+
+> **Verified on this project, independently measured.** 32× fewer file opens,
+> 1.7× faster, and all 84 catalog tables byte-identical. No effect on any other
+> tracked number.
+
+[PR 1798](https://github.com/ako/mxcli/pull/1798) (`3259bba5b`, base `9a8cf0b`)
+fixes a quadratic read pattern in `refresh catalog full source`: every microflow
+describe found its own microflow, and each microflow it called, by listing every
+microflow in the project from disk.
+
+**Measured here with `strace -e trace=openat`, not taken from the PR body.**
+Fresh copy of the project per run, 436 `.mxunit` files:
+
+| | base (`9a8cf0b`) | + PR 1798 |
+|---|---|---|
+| `.mxunit` opens for one `refresh catalog full source force` | **14,211** | **441** |
+| opens per unit | 32.6 | 1.01 |
+| wall time | 8.3 s | 4.8 s |
+
+441 opens for 436 units is essentially one read per unit, which is what the PR
+claims and what its own test asserts.
+
+**The correctness half.** Dumping all 84 `CATALOG.*` tables from both builds and
+diffing:
+
+```
+tables differing: 0 of 84          (7,957 rows compared)
+```
+
+A first diff showed 33 of 84 tables differing, which looked alarming for about a
+minute. Every one of those diffs was the catalog's own build-timestamp column —
+the two runs happened eight seconds apart. Normalising the timestamp brought it
+to zero. Row counts had been identical all along (`CATALOG.SOURCE` 184,
+`CATALOG.REFS` 1,001, `CATALOG.STRINGS` 1,830, `CATALOG.ACTIVITIES` 1,661), which
+was the clue that nothing substantive had moved: **a diff that fires on every
+table at once is usually measuring the measurement.**
+
+The rest of the battery is identical to the base build, row for row. This PR
+changes performance and nothing else.
+
+**Scale note.** This project is small enough that the fix saves 3.5 seconds. The
+PR reports 330 s → 31 s on a 4,753-unit app, and 90+ minutes on Windows where
+Defender scans every open. The ratio measured here (32.6 reads per unit) is the
+part that generalises; the wall time is not.
+
+---
+
+## 69. `describe` emits a gallery `pagingPosition` that `exec` refuses, and 3 of 20 pages stop round-tripping
+
+> **A correct new diagnostic, a real break, and a genuine latent bug in this
+> project — all at once.** Fixed here; worth knowing before the rule lands for
+> anyone else with an older model.
+
+**What happened.** On `main` at `9a8cf0b`, three pages refuse to replay their own
+description:
+
+```
+✗ page Sudoku.Game_Play: widget `galBoard` (gallery) property `pagingPosition`
+  has invalid value `below` — valid values are bottom, top, both;
+  the widget compares its keys exactly and would ignore it   [MDL-WIDGET08]
+Refusing to execute: 1 error(s) above. Nothing was written.
+```
+
+`Game_Play`, `Game_Mix` and `Game_Done` — the three hand-authored Sudoku pages.
+This is the first hard round-trip failure in this series since `0a821cf`; the
+previous build had 0 failed on both passes.
+
+**Which side is wrong.** Neither the describe nor the rule, as it turns out:
+
+1. `mdlsource/` **never sets `pagingPosition`** — `grep` across all 11 scripts
+   finds nothing. This project never asked for `below`.
+2. Replaying `mdlsource/` into a fresh copy produces galleries with **no
+   `pagingPosition` at all**, and those pages round-trip cleanly
+   (`Unchanged page`). So the current writer does not produce `below` either.
+3. The Gallery widget's own definition declares `bottom | top | both`, default
+   `bottom` (`CATALOG.WIDGET_DEFINITION_PROPERTIES`).
+4. Mendix's own validator does not care: `mx check` reports
+   `The app contains: 0 errors.` both before and after.
+
+So `below` is **stale residue written into the committed `.mpr` by an older
+mxcli**, sitting in the model for months, silently ignored by the Gallery widget
+at runtime, invisible to `mx check`, and surfaced only now by a rule that is
+right to reject it.
+
+**Why it still counts as a break.** However good the diagnostic, the effect is
+that mxcli refuses to replay a page it describes. The page cannot be fixed by the
+describe → edit → replay loop unless you know to hand-edit the bad value, because
+every replay of the unedited description is refused. A warning that wrote the page
+anyway, or a describe that normalised the dead value, would both have left the
+loop intact.
+
+**The remedy, and that it works.** Describing the page, changing the one value,
+and replaying it is accepted and restores the round trip permanently:
+
+```
+describe → s/pagingPosition: 'below'/'bottom'/ → exec   Replaced page
+describe → exec                                         Unchanged page
+```
+
+Applied to this project with `alter page … { set ("pagingPosition": 'bottom') on … }`
+for all three galleries. Because `bottom` is the widget's default, `describe` now
+omits the property entirely — the same output a clean source replay gives, so the
+fix converges with `mdlsource/` rather than papering over it.
+
+After the fix, on `9a8cf0b` + PR 1798:
+
+| | before | after |
+|---|---|---|
+| page round-trip pass 1 | 15 `Unchanged`, 2 replaced, **3 refused** | 16 `Unchanged`, 4 replaced, **0 refused** |
+| page round-trip pass 2 | 17 of 17, 3 refused | **20 of 20** |
+| `mx check` | 0 errors | 0 errors |
+| tests | 44 of 44 | 44 of 44 |
+
+Pass 1 also improved from the 11 of 20 that held for four builds to 16 of 20 —
+the writer's normal form moved closer to what is stored. Per #67 that number is
+cosmetic; pass 2 is the one that matters, and it is back to 20 of 20.
+
+**Two smaller things found on the way.**
+
+- **`MDL-DEPR101` is new**: `set Key = value` in `alter page` is deprecated in
+  favour of `set (Key: value)`. The message names the replacement, the scope
+  (`alter page`, `alter snippet`, `alter layout`), and the one form it does not
+  apply to (`set layout = M.L`). This is the quality #63 asked for. Note this
+  project's own `CLAUDE.md` and `.ai-context/skills/alter-page.md` still document
+  the deprecated spelling.
+- **`alter page … set` needs braces** — `alter page X { set … }`, not
+  `alter page X set …`. The parse error says `missing '{' at 'set'`, which is
+  precise, but the skill docs' table of operations shows the ops without the
+  surrounding block.
+
+---
+
+## 70. PR 1802: a source rebuild now re-describes only what changed, and agrees with a full rebuild on every edit I could think of
+
+> **Verified across eight kinds of edit.** Every row of the incremental catalog
+> matches a forced full rebuild of the same state. The reuse is real: 139 of 182
+> documents carried over after an entity change, 179 of 182 after a flow edit.
+
+[PR 1802](https://github.com/ako/mxcli/pull/1802) (`3e6025894`, base
+`e3f7f061e`) makes `refresh catalog` reuse the rows a previous source build
+described, instead of describing all 182 documents again on every save.
+
+**The reuse works.** Seeding a source index, making one edit, then running a
+plain `refresh catalog`:
+
+| edit | reported |
+|---|---|
+| nothing | no rebuild at all |
+| insert an activity into `ACT_Hint` | 179 reused, 3 described |
+| `alter entity Game add attribute` | 139 reused, 43 described |
+| change `Home`'s title | 178 reused, 4 described |
+| rename `ACT_NewEasy` | 173 reused, 9 described |
+| move `ACT_Hint` to a folder | *(no reuse — describes all 182)* |
+| drop `ACT_LogMove` | 179 reused, 2 described |
+| add an enumeration value | rebuilt, value present |
+
+The folder move describing everything is the documented structural case, not a
+miss.
+
+**The correctness test.** For each edit: seed the index, edit, run a plain
+(incremental) refresh, dump all 84 `CATALOG.*` tables; then force a full rebuild
+of the *same state* and dump again; compare.
+
+```
+tables differing by content: 0 of 84     — on all eight edits
+```
+
+**One caveat on the PR's wording.** The PR says the incremental `catalog.source`
+is "byte-identical" to a forced full rebuild. Its *content* is — every row
+matches — but the **row order differs** on five of the eight edits, because
+re-described rows land in a different position than a full rebuild puts them.
+`SELECT *` without `ORDER BY` has no promised order, so this is a wording
+quibble rather than a defect; it is worth knowing only because anyone verifying
+this PR by diffing raw query output will see five tables "differ" and have to
+work out why, as I did.
+
+**What this test cannot see.** Comparing incremental against full only catches
+staleness the incremental path introduces. If `describe` itself were stale, both
+sides would be wrong together and the diff would still be empty. So I also
+checked the riskiest case positively: after renaming `ACT_NewEasy`, the
+incremental catalog shows the **new** name in both pages that call it
+(`Game_Play`, `Home`). The one surviving mention of the old name is a string
+literal inside a log activity, which a rename correctly does not rewrite, and it
+is identical in the full rebuild.
+
+**A case this project cannot test.** The PR's headline dependency example is a
+page that prints its data-source microflow's return entity. No page here uses a
+microflow data source — all four use `$Game` or a database source — so that
+specific path is unverified by this project. The entity-attribute and rename
+cases exercise the same machinery from a different angle.
+
+**Scale.** 2.6 s → 2.2 s here, which is nearly nothing; the project has 182
+documents. The ratio that generalises is 139 of 182 reused, against the PR's
+3,525 of 3,718 on a 4,753-unit app.
+
+**Also in this build, from `main`.** #1801 (the v2 header index) cut what a
+single interactive command opens:
+
+| | `9a8cf0b` | `+PR 1798` | `e3f7f061e` | `+PR 1802` |
+|---|---|---|---|---|
+| `.mxunit` opens, one `describe page` | 116 | 116 | **31** | 31 |
+| `.mxunit` opens, `refresh catalog full source force` | 14,211 | 441 | 441 | 441 |
+
+PR 1798 is merged into `main`; its 32× reduction holds.
+
+---
+
+## 71. `check --references` validates the target of 2 of 11 statement forms
+
+> **A pre-flight gap, not a safety hole** — `exec` refuses every one of these,
+> and now rolls back cleanly (see #10). The cost is that the documented
+> pre-flight gate passes a script that cannot run.
+
+Found while building the #70 harness: a test script named
+`Sudoku.ENUM_Difficulty`, an enumeration that does not exist in this project.
+`check --references` said `✓ All references valid` / `Check passed!`, and
+`exec` then refused with `enumeration not found`.
+
+Sweeping every statement form that names an existing document, against a target
+that does not exist:
+
+| statement | `check --references` | `exec` |
+|---|---|---|
+| `alter entity` | **CAUGHT** — and names the alternatives: *"Sudoku has Cell, Game, Move"* | refused |
+| `alter page` | **CAUGHT** — likewise | refused |
+| `alter enumeration` | missed | refused |
+| `alter microflow` | missed | refused |
+| `drop microflow` | missed | refused |
+| `drop page` | missed | refused |
+| `drop entity` | missed | refused |
+| `drop enumeration` | missed | refused |
+| `drop association` | missed | refused |
+| `rename microflow` | missed | refused |
+| `move microflow` | missed | refused |
+
+Nothing is ever written: `exec` refuses all eleven. The two that `check` does
+catch produce an unusually good message, which is what makes the other nine
+conspicuous.
+
+**Why it still matters.** This project's own `CLAUDE.md` instructs
+*"Always validate before presenting to user: `mxcli check script.mdl -p
+Sudoku.mpr --references`"*, and the command's own banner is
+`Validating references against: Sudoku.mpr`. For nine of eleven statement forms
+that promise is not kept, and the error surfaces one step later than the
+workflow is built around.
+
+**Harness note, because I got this wrong twice before reporting it.** My first
+sweep claimed `alter entity` and `alter page` were *applied* rather than
+refused, and that `alter microflow` was missed. Both were artefacts:
+
+- I detected failure by grepping `^Error:`, but these two refuse with
+  `Reference error:` / `Refusing to execute`, so a correct refusal read as
+  silent success — a harness that pointed at a **worse** bug than exists.
+- My `alter microflow` script had a parse error (`drop $X` without `;`), so it
+  never reached reference checking at all; an invalid test reported as a result.
+
+Both were caught by re-running the odd-looking rows individually instead of
+trusting the table. The fix was to detect parse errors separately and fail the
+test loudly, rather than letting a broken script score as a finding — the same
+lesson as the `tail -n +2` harness in #51, in the opposite direction.
+
+---
+
+## 72. v0.29.0: a describe now opens one unit file, the catalog rebuild has a second layer, and `E015` catches an always-true comparison
+
+> **40 non-merge commits, no regressions.** A single `describe` went from 116
+> unit-file opens to **1**. The incremental catalog gained a unit-level layer on
+> top of #70's document-level one, and still agrees with a forced full rebuild
+> across all eight edit kinds. One new warning rule, verified in both directions.
+
+`5897690cd` merges `mendixlabs:main` into `ako/main` and tags v0.29.0. The hook
+reported `already installed — skipping build`, which made it look like nothing
+had changed; `origin/main` was indeed unmoved since the previous pass, but the
+previous pass had only run the #71 reference sweep against this build, never the
+full battery. The 40 commits behind that merge had never been measured here.
+
+**Reading the build right.** The comparison that matters is against the last
+build given a *full battery* (`e3f7f061e`), not against the last binary built.
+Those are not the same commit, and conflating them would have skipped this
+entire batch.
+
+### A single `describe` now opens one file
+
+`ef49cdfcc fix(mpr): serve unchanged v2 units from one store file (#1804)`,
+measured with `strace -e trace=openat`:
+
+| | `9a8cf0b` | `e3f7f061e` | `5897690cd` |
+|---|---|---|---|
+| `.mxunit` opens, one `describe page` | 116 | 31 (#1801) | **1** |
+| `.mxunit` opens, `refresh catalog full source force` | 14,211 | 441 | 441 |
+
+116× fewer opens for the single most common interactive command, in two steps a
+day apart.
+
+### The incremental rebuild now has two layers
+
+PR 1802 (#70) **merged**, and #1804 added a unit-level filter above it. The two
+report separately:
+
+```
+✓ source: 4 reused, 40 described: 40
+✓ incremental: 42 units rebuilt, 411 carried over: 42
+```
+
+The `4 reused` looks alarming beside PR 1802's `139 reused` on the same edit,
+and it is not a regression: the denominators differ. The unit layer carries over
+411 of 453 units first, so only 44 documents reach the describe stage at all.
+Net work went **down** — 40 described against PR 1802's 43 — and the rebuild is
+faster (1.84 s against 2.46 s).
+
+### Re-verified across the same eight edits
+
+The same matrix as #70 — no-op, flow body, entity attribute, page property,
+rename, folder move, drop, enumeration value — comparing the incremental catalog
+against a forced full rebuild of the same state, all 84 tables:
+
+**Five tables differ on every edit that rebuilds**, and all five are
+semantically identical:
+
+| table | why it differs |
+|---|---|
+| `USER_ROLES`, `ROLE_MAPPINGS`, `PERMISSIONS`, `REFS` | the surrogate autoincrement `Id` only — incremental re-inserts, so roles come back as 3,4 where a full build has 1,2. Row counts match and every other column matches. These tables join by **name**, not by `Id`, so nothing dangles. |
+| `GRAPH_MODULE_COUPLING` | item order *inside* the comma-joined `RefKinds` string: `member,datasource` against `datasource,member`. Same set, same `Edges` count. |
+
+With the `Id` column blanked, four are byte-identical. With the `RefKinds` items
+sorted, the fifth is too. **No stale row on any edit.**
+
+**A small real defect in that last one.** `RefKinds` is a set rendered as a
+string without sorting, so the same model yields different text depending on how
+the catalog was built. Two forced-full builds of the same state agree with each
+other, so this is specifically an incremental-vs-full difference, not run-to-run
+noise. It costs nothing at runtime and would be fixed by sorting the items; it
+matters only to someone diffing `GRAPH_*` output across builds, which is exactly
+what this document does. Not filed on its own — too small — but it is the reason
+a naive diff of this table reports a change that is not one.
+
+### `E015`: a String function compared with `empty`
+
+New in `efc539ec7` / `07a869ac7`. `trim()`, `toLowerCase()`, `toUpperCase()`,
+`substring()`, `replaceAll()` and `toString()` never return `empty` — for empty
+input they return `''` — so `trim($x) != empty` is **always true** and the
+decision never takes the branch the author meant.
+
+Verified in three directions on this project:
+
+| probe | `5897690cd` | `e3f7f061e` |
+|---|---|---|
+| `if trim($Game/DateLabel) != empty` | **warns** | silent (rule did not exist) |
+| `if trim($Game/DateLabel) != ''` | silent — correct form | silent |
+| `FeedbackModule.VAL_Feedback`, real Studio Pro code | **silent** | silent |
+
+The message is specific and carries the fix:
+
+```
+⚠ trim() never returns empty — for an empty input it returns '' — so this
+  comparison is always true.                                          [E015]
+    at Sudoku.PROBE_E015
+    → Compare with '' instead: trim(...) != ''
+```
+
+The third row is the interesting one. This project's `FeedbackModule` contains
+the exact guard idiom the rule's own history says the first version of E015
+flagged falsely:
+
+```
+if trim($Feedback/Subject) != empty and trim($Feedback/Subject) != '' then
+```
+
+The dead `empty` half is redundant, but the `''` comparison decides the branch,
+so the code is correct and a warning would be noise. `07a869ac7` teaches E015 to
+skip it — but only when the `''` guard is on the *same* call, which is the right
+line to draw. Confirmed silent on this project's real Studio Pro-authored flow,
+not just on a synthetic case.
+
+### Everything else held
+
+Battery identical to `e3f7f061e`: 20 of 20 page round-trip on pass 2, 50 of 50
+microflows, `mx check` 0 errors, lint 465 issues / 0 errors, `brain check` OK,
+44 of 44 tests. The batch also contains executor write-floor gates and a new
+`check` refusal for a list use of an association retrieve; neither fires on this
+project, which is on 11.13.0 and has no such retrieve. Recorded as untested here
+rather than as passing.
+
+---
+
+## 73. The nightly, 544 commits on: #1821 fixed, a describe opens no files at all, and two new rules that are right about this project
+
+> **The largest hop measured here — three releases — with no regressions.** All
+> eleven forms of #1821 now caught, with no false positives. A single `describe`
+> opens **0** unit files. Two new lint rules add 21 warnings, and every one of
+> them is a true positive on real code.
+
+Build under test: the **`nightly` tag**, `3eadb56d6` (2026-11-17). Main HEAD was
+one day further on (`c4666c2f0`), which the hook had built; the nightly is what
+was asked for, so the nightly is what was measured.
+
+**A trap worth recording first.** `git fetch --tags origin` left the `nightly`
+tag pointing at `1d0fc4f41` from 2026-10-29 — *older* than the build already
+measured here. Git does not move an existing tag ref on a plain fetch, and
+nothing warns you. Only `git fetch --tags --force` moved it to the real tip:
+
+```
+before --force:  1d0fc4f41  2026-10-29
+after  --force:  3eadb56d6  2026-11-17
+```
+
+Reading the stale tag would have "verified the nightly" against a three-week-old
+commit and reported it as current. The same class of mistake as the shallow-clone
+graft in #51's aftermath: **a ref that resolves is not the same as a ref that is
+current.**
+
+### Nothing regressed across 544 commits
+
+| | `5897690cd` | nightly `3eadb56d6` |
+|---|---|---|
+| page round-trip pass 1 | 16 of 20 | **17 of 20** |
+| page round-trip pass 2 (#67) | 20 of 20 | 20 of 20 |
+| microflow round-trip | 50 of 50 | 50 of 50 |
+| gates (`mdl 2` / `mdl 1` / parse) | 0 | 0 |
+| `mx check` | 0 errors | 0 errors |
+| lint | 465, 0 errors | 486, 0 errors |
+| `brain check` | OK | OK |
+| tests | 44 of 44 | 44 of 44 |
+
+The pass-1 gain is `Administration.Account_Overview` joining the lossless set;
+nothing left it. Per #67 that number is cosmetic, but it moves in the right
+direction and pass 2 stayed at 20 of 20.
+
+### #1821 is fixed, and fixed the way the issue asked
+
+Filed on 2026-10-30: `check --references` validated the statement's own target
+document for only `alter entity` and `alter page`. On the nightly, all eleven
+forms are caught:
+
+| statement | at filing | nightly |
+|---|---|---|
+| `alter entity`, `alter page` | caught | caught |
+| `alter enumeration`, `alter microflow` | missed | **caught** |
+| `drop microflow` / `page` / `entity` / `enumeration` / `association` | missed | **caught** |
+| `rename microflow`, `move microflow` | missed | **caught** |
+
+It also adopted the message style the issue held up as the model — the
+construct that referenced it, plus what the module actually has, now with
+sensible truncation:
+
+```
+statement 1: microflow not found: Sudoku.NoSuch (referenced by drop microflow)
+  — Sudoku has ACT_ApplyValue, ACT_ClearValue, ACT_DealGame, ACT_DealMix,
+    ACT_Hint, ACT_LogMove, ACT_MarkPeers, ACT_NewDiagonal and 42 more
+```
+
+**Controlled for over-catching**, because a gate that suddenly catches
+everything is the suspicious kind of fix. A valid `drop`, `rename`, `move` and
+`alter enumeration` against documents that *do* exist all still pass, and the
+project's own 11 `mdlsource/` scripts report only the four re-run collisions of
+#10 — the same four as always, no new noise.
+
+### Performance improved again
+
+| | `9a8cf0b` | `5897690cd` | nightly |
+|---|---|---|---|
+| `.mxunit` opens, one `describe page` | 116 | 1 | **0** |
+| `.mxunit` opens, full source build | 14,211 | 441 | **436** (= 436 units, 1.00 each) |
+| full source build | — | 4.4 s | **3.2 s** |
+| incremental rebuild after one edit | — | 1.55 s | **0.82 s** |
+
+A describe now opens no unit file at all — it is served entirely from the index —
+and the full build has reached exactly one read per unit, which is the floor.
+The incremental rebuild halved again, and still reports the same two layers
+(`source: 4 reused, 40 described`, `incremental: 42 units rebuilt, 412 carried
+over`).
+
+### Two new lint rules, both right about this project
+
+All 21 new warnings come from two rules, and neither is noise:
+
+**`CONV021` (CreateChangeThenCommit) — 20 occurrences.** A create or change
+activity immediately followed by a commit of the same object, where one activity
+with `Commit` set does both. Spot-checked against the stored model rather than
+trusting the count — `ACT_ApplyValue` really is adjacent:
+
+```
+36:  change $Cell (Value = $Digit, N1 = false, …) refresh;
+37:  commit $Cell without events refresh;
+```
+
+The remedy it prints is exact MDL: `change $Cell (…) commit without events
+refresh;`. Twenty sites across 13 flows are shaped this way. Not acted on in
+that pass — a refactor is not a verification — and **fixed in #74** once asked.
+
+**`SEC013` (SecurityLevelIgnoresRules) — 1 occurrence.** The project's security
+level is `Off`, so everything it defines is inert:
+
+> Security level is Off, so the runtime ignores the project's 5 pages granted to
+> roles, 51 microflows or nanoflows granted to roles, 2 demo users: every user
+> can open every page and read every row, and no demo user is created
+
+Verified against `SHOW PROJECT SECURITY`: `Security Level: Off`,
+`Demo Users Enabled: true`. The rule is accurate: the project has accumulated 5
+page grants, 51 flow grants and 2 demo users across this whole document, and at
+level `Off` none of them do anything.
+
+**Resolved as accepted, 2026-11-18.** Asked about it, the owner's answer was
+that this is a Sudoku game with no data worth protecting, so security stays off
+deliberately. That is the right call for this project: `Off` is the development
+default, the app is a single-player puzzle with no accounts of its own, and the
+grants are inherited from the Marketplace modules rather than written here.
+
+So `SEC013` is a **true positive that is not a defect** — the rule found exactly
+what it looks for, and the answer is "yes, on purpose". Recorded here so later
+passes do not re-raise it: the expected state of this project is security `Off`
+with 1 `SEC013` warning standing, and that warning changing or disappearing is
+the thing worth noticing, not its presence.
+
+Worth separating the two halves of its message, though, because only one half is
+accepted. "Every user can open every page and read every row" is intended here.
+"No demo user is created" is a side effect nobody chose — `Demo Users Enabled`
+is `true` and two demo users are configured, so that part of the model is dead
+weight rather than a decision. Not worth changing for a game, but it is why the
+warning is not purely noise.
+
+### Not reached
+
+The batch contains far more than one project can exercise. Business-event
+contract refusals, Kafka/CDC proposals, new `CE0023` / `CE0295` / `CE0002`
+refusals and the K2 migration skills are all untouched here — this project has
+no business events, no mappings and no OData. Recorded as untested rather than
+as passing.
+
+---
+
+## 74. Folding `CONV021`'s 20 create/change-then-commit pairs: 20 → 0, and what the splice refused
+
+> **Done: `CONV021` 20 → 0, `mx check` 0 errors, 44 of 44 tests, flow layout
+> untouched.** Two of the twenty needed more than the obvious edit, and the
+> interesting part is which two and why.
+
+`CONV021` flags a create or change activity immediately followed by a commit of
+the same object, where one activity with `Commit` set does both. 20 sites across
+13 flows, all in `mdlsource/03-microflows-engine.mdl`,
+`04-microflows-moves.mdl` and `09-test-helpers.mdl`.
+
+**The mechanical part.** The grammar allows the modifier on the activity itself:
+
+```
+CHANGE $Obj (Attr = value) [COMMIT [WITHOUT EVENTS]] [REFRESH];
+$Obj = CREATE Module.Entity (Attr = value) [COMMIT [WITHOUT EVENTS]] [REFRESH];
+```
+
+So each pair folds by moving `commit without events [refresh]` onto the
+preceding statement and deleting the commit line. Written as a script rather
+than 20 hand edits, because the statements span up to ten lines each and the
+edit is positional.
+
+**The script was wrong twice before it was right**, and both mistakes are the
+kind that would have shipped quietly:
+
+| attempt | folds | what was wrong |
+|---|---|---|
+| 1 | **17** | A comment line between a statement and its start broke the "find the statement's first line" walk, so three multi-line sites were skipped. Under-folding is visible — 17 ≠ 20 — so it self-reported. |
+| 2 | **23** | Relaxing the boundary check let the walk step *past* `end if;` and fold onto a conditional's terminator, producing the nonsense `end if commit without events;` for three sites whose change sits **inside** an `if`. Over-folding would have corrupted three flows. |
+| 3 | **20** | Added a contiguity test: every line between the statement's start and the commit must be a continuation (none ending a statement, none a block keyword), and the parentheses must balance across the span, with quoted text blanked first so apostrophes in `'Pick a square, then tap a number.'` do not count. |
+
+The count was the control throughout: `CONV021` said 20, I had derived 20 by
+hand from the source, and only attempt 3 produced 20 **and** the same 20. A
+script that agrees with the tool on the total but not on the set would have
+looked finished.
+
+### The two sites that were not mechanical
+
+**1. `ACT_DealMix` — the splice refused the change.** One folded create sits
+inside an `if` inside a `while`, and `create or modify microflow` would not
+write it:
+
+```
+✗ exec would refuse this statement: … the While at (2525, 1025) changes inside
+  its body: a decision in it (the If at (750, 80)) is changed or taken out;
+  inside a loop body the splice inserts, drops and replaces plain activities
+  only — not a decision, a loop, a return, break or continue …   [MDL-V1-REBUILD]
+```
+
+The message names three remedies and ranks them, which is the useful part: a
+full rebuild would reset positions, curves and element IDs; dropping and
+recreating rewrites the flow on every run; and the surgical option is
+`replace body of while`, which keeps the loop's element ID, position, iterator
+and condition and rebuilds only its body. Took the surgical one, extracting the
+59-line body straight out of the edited source rather than retyping it. Worth
+noting the refusal is right: this is exactly the "a gate answers the question it
+was built for" pattern from #67, except here the gate protected the flow's
+layout from an edit that looked trivial.
+
+**2. `ACT_SelectCell` — I had classified it as not foldable, and the linter was
+right.** Reading the source, the commit's previous *statement* is a `set`:
+
+```
+change $Game ("SelRow" = …, "SelEditable" = $Cell/"IsEditable");
+set $Game/Sudoku."Game_SelectedCell" = $Cell;
+commit $Game without events refresh;
+```
+
+So a text-adjacency rule says "not a change, skip it". But `set $Obj/Assoc = $X`
+**is** a Change object activity on `$Game`, so in the flow the commit's previous
+activity is a change of the same object and `CONV021` fires correctly. The fix
+folds all three into one activity by moving the association into the change:
+
+```
+change $Game (…, Sudoku."Game_SelectedCell" = $Cell) commit without events refresh;
+```
+
+**The lesson, and it is the same one as #67 in a new costume:** my classifier
+read the *source text*; the linter reads the *flow*. Those disagree wherever MDL
+sugar compiles to an activity — a `set` on an association here. The rule found
+one I would have left behind, which is the best argument for the rule.
+
+### Result
+
+| | before | after |
+|---|---|---|
+| `CONV021` | 20 | **0** |
+| `CONV010` — non-UI activity in an `ACT_` flow | 335 | 316 (−19) |
+| `CONV009` — flow over 15 activities | 15 | 14 (−1) |
+| lint total | 486 | **446**, 0 errors |
+| `mx check` | 0 errors | 0 errors |
+| tests | 44 of 44 | 44 of 44 |
+| page round-trip pass 2 | 20 of 20 | 20 of 20 |
+| `MPR008` / `MPR011` | 2 / 13 | **2 / 13** — layout untouched |
+
+The lint total fell by 40, twice what was changed, so it was worth accounting
+for the other 20 before believing it: removing 21 commit activities removes 19
+`CONV010` instances (a commit is not a UI action, and these are `ACT_` flows)
+and drops one flow under `CONV009`'s 15-activity threshold. Both are honest
+consequences of deleting activities, not suppression — checked by diffing
+rule-code counts rather than reading the total.
+
+Flow layout is byte-identical in its lint signature (2 `MPR008`, 13 `MPR011`,
+the same counts as before and still the two false-ish overlaps of
+[#684](https://github.com/ako/mxcli/issues/684)), which is what the splice and
+the `replace body of while` promised. The running app picked the change up as
+build #3 via reload and still serves 200.
+
+**The migration script is not in the repo.** `mdlsource/` now holds the folded
+form, so a replay from scratch produces the right model and needs nothing extra.
+The `replace body of while` script was only needed to move an *already built*
+model across, and anyone replaying `03-microflows-engine.mdl` onto a pre-fold
+`.mpr` will meet the same `MDL-V1-REBUILD` refusal and the same three remedies
+printed with it.
+
+---
+
+## 75. `verify` is this document's battery as one command — and it drops the one number that says you improved something
+
+> **The new `verify` command does what 75 findings of hand-rolled sweeping were
+> for, and it works.** Silent on 451 pre-existing findings, catches exactly the
+> one a change introduces, refuses to write when `check` fails, and records
+> accepted errors on purpose. One defect: the lint stage's "fixed" count is
+> computed, printed, and then dropped from both the stage summary and the JSON.
+
+Build under test: `main` at `8bf601162`, 127 non-merge commits over `8da40b5a1`.
+Every correctness row of the battery held — 20 of 20 page round-trip on pass 2,
+50 of 50 microflows, gates 0, `mx check` 0 errors, 44 of 44 tests, layout
+2 `MPR008` / 13 `MPR011`. Lint went 446 → 451, all five from one new info rule.
+
+### `verify`: one gate, reporting only what got worse
+
+```
+check     mxcli check on the scripts given as arguments
+exec      apply the scripts; only with --apply, and only if check passed
+lint      mxcli lint on the project, against its baseline
+mxcheck   mx check on a copy of the project, against its baseline
+```
+
+This is, almost line for line, the sequence this document has been running by
+hand since #51 — and the baseline-difference framing is the thing that was
+always missing. A project with 451 standing lint findings cannot use a raw lint
+count as a gate; only the delta means anything.
+
+Tested against this project's 451 findings:
+
+| what was run | result |
+|---|---|
+| no baseline recorded | reports all 451 as new, **and says so**: "no lint baseline …: every finding is reported as new; record one with `--update-baseline`" |
+| `--update-baseline` | `Recorded 451 finding(s) from 64 rule(s)`, exit 0 |
+| re-run, no change | **`0 new, 451 pre-existing`** — the claim, delivered |
+| `--apply` a script adding an empty microflow | **`1 new`**, 451 known; names it: `[warning] MPR002 ACT_VerifyProbe: Microflow 'ACT_VerifyProbe' has no activities` |
+| the same with `--fail-on warning` | `Result: FAILED (exit 18)` — and the real process exit **is** 18, matching the documented `16+2` bit scheme |
+| `--apply` a script with an unresolvable reference | `check FAILED`, then `exec`/`lint`/`mxcheck` all `SKIPPED — check failed; nothing was written`, exit 17; **437 `.mxunit` files before and after**, so nothing was written in fact, not just in the message |
+| `--update-baseline` while 9 real `mx check` errors stand | **refuses**, exit 2, listing the errors it would have accepted with full element paths, and ends "Fix them, or record them on purpose with `--accept-errors`" |
+| `--accept-errors` | records them: "accepted 9 error(s): they will not fail the gate again" |
+
+Two details worth singling out. The refusal to silently bless 9 errors into a
+baseline is the right default and the message does the whole job — it names what
+it would have accepted rather than just refusing. And the `check`-fails path was
+checked on disk, not taken on trust: the unit count is identical either side, so
+"nothing was written" is true.
+
+**A harness note on myself.** My first exit-code reading said 0 where the tool
+printed 18, which looked like a tool bug for about a minute. It was
+`echo "exit=$?"` after a pipe, reading `head`'s status, not mxcli's. Re-run
+without the pipe and the exit codes are exactly as documented. The lesson is the
+one from #71: **when a measurement disagrees with the tool's own words, suspect
+the measurement first.**
+
+### The defect: the lint stage's resolved count never arrives
+
+Remove a finding the baseline holds, and the lint baseline comparison notices:
+
+```
+$ mxcli lint -p Sudoku.mpr --baseline verify-baseline/lint.json
+0 new, 451 already known, 1 fixed
+```
+
+`verify` runs that same comparison and prints that same line. But its own stage
+summary and its JSON both lose the `1 fixed`:
+
+```
+Lint baseline verify-baseline/lint.json: 0 new, 451 already known, 1 fixed   <- passthrough
+  lint     PASSED   0 new, 451 pre-existing (358 warnings, 93 info)          <- no mention
+```
+```json
+{ "name": "lint", "status": "passed", "new": [], "resolved": 0, "preExisting": 451 }
+```
+
+**`mxcheck` is the control, and it proves the field is meant to be filled.**
+Dropping an attribute seven documents still use put 9 `CE1613` errors in a
+baseline; restoring the attribute gave:
+
+```
+  mxcheck  PASSED   0 new, 0 pre-existing, 9 resolved
+```
+```json
+{ "name": "mxcheck", "resolved": 9, "preExisting": 0 }
+```
+
+So `resolved` is wired for `mxcheck` and not for `lint`, while the lint number
+exists one line above in the same output. Reproducible across runs.
+
+Why it matters rather than being cosmetic: `verify --format json` is what the
+help points a pipeline at, and a consumer reading it cannot tell that a change
+*fixed* a baseline finding. That is the signal that says the baseline is now
+stale and should be re-recorded, and it is the only positive number the gate
+produces — everything else it reports is damage. Low severity, no wrong gate
+decision results from it, but it is a real gap between what the tool computes
+and what it hands over.
+
+**Filed as [#2506](https://github.com/ako/mxcli/issues/2506).** Checked against
+the existing `verify` work first: this is not [#2458](https://github.com/ako/mxcli/issues/2458),
+which fixed what `fixed` *means* for a lint baseline (recording which rules ran,
+so a rule that did not run is not counted as fixed) — here the computation is
+right and only the propagation is missing. Related to #2479 and the gate's
+umbrella issue #2333 as the same reporting surface.
+
+### `MDL108`: dropping a member a document still uses
+
+New, and it does the whole job in one message:
+
+```
+✗ `alter entity Sudoku.Game drop attribute "Message"` leaves microflow
+  Sudoku.ACT_DealGame, microflow Sudoku.ACT_DealMix, microflow Sudoku.ACT_Refresh,
+  microflow Sudoku.TST_FixedGame, microflow Sudoku.TST_RefreshCounters,
+  page Sudoku.Game_Mix and 1 more still using it — mxbuild reports CE1613 … on
+  each (CE0117 where it is in an expression, CE0161 in an XPath), and exec applies
+  the drop and only warns                                            [MDL108]
+```
+
+Verified true: forcing it through with `--no-check` applied the drop with only a
+generic warning, and `mx check` then reported **9 errors**. So the rule's claim
+about what it is protecting against is exactly right, down to the
+"exec applies the drop and only warns" part. This is the strongest single
+addition in this batch for anyone refactoring a domain model.
+
+### `MPR019`: unindexed XPath constraint — 5 info, and honest about itself
+
+All five of this build's new lint findings are one rule: an attribute an XPath
+constraint filters on with no index leading with it. Accurate on this project —
+`Cell.Row`, `Cell.Col`, `Cell.Value`, `Game.Status` are each filtered without a
+leading index. And the rule rates itself correctly:
+
+> On a small reference table the scan is cheaper than the index; **this is a
+> candidate, not a defect.**
+
+For an 81-cell board that is exactly right, which is why these land as `info`
+and why no action is taken. A rule that knows the limits of its own advice is
+rarer than it should be; noting it here as the counter-example to #63, where the
+message named a replacement that changed the meaning.
+
+### Adopted: `verify` is now this project's gate
+
+Three findings' worth of hand-rolled sweeping retired in favour of the tool.
+
+- **`Sudoku/verify-baseline/` is recorded and committed** — 451 findings from 64
+  rules, and 0 `mx check` errors. The baseline now holds this project's accepted
+  state *mechanically* rather than in prose, which closes a loop opened two
+  findings ago: `SEC013` (security `Off` on purpose, #73) is in it, so it stops
+  being re-raised on every pass. A deliberate change re-records with
+  `--update-baseline`, which refuses to absorb new `mx check` errors unless
+  `--accept-errors` says so, so a baseline cannot quietly bless a broken model.
+- **`scripts/verify.sh`** is the committed gate. Stage 1 is `mxcli verify` at
+  `--fail-on warning` — deliberate, because the baseline already absorbs every
+  standing warning, so any warning it reports is one the change introduced.
+  Stage 2 is what `verify` does not cover and this document does: the page round
+  trip over **two** passes (#67), the microflow round trip, the 44 unit tests and
+  `brain check`. Full run ~1m47s; `--quick` is stage 1 only, in seconds.
+- **`Sudoku/CLAUDE.md`** documents it, and the "always validate" line now points
+  at the gate as well as at `check` — `check` proves a script parses and
+  resolves, the gate proves the change did not break the project.
+
+It reproduces the hand-rolled numbers exactly: pass 1 17 of 20, pass 2 **20 of
+20**, microflows 50 of 50, tests 44 of 44, brain OK, lint `0 new, 451
+pre-existing`.
+
+**Proven in both directions, because a gate that cannot fail is worthless:**
+
+| probe | result |
+|---|---|
+| a new empty microflow (one new `MPR002`) | **exit 18**, names it, stops before stage 2 |
+| a script naming a microflow that does not exist | **exit 17** (`16+1`, check) |
+| both at once | **exit 19** (`16+1+2`) — the bits compose, which I only learned by predicting 17 and getting 19 |
+| probe reverted | exit 0, `0 new, 451 pre-existing` |
+
+That 19 is worth recording as a small lesson in reading one's own expectations:
+I called it a mismatch for a moment before noticing the first probe was still in
+the project, so check *and* lint were failing together and the exit code said so
+precisely.
+
+**Probe hygiene.** The add/drop cycle left `Sudoku.mpr` modified with zero
+`mprcontents` changes — metadata churn only, same byte size — so it was restored
+to `HEAD` rather than committed, and `ACT_Probe` is absent and `mx check` clean
+afterwards. Worth checking rather than assuming: a stray probe flow committed
+into the model would have been a silly thing to find three passes later.
+
+**One stale line left alone.** `Sudoku/CLAUDE.md`'s "Important: mxcli Location"
+still says to call `./mxcli` from the project root, and there is no such binary
+in this environment — `mxcli` is on `PATH`, which is what `scripts/run-app.sh`
+and the new gate both use. Pre-existing and outside what was asked, so noted
+here rather than silently rewritten.
+
+### Not reached
+
+The batch is heavily `report` (10 `feat` + 7 `fix`, plus security, tests and
+architecture sub-reports) and `odata`/`sql`. `report` was not exercised beyond
+the battery, and this project has no OData, no REST and no SQL connections.
+Recorded as untested rather than as passing.
+
+---
+
+## 76. The gate's first real pass: #2506 fixed in two days, and a defect in my own gate
+
+> **`04785b2ae`, 70 non-merge commits, everything clean — and the first pass run
+> through `scripts/verify.sh` instead of a hand-rolled sweep.** Both issues this
+> project filed upstream are now closed and verified fixed. The one defect found
+> this pass was in the gate I committed last time.
+
+```
+$ scripts/verify.sh
+== stage 1: mxcli verify (check / lint / mx check against the baseline)
+  lint     PASSED   0 new, 451 pre-existing (358 warnings, 93 info)
+  mxcheck  PASSED   0 new, 0 pre-existing
+== stage 2: round trips, tests, brain
+   pages          pass1 17/20 unchanged, 3 rewritten, 0 refused
+                  pass2 20/20 unchanged, 0 rewritten, 0 refused
+   microflows     50/50 round-trip
+   tests          Total: 44  Passed: 44  Failed: 0  Skipped: 0
+   brain          OK
+== verify: clean
+```
+
+One command, 85 seconds, and the only thing I had to read was the last line.
+That is what 75 findings of hand-rolled sweeping was for.
+
+### [#2506](https://github.com/ako/mxcli/issues/2506) fixed, two days after filing
+
+The lint stage now carries its resolved count into both surfaces it was missing
+from:
+
+| | at filing (`8bf601162`) | now (`04785b2ae`) |
+|---|---|---|
+| `lint --baseline` | `0 new, 451 already known, 1 fixed` | same |
+| `verify` text, lint stage | `0 new, 451 pre-existing` | `0 new, 451 pre-existing, **1 resolved**` |
+| `verify --format json` | `"resolved": 0` | `"resolved": 1` |
+
+Re-measured with the same probe as the issue — add a flow that trips one rule,
+record it into a baseline, remove it again. Issue closed as completed.
+
+[#1821](https://github.com/ako/mxcli/issues/1821) also shows closed. So **both
+upstream issues this project filed are now closed and independently re-verified
+here**, not just marked done.
+
+### `MPR020`, and the baseline noticing a rule it had never seen
+
+New rule: `MPR020 (DomainModelNotLaidOut)` — "linked entities still on mxcli's
+default placement grid: the domain model was created by a script and never laid
+out with `mxcli layout`". **0 findings here**, because this project's entities
+carry explicit positions from `mdlsource/`.
+
+The interesting part is what the gate said on the first run after it appeared:
+
+```
+Note: MPR020 ran and are not in the baseline's recorded rules;
+      all their findings are reported as new.
+```
+
+That is [#2458](https://github.com/ako/mxcli/issues/2458)'s fix doing its job
+from the other direction. A baseline that stored findings alone could not tell
+"this rule found nothing" from "this rule never ran", and #2458 made it record
+the rule set. Here a brand-new rule appears, the baseline knows it was not among
+the rules it recorded, and it says so instead of quietly folding an unknown
+rule's silence into a pass. Had `MPR020` found something, that note is what
+would have stopped it being mistaken for pre-existing.
+
+Re-recorded the baseline to take it in. The diff is exactly what it should be:
+
+```
+ Sudoku/verify-baseline/lint.json | 1 +
++    "MPR020",
+```
+
+451 findings before and after, 64 → 65 recorded rules. A baseline update that
+changes one line is one you can review; this is the argument for committing the
+baseline rather than regenerating it.
+
+### The defect was mine
+
+Stage 2 printed 23 of these before the page numbers:
+
+```
+cp: cannot stat '…/Sudoku/deployment/run/bin/system/proxies/WorkflowRecord.class':
+    No such file or directory
+```
+
+`scripts/verify.sh` copied the whole `Sudoku/` directory to a scratch tree for
+the round trip, and that includes `deployment/` — 23 MB of build output that the
+*running* `mxcli run` rewrites underneath the copy, so files vanish between
+`cp`'s scan and its read. Harmless to the result (the page numbers were right)
+and bad in a gate: 23 lines of alarming output above the answer, on every run,
+training the reader to skip the noise. A gate nobody reads is a gate that is not
+running.
+
+Fixed by excluding `deployment/` and `.mxcli/` from the scratch copy, which also
+took the full run from 1m48s to **1m25s**. The fix had to use `tar` rather than
+`rsync`, because `rsync` is not installed in this container — which is
+[#1214](https://github.com/ako/mxcli/issues/1214), this document's own finding
+#65, coming back around to bite the fix for a different problem. The exclusion
+is commented in the script with that reason, so the next person does not
+"simplify" it back to `rsync -a --exclude`.
+
+**Worth stating plainly: I shipped this gate last pass and called it clean.** It
+was clean in the sense that mattered — it measured the right things and failed
+when it should — and it was noisy in a way I did not notice because I was reading
+my own output for the numbers I expected. The first pass where I used it as a
+user rather than as its author is the pass where the noise became obvious.
+
+### Not reached
+
+70 commits weighted toward `fix(check)`, `fix(catalog)`, `fix(pages)`,
+`feat(navigation)` and proposals. Nothing in them moved a number this project
+measures, and the navigation work is untested here: this project has one
+`Responsive` profile with a single menu item, which exercises almost none of it.
+Recorded as untested rather than as passing.
 
 ---
 

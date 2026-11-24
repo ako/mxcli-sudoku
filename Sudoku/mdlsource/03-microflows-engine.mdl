@@ -1336,8 +1336,7 @@ begin
     "HintCount" = 0,
     "DealtAt" = [%CurrentDateTime%],
     "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEE dd MMM yyyy'),
-    "Message" = 'Pick a square, then tap a number.');
-  commit $Game without events;
+    "Message" = 'Pick a square, then tap a number.') commit without events;
 
   $Cells = create list of Sudoku."Cell";
 
@@ -1512,8 +1511,7 @@ begin
     "Status" = Sudoku."GameStatus".Playing,
     "DealtAt" = [%CurrentDateTime%],
     "DateLabel" = formatDateTime([%CurrentDateTime%], 'EEEE d MMMM'),
-    "Message" = 'Two grids, one shared block.');
-  commit $Game without events;
+    "Message" = 'Two grids, one shared block.') commit without events;
 
   set $i = 0;
   while $i < 225
@@ -1530,8 +1528,7 @@ begin
         "SolutionValue" = 0,
         "IsGiven" = false, "IsEditable" = false, "IsInvalid" = false,
         "CellClass" = 'sd-cell sd-void',
-        Sudoku."Cell_Game" = $Game);
-      commit $Void without events;
+        Sudoku."Cell_Game" = $Game) commit without events;
     else
       set $la = $r * 9 + $c;
       set $lb = ($r - 6) * 9 + $c - 6;
@@ -1580,8 +1577,7 @@ begin
     set $i = $i + 1;
   end while;
 
-  change $Game ("GivenCount" = $givens) refresh;
-  commit $Game without events refresh;
+  change $Game ("GivenCount" = $givens) commit without events refresh;
 
   -- Without this the board opens on default counters — the status line read
   -- "81 EMPTY" on a 153-square board until the first move triggered a refresh.
@@ -1640,8 +1636,7 @@ begin
     "MoveSeq" = 0,
     "MaxSeq" = 0,
     "CanUndo" = false,
-    "CanRedo" = false) refresh;
-  commit $Game without events refresh;
+    "CanRedo" = false) commit without events refresh;
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Reset = true;
@@ -1676,11 +1671,9 @@ begin
     return false;
   end if;
 
-  change $Empty ("Value" = $Empty/"SolutionValue", "IsInvalid" = false) refresh;
-  commit $Empty without events refresh;
+  change $Empty ("Value" = $Empty/"SolutionValue", "IsInvalid" = false) commit without events refresh;
 
-  change $Game ("HintCount" = $Game/"HintCount" + 1) refresh;
-  commit $Game without events refresh;
+  change $Game ("HintCount" = $Game/"HintCount" + 1) commit without events refresh;
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
   set $Revealed = true;

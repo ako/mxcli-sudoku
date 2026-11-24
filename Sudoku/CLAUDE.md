@@ -99,6 +99,10 @@ Use the `-c` flag to run a single MDL command:
 ./mxcli check script.mdl -p Sudoku.mpr --references  # With reference validation
 ```
 
+**And gate the result with `scripts/verify.sh`** — see *The verify gate* below.
+`check` proves a script parses and resolves; the gate proves the change did not
+break the project.
+
 ## MDL Commands by Domain
 
 ### Exploration & Structure
@@ -268,6 +272,42 @@ Available catalog tables: `CATALOG.MODULES`, `CATALOG.ENTITIES`, `CATALOG.MICROF
 | `SHOW WORKFLOWS [IN Module]` | List workflows |
 | `DESCRIBE WORKFLOW Module.Workflow` | Show workflow definition |
 | `SHOW WIDGETS [IN Module]` | Widget discovery (experimental) |
+
+## The verify gate (run this before saying you are done)
+
+```bash
+scripts/verify.sh                 # gate the project as it stands
+scripts/verify.sh a.mdl b.mdl     # also check those scripts (not applied)
+scripts/verify.sh --apply a.mdl   # check, apply, then gate the result
+scripts/verify.sh --quick         # stage 1 only — seconds, no mxbuild or tests
+```
+
+Stage 1 is `mxcli verify`, which runs `check`, `lint` and `mx check` against the
+baselines in `Sudoku/verify-baseline/` and reports **only findings that are new**.
+Stage 2 adds what `verify` does not cover: the page round trip over two passes,
+the microflow round trip, the 44 unit tests and `brain check`. The full run takes
+about two minutes; `--quick` takes seconds.
+
+**Why a baseline.** This project carries 451 accepted lint findings, so a raw
+lint count says nothing — only the delta against the baseline does. The baseline
+also records deliberate decisions mechanically: `SEC013` (security level is `Off`
+because this is a single-player game with no data to protect) is in there, so it
+is not re-raised every run.
+
+The gate is deliberately set to `--fail-on warning`: the baseline already absorbs
+every standing warning, so any warning it reports is one this change introduced.
+Exit status is `mxcli verify`'s own — `0` clean, or `16` plus one bit per failed
+stage (`1` check, `2` lint, `4` mxcheck, `8` exec), so `18` is a new lint finding
+and `19` is check and lint failing together.
+
+**After a deliberate change that moves the numbers**, re-record and commit:
+
+```bash
+mxcli verify -p Sudoku.mpr --update-baseline     # then commit Sudoku/verify-baseline/
+```
+
+It refuses to absorb new `mx check` errors unless you also pass `--accept-errors`,
+so a baseline cannot quietly bless a broken model.
 
 ## Script Validation (mxcli check)
 

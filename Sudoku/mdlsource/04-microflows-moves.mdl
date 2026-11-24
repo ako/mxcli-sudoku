@@ -110,15 +110,13 @@ begin
     "OldValue" = $Cell/"Value",
     "NewValue" = $NewValue,
     Sudoku."Move_Game" = $Game,
-    Sudoku."Move_Cell" = $Cell);
-  commit $Move without events;
+    Sudoku."Move_Cell" = $Cell) commit without events;
 
   change $Game (
     "MoveSeq" = $next,
     "MaxSeq" = $next,
     "CanUndo" = true,
-    "CanRedo" = false) refresh;
-  commit $Game without events refresh;
+    "CanRedo" = false) commit without events refresh;
 
   set $Logged = true;
   return $Logged;
@@ -145,8 +143,7 @@ begin
   end if;
 
   set $Mode = $Game/"NotesMode" = false;
-  change $Game ("NotesMode" = $Mode) refresh;
-  commit $Game without events refresh;
+  change $Game ("NotesMode" = $Mode) commit without events refresh;
   return $Mode;
 end;
 
@@ -185,12 +182,10 @@ begin
   -- Drop the old highlight
   retrieve $Previous from $Game/Sudoku."Game_SelectedCell";
   if $Previous != empty then
-    change $Previous ("IsSelected" = false);
-    commit $Previous without events refresh;
+    change $Previous ("IsSelected" = false) commit without events refresh;
   end if;
 
-  change $Cell ("IsSelected" = true);
-  commit $Cell without events refresh;
+  change $Cell ("IsSelected" = true) commit without events refresh;
 
   -- Box number 1..9, reading band/stack off the row and column
   set $bandRow = 0;
@@ -214,9 +209,8 @@ begin
     "SelCol" = $Cell/"Col" + 1,
     "SelBox" = $box,
     "HasSelection" = true,
-    "SelEditable" = $Cell/"IsEditable");
-  set $Game/Sudoku."Game_SelectedCell" = $Cell;
-  commit $Game without events refresh;
+    "SelEditable" = $Cell/"IsEditable",
+    Sudoku."Game_SelectedCell" = $Cell) commit without events refresh;
 
   -- Selection has no square list of its own, so it retrieves one here. That is
   -- the same single retrieve ACT_MarkPeers used to do internally, moved out so
@@ -278,8 +272,7 @@ begin
     "Value" = $Digit,
     "N1" = false, "N2" = false, "N3" = false,
     "N4" = false, "N5" = false, "N6" = false,
-    "N7" = false, "N8" = false, "N9" = false) refresh;
-  commit $Cell without events refresh;
+    "N7" = false, "N8" = false, "N9" = false) commit without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
@@ -322,8 +315,7 @@ begin
     "IsInvalid" = false,
     "N1" = false, "N2" = false, "N3" = false,
     "N4" = false, "N5" = false, "N6" = false,
-    "N7" = false, "N8" = false, "N9" = false) refresh;
-  commit $Cell without events refresh;
+    "N7" = false, "N8" = false, "N9" = false) commit without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
@@ -525,13 +517,11 @@ begin
 
   retrieve $Cell from $Move/Sudoku."Move_Cell";
   if $Cell != empty then
-    change $Cell ("Value" = $Move/"OldValue", "IsInvalid" = false) refresh;
-    commit $Cell without events refresh;
+    change $Cell ("Value" = $Move/"OldValue", "IsInvalid" = false) commit without events refresh;
   end if;
 
   change $Game ("MoveSeq" = $Game/"MoveSeq" - 1, "CanRedo" = true) refresh;
-  change $Game ("CanUndo" = $Game/"MoveSeq" > 0) refresh;
-  commit $Game without events refresh;
+  change $Game ("CanUndo" = $Game/"MoveSeq" > 0) commit without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
@@ -573,13 +563,11 @@ begin
 
   retrieve $Cell from $Move/Sudoku."Move_Cell";
   if $Cell != empty then
-    change $Cell ("Value" = $Move/"NewValue", "IsInvalid" = false) refresh;
-    commit $Cell without events refresh;
+    change $Cell ("Value" = $Move/"NewValue", "IsInvalid" = false) commit without events refresh;
   end if;
 
   change $Game ("MoveSeq" = $Game/"MoveSeq" + 1, "CanUndo" = true) refresh;
-  change $Game ("CanRedo" = $Game/"MoveSeq" < $Game/"MaxSeq") refresh;
-  commit $Game without events refresh;
+  change $Game ("CanRedo" = $Game/"MoveSeq" < $Game/"MaxSeq") commit without events refresh;
 
   call microflow Sudoku.ACT_Refresh(Game = $Game);
 
