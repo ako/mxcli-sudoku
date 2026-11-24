@@ -60,9 +60,14 @@ fail=0
 echo "== stage 2: round trips, tests, brain"
 
 # Page round trip, two passes, in a scratch copy so the project is never written to.
+# deployment/ is 23MB of build output that a running `mxcli run` rewrites under us,
+# so copying it is both wasteful and noisy (files vanish mid-copy). tar, not rsync:
+# rsync is not installed here — see FINDINGS.md #65 / ako/mxcli#1214.
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp -r "${PROJECT_DIR}/Sudoku" "$work/p" && rm -rf "$work/p/.mxcli"
+mkdir -p "$work/p"
+tar -cf - -C "${PROJECT_DIR}/Sudoku" --exclude=deployment --exclude=.mxcli . |
+  tar -xf - -C "$work/p"
 pages="$(mxcli -p "$work/p/Sudoku.mpr" -c "LIST PAGES" 2>/dev/null |
          awk -F'|' '/^\| [A-Za-z]+\./{gsub(/ /,"",$2);print $2}')"
 total="$(printf '%s\n' "$pages" | grep -c .)"

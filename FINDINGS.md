@@ -3094,7 +3094,7 @@ a regression would be visible rather than silently overwritten — which is exac
 what caught #51, then its fix trading one failure for another in #52, and then
 #57.
 
-| Finding | `e3f7f061e` + PR 1802 | `main @ 5897690cd` (v0.29.0) | nightly `3eadb56d6` | **`main @ 8bf601162`** |
+| Finding | `main @ 5897690cd` (v0.29.0) | nightly `3eadb56d6` | `main @ 8bf601162` | **`main @ 04785b2ae`** |
 |---|---|---|---|---|
 | 46–55, 57–61, 63 and the `-dirty` version string | fixed | fixed | fixed | fixed |
 | 52 — a test run briefly downs a running `run --local` | not re-measured | not re-measured | not re-measured | not re-measured |
@@ -3116,16 +3116,20 @@ what caught #51, then its fix trading one failure for another in #52, and then
 | 72 — `E015`, a new always-true-comparison warning | — | **new**, correct both ways | holds | holds |
 | 73 — `CONV021`, change/create then commit as two activities | — | — | **new**, 20 true positives | **0 — fixed in #74** |
 | 73 — `SEC013`, security level Off ignores every grant | — | — | **new** | accepted, not a defect — security is deliberately off |
-| 75 — `verify`, a single regression gate | — | — | — | **new command**, verified — and **adopted** as `scripts/verify.sh` |
-| 75 — `verify` drops the lint stage's resolved count | — | — | — | **new defect**, filed as [#2506](https://github.com/ako/mxcli/issues/2506) |
-| 75 — `MDL108`, dropping a member a document still uses | — | — | — | **new**, names all 7 users and the exact mxbuild errors |
-| 75 — `MPR019`, unindexed XPath constraint | — | — | — | **new**, 5 info — rates itself "a candidate, not a defect" |
-| lint total | 465 | 465 | 486 → **446** after #74 | **451** — +5, all `MPR019` info |
-| 71 — `check --references` misses the target of 9 of 11 statement forms | **new** | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11** | stays fixed |
+| 75 — `verify`, a single regression gate | — | — | **new command**, adopted as `scripts/verify.sh` | the gate's first real pass — clean |
+| 76 — `MPR020`, domain model never laid out | — | — | — | **new rule**, 0 findings here |
+| 75 — `verify` drops the lint stage's resolved count | — | — | **new**, [#2506](https://github.com/ako/mxcli/issues/2506) | **FIXED** — `1 resolved` in text and JSON |
+| 75 — `MDL108`, dropping a member a document still uses | — | — | **new** | holds |
+| 75 — `MPR019`, unindexed XPath constraint | — | — | **new**, 5 info | 5 info |
+| lint total | 465 | 486 → **446** after #74 | **451** | 451 — unchanged |
+| 71 — `check --references` misses the target of 9 of 11 statement forms | [#1821](https://github.com/ako/mxcli/issues/1821) | **FIXED — 11 of 11** | stays fixed | stays fixed — issue **closed** |
 
-`8bf601162` carries 127 non-merge commits over `8da40b5a1`, and every correctness
-row held. The news is a **new command**, `verify`, which is the gate this document
-has been hand-rolling for 75 findings — tested in #75, along with one defect in it.
+`04785b2ae` carries 70 non-merge commits over `8bf601162`. Every correctness row
+held, and this was the first pass driven by the committed gate rather than a
+hand-rolled sweep. **Both issues this project filed upstream are now closed and
+verified fixed**: [#1821](https://github.com/ako/mxcli/issues/1821) and
+[#2506](https://github.com/ako/mxcli/issues/2506), the latter two days after
+filing. Full write-up in #76.
 
 Both 2026-10-23 builds measure **identically** on every row. `a059cb3c7` carried a
 large cluster of describe-round-trip commits and `c289c6e25` adds one more
@@ -6502,6 +6506,122 @@ here rather than silently rewritten.
 The batch is heavily `report` (10 `feat` + 7 `fix`, plus security, tests and
 architecture sub-reports) and `odata`/`sql`. `report` was not exercised beyond
 the battery, and this project has no OData, no REST and no SQL connections.
+Recorded as untested rather than as passing.
+
+---
+
+## 76. The gate's first real pass: #2506 fixed in two days, and a defect in my own gate
+
+> **`04785b2ae`, 70 non-merge commits, everything clean — and the first pass run
+> through `scripts/verify.sh` instead of a hand-rolled sweep.** Both issues this
+> project filed upstream are now closed and verified fixed. The one defect found
+> this pass was in the gate I committed last time.
+
+```
+$ scripts/verify.sh
+== stage 1: mxcli verify (check / lint / mx check against the baseline)
+  lint     PASSED   0 new, 451 pre-existing (358 warnings, 93 info)
+  mxcheck  PASSED   0 new, 0 pre-existing
+== stage 2: round trips, tests, brain
+   pages          pass1 17/20 unchanged, 3 rewritten, 0 refused
+                  pass2 20/20 unchanged, 0 rewritten, 0 refused
+   microflows     50/50 round-trip
+   tests          Total: 44  Passed: 44  Failed: 0  Skipped: 0
+   brain          OK
+== verify: clean
+```
+
+One command, 85 seconds, and the only thing I had to read was the last line.
+That is what 75 findings of hand-rolled sweeping was for.
+
+### [#2506](https://github.com/ako/mxcli/issues/2506) fixed, two days after filing
+
+The lint stage now carries its resolved count into both surfaces it was missing
+from:
+
+| | at filing (`8bf601162`) | now (`04785b2ae`) |
+|---|---|---|
+| `lint --baseline` | `0 new, 451 already known, 1 fixed` | same |
+| `verify` text, lint stage | `0 new, 451 pre-existing` | `0 new, 451 pre-existing, **1 resolved**` |
+| `verify --format json` | `"resolved": 0` | `"resolved": 1` |
+
+Re-measured with the same probe as the issue — add a flow that trips one rule,
+record it into a baseline, remove it again. Issue closed as completed.
+
+[#1821](https://github.com/ako/mxcli/issues/1821) also shows closed. So **both
+upstream issues this project filed are now closed and independently re-verified
+here**, not just marked done.
+
+### `MPR020`, and the baseline noticing a rule it had never seen
+
+New rule: `MPR020 (DomainModelNotLaidOut)` — "linked entities still on mxcli's
+default placement grid: the domain model was created by a script and never laid
+out with `mxcli layout`". **0 findings here**, because this project's entities
+carry explicit positions from `mdlsource/`.
+
+The interesting part is what the gate said on the first run after it appeared:
+
+```
+Note: MPR020 ran and are not in the baseline's recorded rules;
+      all their findings are reported as new.
+```
+
+That is [#2458](https://github.com/ako/mxcli/issues/2458)'s fix doing its job
+from the other direction. A baseline that stored findings alone could not tell
+"this rule found nothing" from "this rule never ran", and #2458 made it record
+the rule set. Here a brand-new rule appears, the baseline knows it was not among
+the rules it recorded, and it says so instead of quietly folding an unknown
+rule's silence into a pass. Had `MPR020` found something, that note is what
+would have stopped it being mistaken for pre-existing.
+
+Re-recorded the baseline to take it in. The diff is exactly what it should be:
+
+```
+ Sudoku/verify-baseline/lint.json | 1 +
++    "MPR020",
+```
+
+451 findings before and after, 64 → 65 recorded rules. A baseline update that
+changes one line is one you can review; this is the argument for committing the
+baseline rather than regenerating it.
+
+### The defect was mine
+
+Stage 2 printed 23 of these before the page numbers:
+
+```
+cp: cannot stat '…/Sudoku/deployment/run/bin/system/proxies/WorkflowRecord.class':
+    No such file or directory
+```
+
+`scripts/verify.sh` copied the whole `Sudoku/` directory to a scratch tree for
+the round trip, and that includes `deployment/` — 23 MB of build output that the
+*running* `mxcli run` rewrites underneath the copy, so files vanish between
+`cp`'s scan and its read. Harmless to the result (the page numbers were right)
+and bad in a gate: 23 lines of alarming output above the answer, on every run,
+training the reader to skip the noise. A gate nobody reads is a gate that is not
+running.
+
+Fixed by excluding `deployment/` and `.mxcli/` from the scratch copy, which also
+took the full run from 1m48s to **1m25s**. The fix had to use `tar` rather than
+`rsync`, because `rsync` is not installed in this container — which is
+[#1214](https://github.com/ako/mxcli/issues/1214), this document's own finding
+#65, coming back around to bite the fix for a different problem. The exclusion
+is commented in the script with that reason, so the next person does not
+"simplify" it back to `rsync -a --exclude`.
+
+**Worth stating plainly: I shipped this gate last pass and called it clean.** It
+was clean in the sense that mattered — it measured the right things and failed
+when it should — and it was noisy in a way I did not notice because I was reading
+my own output for the numbers I expected. The first pass where I used it as a
+user rather than as its author is the pass where the noise became obvious.
+
+### Not reached
+
+70 commits weighted toward `fix(check)`, `fix(catalog)`, `fix(pages)`,
+`feat(navigation)` and proposals. Nothing in them moved a number this project
+measures, and the navigation work is untested here: this project has one
+`Responsive` profile with a single menu item, which exercises almost none of it.
 Recorded as untested rather than as passing.
 
 ---
